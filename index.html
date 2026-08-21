@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEC Podcast Weekly Picks</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      padding: 2rem 1rem;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 650px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    h1 {
+      font-size: 1.8rem;
+      color: #fbbf24;
+      margin-bottom: 0.5rem;
+    }
+    .card {
+      background: #1e293b;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      margin-bottom: 1.5rem;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    label {
+      font-weight: 600;
+      color: #94a3b8;
+    }
+    input[type="text"] {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #fff;
+      font-size: 1rem;
+    }
+    input[type="text"]:focus {
+      outline: 2px solid #fbbf24;
+    }
+    .btn {
+      margin-top: 1rem;
+      padding: 0.75rem 1.5rem;
+      background-color: #fbbf24;
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+    }
+    .btn:hover {
+      background-color: #f59e0b;
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .hidden {
+      display: none;
+    }
+    .matchup-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #334155;
+    }
+    .matchup-row:last-child {
+      border-bottom: none;
+    }
+    .vs-text {
+      font-weight: bold;
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+    .team-btn {
+      padding: 0.6rem;
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.15s ease-in-out;
+    }
+    .team-btn:hover {
+      border-color: #fbbf24;
+    }
+    .team-btn.selected {
+      background: #fbbf24;
+      color: #0f172a;
+      border-color: #fbbf24;
+    }
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid #334155;
+      font-size: 0.95rem;
+    }
+    .summary-item:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>SEC Pod Pick'em</h1>
+      <p style="color: #94a3b8;">Week 1 Matchup Predictions</p>
+    </header>
+
+    <!-- Step 1: Name Entry -->
+    <div id="step-name" class="card">
+      <div class="input-group">
+        <label for="pickerName">Enter Your Name</label>
+        <input type="text" id="pickerName" placeholder="e.g. Jason or @ListenerHandle" />
+      </div>
+      <button class="btn" id="startBtn">Continue to Week 1 Picks</button>
+    </div>
+
+    <!-- Step 2: Pick'em Form -->
+    <div id="step-picks" class="card hidden">
+      <h2 style="margin-bottom: 0.25rem; font-size: 1.25rem;" id="greetingHeader"></h2>
+      <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.25rem;">Select one winner for each Week 1 matchup:</p>
+      
+      <div id="matchups-container"></div>
+
+      <button class="btn" id="submitPicksBtn" style="margin-top: 1.5rem;">Submit My Picks</button>
+    </div>
+
+    <!-- Step 3: Review / Confirmation -->
+    <div id="step-summary" class="card hidden">
+      <h2 style="color: #4ade80; margin-bottom: 0.5rem; font-size: 1.25rem;">Picks Saved to Database!</h2>
+      <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.25rem;" id="summarySubhead"></p>
+      
+      <div id="summary-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://kxcttllysuxertyjjppd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
+
+    const week1Games = [
+      { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
+      { id: 2, teamA: "Arkansas", teamB: "North Alabama" },
+      { id: 3, teamA: "Auburn", teamB: "Baylor" },
+      { id: 4, teamA: "Florida", teamB: "Florida Atlantic" },
+      { id: 5, teamA: "Georgia", teamB: "Tenn State" },
+      { id: 6, teamA: "Kentucky", teamB: "Youngstown State" },
+      { id: 7, teamA: "LSU", teamB: "Clemson" },
+      { id: 8, teamA: "Ole Miss", teamB: "Louisville" },
+      { id: 9, teamA: "Miss State", teamB: "ULM" },
+      { id: 10, teamA: "Missouri", teamB: "Peanutbutter" },
+      { id: 11, teamA: "Oklahoma", teamB: "UTEP" },
+      { id: 12, teamA: "South Carolina", teamB: "Kent State" },
+      { id: 13, teamA: "Tennessee", teamB: "Furman" },
+      { id: 14, teamA: "Texas", teamB: "Texas State" },
+      { id: 15, teamA: "Texas A&M", teamB: "Missouri State" },
+      { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
+    ];
+
+    let userSelections = {};
+    let userName = "";
+
+    const nameInput = document.getElementById("pickerName");
+    const startBtn = document.getElementById("startBtn");
+    const stepName = document.getElementById("step-name");
+    const stepPicks = document.getElementById("step-picks");
+    const stepSummary = document.getElementById("step-summary");
+    const greetingHeader = document.getElementById("greetingHeader");
+    const matchupsContainer = document.getElementById("matchups-container");
+    const submitPicksBtn = document.getElementById("submitPicksBtn");
+    const summaryList = document.getElementById("summary-list");
+    const summarySubhead = document.getElementById("summarySubhead");
+
+    startBtn.addEventListener("click", () => {
+      userName = nameInput.value.trim();
+      if (!userName) {
+        alert("Please enter your name to proceed.");
+        return;
+      }
+
+      greetingHeader.textContent = `Welcome, ${userName}!`;
+      stepName.classList.add("hidden");
+      stepPicks.classList.remove("hidden");
+      renderMatchups();
+    });
+
+    function renderMatchups() {
+      matchupsContainer.innerHTML = "";
+      week1Games.forEach(game => {
+        const row = document.createElement("div");
+        row.className = "matchup-row";
+
+        const btnA = document.createElement("button");
+        btnA.type = "button";
+        btnA.className = "team-btn";
+        btnA.textContent = game.teamA;
+        btnA.onclick = () => selectPick(game.id, game.teamA, btnA, btnB);
+
+        const vs = document.createElement("span");
+        vs.className = "vs-text";
+        vs.textContent = "VS";
+
+        const btnB = document.createElement("button");
+        btnB.type = "button";
+        btnB.className = "team-btn";
+        btnB.textContent = game.teamB;
+        btnB.onclick = () => selectPick(game.id, game.teamB, btnB, btnA);
+
+        row.appendChild(btnA);
+        row.appendChild(vs);
+        row.appendChild(btnB);
+        matchupsContainer.appendChild(row);
+      });
+    }
+
+    function selectPick(gameId, pickedTeam, selectedBtn, otherBtn) {
+      userSelections[gameId] = pickedTeam;
+      selectedBtn.classList.add("selected");
+      otherBtn.classList.remove("selected");
+    }
+
+    submitPicksBtn.addEventListener("click", async () => {
+      const totalPicks = Object.keys(userSelections).length;
+      if (totalPicks < week1Games.length) {
+        alert(`You've made ${totalPicks} of ${week1Games.length} picks. Please select a winner for all games.`);
+        return;
+      }
+
+      submitPicksBtn.disabled = true;
+      submitPicksBtn.textContent = "Saving picks...";
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/picks`, {
+          method: "POST",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${SUPABASE_KEY}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify({
+            user_name: userName,
+            week_number: 1,
+            picks: userSelections
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(errText || response.statusText);
+        }
+
+        stepPicks.classList.add("hidden");
+        stepSummary.classList.remove("hidden");
+        summarySubhead.textContent = `${userName}'s Week 1 picks are locked in.`;
+
+        summaryList.innerHTML = "";
+        week1Games.forEach(game => {
+          const item = document.createElement("div");
+          item.className = "summary-item";
+          item.innerHTML = `
+            <span style="color: #94a3b8;">${game.teamA} vs ${game.teamB}</span>
+            <strong style="color: #fbbf24;">${userSelections[game.id]}</strong>
+          `;
+          summaryList.appendChild(item);
+        });
+      } catch (err) {
+        alert("Failed to save picks: " + err.message);
+        submitPicksBtn.disabled = false;
+        submitPicksBtn.textContent = "Submit My Picks";
+      }
+    });
+  </script>
+</body>
+</html>
