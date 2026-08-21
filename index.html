@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SEC Pod Pick'em</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -165,8 +166,9 @@
   </div>
 
   <script>
-    const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co/rest/v1/";
+    const SUPABASE_URL = "https://kxkcttllysuxertyjjppd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const week1Games = [
       { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
@@ -260,24 +262,18 @@
       submitPicksBtn.textContent = "Saving picks...";
 
       try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/picks`, {
-          method: "POST",
-          headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": `Bearer ${SUPABASE_KEY}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=minimal"
-          },
-          body: JSON.stringify({
-            user_name: userName,
-            week_number: 1,
-            picks: userSelections
-          })
-        });
+        const { data, error } = await supabaseClient
+          .from("picks")
+          .insert([
+            {
+              user_name: userName,
+              week_number: 1,
+              picks: userSelections
+            }
+          ]);
 
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(errText || response.statusText);
+        if (error) {
+          throw error;
         }
 
         stepPicks.classList.add("hidden");
