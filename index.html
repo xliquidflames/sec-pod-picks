@@ -43,12 +43,13 @@
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
+      margin-bottom: 1rem;
     }
     label {
       font-weight: 600;
       color: #94a3b8;
     }
-    input[type="text"] {
+    input[type="text"], input[type="password"] {
       padding: 0.75rem 1rem;
       border-radius: 8px;
       border: 1px solid #334155;
@@ -56,8 +57,17 @@
       color: #fff;
       font-size: 1rem;
     }
-    input[type="text"]:focus {
+    input:focus {
       outline: 2px solid #fbbf24;
+    }
+    .host-toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      cursor: pointer;
+      margin-top: 0.25rem;
     }
     .btn {
       margin-top: 1rem;
@@ -70,6 +80,9 @@
       font-weight: 700;
       cursor: pointer;
       width: 100%;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
     }
     .btn:hover {
       background-color: #f59e0b;
@@ -140,9 +153,20 @@
     <!-- Step 1: Name Entry -->
     <div id="step-name" class="card">
       <div class="input-group">
-        <label for="pickerName">Who are you? Enter your name or alias.</label>
+        <label for="pickerName">Enter Your Name</label>
         <input type="text" id="pickerName" placeholder="e.g. Jason or @ListenerHandle" />
       </div>
+
+      <label class="host-toggle-label">
+        <input type="checkbox" id="hostCheckbox" />
+        I am a podcast host (Mike, Shane, or Steven)
+      </label>
+
+      <div class="input-group hidden" id="pinGroup" style="margin-top: 1rem;">
+        <label for="hostPin">Host PIN</label>
+        <input type="password" id="hostPin" placeholder="Enter Host PIN" />
+      </div>
+
       <button class="btn" id="startBtn">Continue to Week 1 Picks</button>
     </div>
 
@@ -163,14 +187,17 @@
       
       <div id="summary-list"></div>
 
-      <a href="results.html" class="btn" style="margin-top: 1.5rem; text-decoration: none; display: block; text-align: center;">View Live Results</a>
+      <a href="results.html" class="btn" style="margin-top: 1.5rem;">View Live Consensus & Results</a>
     </div>
   </div>
 
   <script>
     const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4a2N0bGx5c3V4ZXJ0eWpqcHBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNDI0MzYsImV4cCI6MjEwMjkxODQzNn0.s3pzm1g_FNpFBKxSla4YBzC5Es8V0XnagMbNPqT_Y_A";
+    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Change this to whatever secret PIN you give Mike, Shane, and Steven
+    const HOST_SECRET_PIN = "sec2026";
 
     const week1Games = [
       { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
@@ -193,8 +220,12 @@
 
     let userSelections = {};
     let userName = "";
+    let isVerifiedHost = false;
 
     const nameInput = document.getElementById("pickerName");
+    const hostCheckbox = document.getElementById("hostCheckbox");
+    const pinGroup = document.getElementById("pinGroup");
+    const hostPinInput = document.getElementById("hostPin");
     const startBtn = document.getElementById("startBtn");
     const stepName = document.getElementById("step-name");
     const stepPicks = document.getElementById("step-picks");
@@ -205,6 +236,14 @@
     const summaryList = document.getElementById("summary-list");
     const summarySubhead = document.getElementById("summarySubhead");
 
+    hostCheckbox.addEventListener("change", () => {
+      if (hostCheckbox.checked) {
+        pinGroup.classList.remove("hidden");
+      } else {
+        pinGroup.classList.add("hidden");
+      }
+    });
+
     startBtn.addEventListener("click", () => {
       userName = nameInput.value.trim();
       if (!userName) {
@@ -212,7 +251,16 @@
         return;
       }
 
-      greetingHeader.textContent = `Welcome, ${userName}!`;
+      if (hostCheckbox.checked) {
+        const enteredPin = hostPinInput.value.trim();
+        if (enteredPin.toLowerCase() !== HOST_SECRET_PIN) {
+          alert("Invalid Host PIN. If you are a listener, uncheck the host box.");
+          return;
+        }
+        isVerifiedHost = true;
+      }
+
+      greetingHeader.textContent = isVerifiedHost ? `Host Access: ${userName}` : `Welcome, ${userName}!`;
       stepName.classList.add("hidden");
       stepPicks.classList.remove("hidden");
       renderMatchups();
@@ -270,7 +318,8 @@
             {
               user_name: userName,
               week_number: 1,
-              picks: userSelections
+              picks: userSelections,
+              is_host: isVerifiedHost
             }
           ]);
 
