@@ -21,7 +21,7 @@
     }
     .container {
       width: 100%;
-      max-width: 900px;
+      max-width: 950px;
     }
     header {
       text-align: center;
@@ -95,7 +95,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 1rem;
+      margin-top: 0.5rem;
       font-size: 0.9rem;
     }
     th, td {
@@ -108,6 +108,16 @@
       font-weight: 600;
       background-color: #0f172a;
     }
+    .host-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid #fbbf24;
+      color: #fbbf24;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
   </style>
 </head>
 <body>
@@ -115,7 +125,7 @@
   <div class="container">
     <header>
       <h1>SEC Pod Pick'em</h1>
-      <p style="color: #94a3b8;">Week 1 Consensus & Live Submissions</p>
+      <p style="color: #94a3b8;">Week 1 Live Results & Host Breakdown</p>
     </header>
 
     <div class="stats-bar">
@@ -128,11 +138,33 @@
       </div>
     </div>
 
+    <!-- Hosts Section -->
+    <div class="card" id="hostsCard">
+      <div class="section-title">Official Host Picks</div>
+      <div style="overflow-x: auto;">
+        <table id="hostsTable">
+          <thead>
+            <tr>
+              <th>Matchup</th>
+              <th>Mike</th>
+              <th>Shane</th>
+              <th>Steven</th>
+            </tr>
+          </thead>
+          <tbody id="hostsBody">
+            <tr>
+              <td colspan="4" style="color: #94a3b8; text-align: center;">Waiting for host submissions...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Consensus Summary -->
     <div class="card">
       <div class="section-title">Consensus Tallies</div>
       <div id="tallyGrid" class="grid">
-        <p style="color: #94a3b8;">Loading results from database...</p>
+        <p style="color: #94a3b8;">Loading tallies from database...</p>
       </div>
     </div>
 
@@ -145,7 +177,7 @@
             <tr>
               <th>Time</th>
               <th>Picker</th>
-              <th>Picks Count</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody id="submissionsBody">
@@ -184,6 +216,7 @@
 
     async function loadResults() {
       const tallyGrid = document.getElementById("tallyGrid");
+      const hostsBody = document.getElementById("hostsBody");
       const submissionsBody = document.getElementById("submissionsBody");
       const totalCount = document.getElementById("totalCount");
 
@@ -204,8 +237,20 @@
           tallies[g.id] = { [g.teamA]: 0, [g.teamB]: 0 };
         });
 
-        // Compute counts
+        // Find verified hosts
+        const hostData = { mike: null, shane: null, steven: null };
+
         data.forEach(row => {
+          const lowerName = row.user_name.trim().toLowerCase();
+
+          // Only assign if verified as host
+          if (row.is_host === true) {
+            if (lowerName.includes("mike") && !hostData.mike) hostData.mike = row.picks;
+            if (lowerName.includes("shane") && !hostData.shane) hostData.shane = row.picks;
+            if (lowerName.includes("steven") && !hostData.steven) hostData.steven = row.picks;
+          }
+
+          // Add to consensus tallies
           if (row.picks) {
             Object.keys(row.picks).forEach(gameId => {
               const team = row.picks[gameId];
@@ -216,7 +261,25 @@
           }
         });
 
-        // Render Consensus Tallies
+        // 1. Render Hosts Table
+        hostsBody.innerHTML = "";
+        week1Games.forEach(game => {
+          const tr = document.createElement("tr");
+
+          const mikePick = hostData.mike && hostData.mike[game.id] ? hostData.mike[game.id] : "-";
+          const shanePick = hostData.shane && hostData.shane[game.id] ? hostData.shane[game.id] : "-";
+          const stevenPick = hostData.steven && hostData.steven[game.id] ? hostData.steven[game.id] : "-";
+
+          tr.innerHTML = `
+            <td style="font-weight: 600;">${game.teamA} vs ${game.teamB}</td>
+            <td style="color: ${mikePick !== '-' ? '#fbbf24' : '#64748b'}; font-weight: 600;">${mikePick}</td>
+            <td style="color: ${shanePick !== '-' ? '#fbbf24' : '#64748b'}; font-weight: 600;">${shanePick}</td>
+            <td style="color: ${stevenPick !== '-' ? '#fbbf24' : '#64748b'}; font-weight: 600;">${stevenPick}</td>
+          `;
+          hostsBody.appendChild(tr);
+        });
+
+        // 2. Render Consensus Tallies
         tallyGrid.innerHTML = "";
         week1Games.forEach(game => {
           const countA = tallies[game.id][game.teamA];
@@ -240,7 +303,7 @@
           tallyGrid.appendChild(box);
         });
 
-        // Render Submissions Table
+        // 3. Render Submissions List
         submissionsBody.innerHTML = "";
         if (data.length === 0) {
           submissionsBody.innerHTML = `<tr><td colspan="3" style="color: #94a3b8; text-align: center;">No picks submitted yet.</td></tr>`;
@@ -248,11 +311,13 @@
           data.forEach(row => {
             const tr = document.createElement("tr");
             const dateStr = new Date(row.created_at).toLocaleString();
-            const pickCount = row.picks ? Object.keys(row.picks).length : 0;
+
             tr.innerHTML = `
               <td style="color: #94a3b8;">${dateStr}</td>
-              <td style="font-weight: 600; color: #fbbf24;">${row.user_name}</td>
-              <td>${pickCount} / 16 Picks</td>
+              <td style="font-weight: 600; color: ${row.is_host ? '#fbbf24' : '#f8fafc'};">
+                ${row.user_name} ${row.is_host ? '<span class="host-badge">HOST</span>' : ''}
+              </td>
+              <td style="color: #4ade80;">16 / 16 Picks In</td>
             `;
             submissionsBody.appendChild(tr);
           });
