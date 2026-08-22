@@ -110,13 +110,15 @@
     }
     .host-badge {
       display: inline-block;
-      padding: 0.2rem 0.6rem;
+      margin-left: 0.5rem;
+      padding: 0.15rem 0.5rem;
       background: rgba(251, 191, 36, 0.15);
       border: 1px solid #fbbf24;
       color: #fbbf24;
-      border-radius: 6px;
+      border-radius: 4px;
       font-weight: 700;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
     }
   </style>
 </head>
@@ -130,8 +132,8 @@
 
     <div class="stats-bar">
       <div>
-        <span style="color: #94a3b8;">Total Listeners Picked: </span>
-        <strong id="listenerCount" style="color: #fbbf24; font-size: 1.2rem;">0</strong>
+        <span style="color: #94a3b8;">Total Submissions: </span>
+        <strong id="totalCount" style="color: #fbbf24; font-size: 1.2rem;">0</strong>
       </div>
       <div>
         <a href="index.html" class="btn">Make Picks Form</a>
@@ -168,15 +170,15 @@
       </div>
     </div>
 
-    <!-- 3. Community Submissions Only -->
+    <!-- 3. All Submissions -->
     <div class="card">
-      <div class="section-title">Community Listener Submissions</div>
+      <div class="section-title">All Submissions</div>
       <div style="overflow-x: auto;">
         <table id="submissionsTable">
           <thead>
             <tr>
               <th>Time</th>
-              <th>Listener Name</th>
+              <th>Picker</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -218,7 +220,7 @@
       const tallyGrid = document.getElementById("tallyGrid");
       const hostsBody = document.getElementById("hostsBody");
       const submissionsBody = document.getElementById("submissionsBody");
-      const listenerCount = document.getElementById("listenerCount");
+      const totalCount = document.getElementById("totalCount");
 
       try {
         const { data, error } = await supabaseClient
@@ -229,6 +231,8 @@
 
         if (error) throw error;
 
+        totalCount.textContent = data.length;
+
         // Initialize tallies
         const tallies = {};
         week1Games.forEach(g => {
@@ -236,7 +240,6 @@
         });
 
         const hostData = { mike: null, shane: null, steven: null };
-        const communityRows = [];
 
         data.forEach(row => {
           const lowerName = (row.user_name || "").trim().toLowerCase();
@@ -250,8 +253,6 @@
             } else if (lowerName.includes("steven") && !hostData.steven) {
               hostData.steven = row.picks;
             }
-          } else {
-            communityRows.push(row);
           }
 
           // Count all toward consensus tallies
@@ -264,8 +265,6 @@
             });
           }
         });
-
-        listenerCount.textContent = communityRows.length;
 
         // 1. Render Hosts Head-to-Head Table
         hostsBody.innerHTML = "";
@@ -309,18 +308,20 @@
           tallyGrid.appendChild(box);
         });
 
-        // 3. Render Community Listener List (Hosts Excluded)
+        // 3. Render All Submissions Table (Hosts Included with Badge)
         submissionsBody.innerHTML = "";
-        if (communityRows.length === 0) {
-          submissionsBody.innerHTML = `<tr><td colspan="3" style="color: #94a3b8; text-align: center;">No listener picks submitted yet.</td></tr>`;
+        if (data.length === 0) {
+          submissionsBody.innerHTML = `<tr><td colspan="3" style="color: #94a3b8; text-align: center;">No picks submitted yet.</td></tr>`;
         } else {
-          communityRows.forEach(row => {
+          data.forEach(row => {
             const tr = document.createElement("tr");
             const dateStr = new Date(row.created_at).toLocaleString();
 
             tr.innerHTML = `
               <td style="color: #94a3b8;">${dateStr}</td>
-              <td style="font-weight: 600; color: #f8fafc;">${row.user_name}</td>
+              <td style="font-weight: 600; color: ${row.is_host ? '#fbbf24' : '#f8fafc'};">
+                ${row.user_name}${row.is_host ? '<span class="host-badge">HOST</span>' : ''}
+              </td>
               <td style="color: #4ade80;">16 / 16 Picks In</td>
             `;
             submissionsBody.appendChild(tr);
