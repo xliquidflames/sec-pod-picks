@@ -160,7 +160,15 @@
       </div>
     </div>
 
-    <!-- 2. Community Submissions List (Moved Up) -->
+    <!-- 2. Consensus Summary -->
+    <div class="card">
+      <div class="section-title">Consensus Tallies (All Listeners & Hosts)</div>
+      <div id="tallyGrid" class="grid">
+        <p style="color: #94a3b8;">Loading tallies from database...</p>
+      </div>
+    </div>
+
+    <!-- 3. Community Submissions Only -->
     <div class="card">
       <div class="section-title">Community Listener Submissions</div>
       <div style="overflow-x: auto;">
@@ -178,14 +186,6 @@
             </tr>
           </tbody>
         </table>
-      </div>
-    </div>
-
-    <!-- 3. Consensus Summary (Moved Down) -->
-    <div class="card">
-      <div class="section-title">Consensus Tallies (All Listeners & Hosts)</div>
-      <div id="tallyGrid" class="grid">
-        <p style="color: #94a3b8;">Loading tallies from database...</p>
       </div>
     </div>
   </div>
@@ -285,25 +285,7 @@
           hostsBody.appendChild(tr);
         });
 
-        // 2. Render Community Listener List (Hosts Excluded)
-        submissionsBody.innerHTML = "";
-        if (communityRows.length === 0) {
-          submissionsBody.innerHTML = `<tr><td colspan="3" style="color: #94a3b8; text-align: center;">No listener picks submitted yet.</td></tr>`;
-        } else {
-          communityRows.forEach(row => {
-            const tr = document.createElement("tr");
-            const dateStr = new Date(row.created_at).toLocaleString();
-
-            tr.innerHTML = `
-              <td style="color: #94a3b8;">${dateStr}</td>
-              <td style="font-weight: 600; color: #f8fafc;">${row.user_name}</td>
-              <td style="color: #4ade80;">16 / 16 Picks In</td>
-            `;
-            submissionsBody.appendChild(tr);
-          });
-        }
-
-        // 3. Render Consensus Tallies
+        // 2. Render Consensus Tallies
         tallyGrid.innerHTML = "";
         week1Games.forEach(game => {
           const countA = tallies[game.id][game.teamA] || 0;
@@ -326,6 +308,24 @@
           `;
           tallyGrid.appendChild(box);
         });
+
+        // 3. Render Community Listener List (Hosts Excluded)
+        submissionsBody.innerHTML = "";
+        if (communityRows.length === 0) {
+          submissionsBody.innerHTML = `<tr><td colspan="3" style="color: #94a3b8; text-align: center;">No listener picks submitted yet.</td></tr>`;
+        } else {
+          communityRows.forEach(row => {
+            const tr = document.createElement("tr");
+            const dateStr = new Date(row.created_at).toLocaleString();
+
+            tr.innerHTML = `
+              <td style="color: #94a3b8;">${dateStr}</td>
+              <td style="font-weight: 600; color: #f8fafc;">${row.user_name}</td>
+              <td style="color: #4ade80;">16 / 16 Picks In</td>
+            `;
+            submissionsBody.appendChild(tr);
+          });
+        }
 
       } catch (err) {
         tallyGrid.innerHTML = `<p style="color: #f87171;">Error loading results: ${err.message}</p>`;
