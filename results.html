@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEC Pod Pick'em - Live Results</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      padding: 2rem 1rem;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 900px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    h1 {
+      font-size: 1.8rem;
+      color: #fbbf24;
+      margin-bottom: 0.5rem;
+    }
+    .stats-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      background: #1e293b;
+      padding: 1rem 1.5rem;
+      border-radius: 10px;
+    }
+    .card {
+      background: #1e293b;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      margin-bottom: 1.5rem;
+    }
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fbbf24;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 0.5rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+    .matchup-box {
+      background: #0f172a;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+    .tally-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.5rem;
+      font-size: 0.95rem;
+    }
+    .tally-count {
+      font-weight: bold;
+      color: #38bdf8;
+    }
+    .btn {
+      padding: 0.6rem 1.2rem;
+      background-color: #fbbf24;
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn:hover {
+      background-color: #f59e0b;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #334155;
+    }
+    th {
+      color: #94a3b8;
+      font-weight: 600;
+      background-color: #0f172a;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>SEC Pod Pick'em</h1>
+      <p style="color: #94a3b8;">Week 1 Consensus & Live Submissions</p>
+    </header>
+
+    <div class="stats-bar">
+      <div>
+        <span style="color: #94a3b8;">Total Submissions: </span>
+        <strong id="totalCount" style="color: #fbbf24; font-size: 1.2rem;">0</strong>
+      </div>
+      <div>
+        <a href="index.html" class="btn">Make Picks Form</a>
+      </div>
+    </div>
+
+    <!-- Consensus Summary -->
+    <div class="card">
+      <div class="section-title">Consensus Tallies</div>
+      <div id="tallyGrid" class="grid">
+        <p style="color: #94a3b8;">Loading results from database...</p>
+      </div>
+    </div>
+
+    <!-- Individual Submissions -->
+    <div class="card">
+      <div class="section-title">All Submissions</div>
+      <div style="overflow-x: auto;">
+        <table id="submissionsTable">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Picker</th>
+              <th>Picks Count</th>
+            </tr>
+          </thead>
+          <tbody id="submissionsBody">
+            <tr>
+              <td colspan="3" style="color: #94a3b8; text-align: center;">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const week1Games = [
+      { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
+      { id: 2, teamA: "Arkansas", teamB: "North Alabama" },
+      { id: 3, teamA: "Auburn", teamB: "Baylor" },
+      { id: 4, teamA: "Florida", teamB: "Florida Atlantic" },
+      { id: 5, teamA: "Georgia", teamB: "Tenn State" },
+      { id: 6, teamA: "Kentucky", teamB: "Youngstown State" },
+      { id: 7, teamA: "LSU", teamB: "Clemson" },
+      { id: 8, teamA: "Ole Miss", teamB: "Louisville" },
+      { id: 9, teamA: "Miss State", teamB: "ULM" },
+      { id: 10, teamA: "Missouri", teamB: "Peanutbutter" },
+      { id: 11, teamA: "Oklahoma", teamB: "UTEP" },
+      { id: 12, teamA: "South Carolina", teamB: "Kent State" },
+      { id: 13, teamA: "Tennessee", teamB: "Furman" },
+      { id: 14, teamA: "Texas", teamB: "Texas State" },
+      { id: 15, teamA: "Texas A&M", teamB: "Missouri State" },
+      { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
+    ];
+
+    async function loadResults() {
+      const tallyGrid = document.getElementById("tallyGrid");
+      const submissionsBody = document.getElementById("submissionsBody");
+      const totalCount = document.getElementById("totalCount");
+
+      try {
+        const { data, error } = await supabaseClient
+          .from("picks")
+          .select("*")
+          .eq("week_number", 1)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        totalCount.textContent = data.length;
+
+        // Initialize tallies
+        const tallies = {};
+        week1Games.forEach(g => {
+          tallies[g.id] = { [g.teamA]: 0, [g.teamB]: 0 };
+        });
+
+        // Compute counts
+        data.forEach(row => {
+          if (row.picks) {
+            Object.keys(row.picks).forEach(gameId => {
+              const team = row.picks[gameId];
+              if (tallies[gameId] && tallies[gameId][team] !== undefined) {
+                tallies[gameId][team]++;
+              }
+            });
+          }
+        });
+
+        // Render Consensus Tallies
+        tallyGrid.innerHTML = "";
+        week1Games.forEach(game => {
+          const countA = tallies[game.id][game.teamA];
+          const countB = tallies[game.id][game.teamB];
+
+          const box = document.createElement("div");
+          box.className = "matchup-box";
+          box.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 0.5rem; color: #f8fafc; font-size: 0.95rem;">
+              Game ${game.id}
+            </div>
+            <div class="tally-row">
+              <span>${game.teamA}</span>
+              <span class="tally-count">${countA}</span>
+            </div>
+            <div class="tally-row">
+              <span>${game.teamB}</span>
+              <span class="tally-count">${countB}</span>
+            </div>
+          `;
+          tallyGrid.appendChild(box);
+        });
+
+        // Render Submissions Table
+        submissionsBody.innerHTML = "";
+        if (data.length === 0) {
+          submissionsBody.innerHTML = `<tr><td colspan="3" style="color: #94a3b8; text-align: center;">No picks submitted yet.</td></tr>`;
+        } else {
+          data.forEach(row => {
+            const tr = document.createElement("tr");
+            const dateStr = new Date(row.created_at).toLocaleString();
+            const pickCount = row.picks ? Object.keys(row.picks).length : 0;
+            tr.innerHTML = `
+              <td style="color: #94a3b8;">${dateStr}</td>
+              <td style="font-weight: 600; color: #fbbf24;">${row.user_name}</td>
+              <td>${pickCount} / 16 Picks</td>
+            `;
+            submissionsBody.appendChild(tr);
+          });
+        }
+
+      } catch (err) {
+        tallyGrid.innerHTML = `<p style="color: #f87171;">Error loading results: ${err.message}</p>`;
+      }
+    }
+
+    loadResults();
+  </script>
+</body>
+</html>
