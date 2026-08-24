@@ -146,6 +146,14 @@
       white-space: nowrap;
     }
 
+    .host-record-badge {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-main);
+      font-weight: 600;
+      margin-top: 0.2rem;
+    }
+
     /* Cousins Accordion List */
     .cousin-item {
       background: var(--bg-card-alt);
@@ -301,9 +309,9 @@
           <thead>
             <tr>
               <th class="matchup-header">Matchup</th>
-              <th>Mike</th>
-              <th>Shane</th>
-              <th>Steven</th>
+              <th id="thMike">Mike</th>
+              <th id="thShane">Shane</th>
+              <th id="thSteven">Steven</th>
             </tr>
           </thead>
           <tbody id="hostGridBody">
@@ -352,7 +360,7 @@
       { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
     ];
 
-    // Global game winners object (accessible via console or script)
+    // Global game winners object
     window.gameWinners = {
       1: null,
       2: null,
@@ -391,6 +399,23 @@
       });
 
       return { correct, incorrect, pending };
+    }
+
+    function renderCellContent(gameId, userPick) {
+      const winner = window.gameWinners[gameId];
+      if (!userPick || userPick === "-") {
+        return `<span class="pick-pending">-</span>`;
+      }
+
+      if (!winner) {
+        return `<span class="pick-pending">${userPick}</span>`;
+      }
+
+      if (userPick === winner) {
+        return `<span class="pick-correct">${userPick} ✓</span>`;
+      } else {
+        return `<span class="pick-incorrect">${userPick} ✗</span>`;
+      }
     }
 
     function renderPickLine(game, userPick) {
@@ -432,23 +457,33 @@
         const hostRows = rows.filter(r => r.is_host === true);
         const cousinRows = rows.filter(r => r.is_host === false);
 
-        // Host Grid Rendering
+        // Find hosts and calculate scores
         const hostMike = hostRows.find(h => h.user_name.toLowerCase() === "mike");
         const hostShane = hostRows.find(h => h.user_name.toLowerCase() === "shane");
         const hostSteven = hostRows.find(h => h.user_name.toLowerCase() === "steven");
 
+        const mikeScore = hostMike ? gradePicks(hostMike.picks) : { correct: 0, incorrect: 0 };
+        const shaneScore = hostShane ? gradePicks(hostShane.picks) : { correct: 0, incorrect: 0 };
+        const stevenScore = hostSteven ? gradePicks(hostSteven.picks) : { correct: 0, incorrect: 0 };
+
+        // Update Host Table Headers with live records
+        document.getElementById("thMike").innerHTML = `Mike <span class="host-record-badge">(${mikeScore.correct}-${mikeScore.incorrect})</span>`;
+        document.getElementById("thShane").innerHTML = `Shane <span class="host-record-badge">(${shaneScore.correct}-${shaneScore.incorrect})</span>`;
+        document.getElementById("thSteven").innerHTML = `Steven <span class="host-record-badge">(${stevenScore.correct}-${stevenScore.incorrect})</span>`;
+
+        // Render Host Grid
         hostGridBody.innerHTML = "";
         week1Games.forEach(game => {
           const tr = document.createElement("tr");
-          const pickMike = (hostMike && hostMike.picks) ? (hostMike.picks[game.id] || "-") : "-";
-          const pickShane = (hostShane && hostShane.picks) ? (hostShane.picks[game.id] || "-") : "-";
-          const pickSteven = (hostSteven && hostSteven.picks) ? (hostSteven.picks[game.id] || "-") : "-";
+          const pickMike = (hostMike && hostMike.picks) ? hostMike.picks[game.id] : "-";
+          const pickShane = (hostShane && hostShane.picks) ? hostShane.picks[game.id] : "-";
+          const pickSteven = (hostSteven && hostSteven.picks) ? hostSteven.picks[game.id] : "-";
 
           tr.innerHTML = `
             <td class="matchup-cell">${game.teamA} vs ${game.teamB}</td>
-            <td class="pick-cell">${pickMike}</td>
-            <td class="pick-cell">${pickShane}</td>
-            <td class="pick-cell">${pickSteven}</td>
+            <td class="pick-cell">${renderCellContent(game.id, pickMike)}</td>
+            <td class="pick-cell">${renderCellContent(game.id, pickShane)}</td>
+            <td class="pick-cell">${renderCellContent(game.id, pickSteven)}</td>
           `;
           hostGridBody.appendChild(tr);
         });
@@ -458,7 +493,6 @@
           c.score = gradePicks(c.picks);
         });
 
-        // Sort descending by correct picks, then ascending by name
         cousinRows.sort((a, b) => {
           if (b.score.correct !== a.score.correct) {
             return b.score.correct - a.score.correct;
@@ -466,7 +500,7 @@
           return a.user_name.localeCompare(b.user_name);
         });
 
-        // Calculate Tied Olympic Ranks (1, 1, 3, etc.)
+        // Olympic Ranking for Cousins
         let currentRank = 1;
         cousinRows.forEach((cousin, i) => {
           if (i > 0 && cousin.score.correct < cousinRows[i - 1].score.correct) {
@@ -484,7 +518,6 @@
           cousinRows.forEach(cousin => {
             const item = document.createElement("div");
 
-            // Apply podium highlight if games have finished and rank is top 3
             let podiumClass = "";
             if (gamesFinished && cousin.rank <= 3) {
               podiumClass = `podium-${cousin.rank}`;
