@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SEC Pod Pick'em - Leaderboard & Results</title>
-  <link rel="stylesheet" href="style.css" />
+  
+  <!-- Cache-busting link tag -->
+  <link rel="stylesheet" href="./style.css?v=1" />
+  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -44,12 +47,11 @@
 
     <!-- Section 2: Cousins Leaderboard -->
     <div class="card">
-      <h2 class="section-title">The Cousins' Leaderboard</h2>
+      <h2 class="section-title">The Cousins' Picks</h2>
       <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
         Click any row to expand full picks.
       </p>
 
-      <!-- Rest of Field -->
       <div id="cousinsList">
         <div class="empty-state">Loading community picks...</div>
       </div>
@@ -96,12 +98,10 @@
         const hostRows = rows.filter(r => r.is_host === true);
         const cousinRows = rows.filter(r => r.is_host === false);
 
-        // Find each host's submission by name
         const hostMike = hostRows.find(h => h.user_name.toLowerCase() === "mike");
         const hostShane = hostRows.find(h => h.user_name.toLowerCase() === "shane");
         const hostSteven = hostRows.find(h => h.user_name.toLowerCase() === "steven");
 
-        // Populate Host Grid Rows (1 row per matchup)
         hostGridBody.innerHTML = "";
         week1Games.forEach(game => {
           const tr = document.createElement("tr");
@@ -119,7 +119,6 @@
           hostGridBody.appendChild(tr);
         });
 
-        // Populate Cousins Feed
         if (cousinRows.length === 0) {
           cousinsList.innerHTML = `<div class="empty-state">No cousin picks submitted yet. Be the first!</div>`;
         } else {
