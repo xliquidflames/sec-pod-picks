@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEC Pod Pick'em - Leaderboard & Results</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="logo-container">
+        <h1 style="letter-spacing: -0.5px;">THAT SEC PODCAST</h1>
+      </div>
+      <p class="sub-header">Week 1 Leaderboard & Results</p>
+    </header>
+
+    <!-- Giant Prominent CTA Button -->
+    <a href="makepicks.html" class="btn-cta">Submit Your Week 1 Picks</a>
+
+    <!-- Section 1: Official Host Head-to-Head Spreadsheet Grid -->
+    <div class="card">
+      <h2 class="section-title">Official Host Picks</h2>
+      <div class="grid-wrapper">
+        <table class="host-grid-table" id="hostTable">
+          <thead>
+            <tr>
+              <th class="matchup-header">Matchup</th>
+              <th>Mike</th>
+              <th>Shane</th>
+              <th>Steven</th>
+            </tr>
+          </thead>
+          <tbody id="hostGridBody">
+            <tr>
+              <td colspan="4" class="empty-state">Loading host picks...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Section 2: Cousins Leaderboard -->
+    <div class="card">
+      <h2 class="section-title">The Cousins' Leaderboard</h2>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+        Click any row to expand full picks.
+      </p>
+
+      <!-- Rest of Field -->
+      <div id="cousinsList">
+        <div class="empty-state">Loading community picks...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const week1Games = [
+      { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
+      { id: 2, teamA: "Arkansas", teamB: "North Alabama" },
+      { id: 3, teamA: "Auburn", teamB: "Baylor" },
+      { id: 4, teamA: "Florida", teamB: "Florida Atlantic" },
+      { id: 5, teamA: "Georgia", teamB: "Tenn State" },
+      { id: 6, teamA: "Kentucky", teamB: "Youngstown State" },
+      { id: 7, teamA: "LSU", teamB: "Clemson" },
+      { id: 8, teamA: "Ole Miss", teamB: "Louisville" },
+      { id: 9, teamA: "Miss State", teamB: "ULM" },
+      { id: 10, teamA: "Missouri", teamB: "Peanutbutter" },
+      { id: 11, teamA: "Oklahoma", teamB: "UTEP" },
+      { id: 12, teamA: "South Carolina", teamB: "Kent State" },
+      { id: 13, teamA: "Tennessee", teamB: "Furman" },
+      { id: 14, teamA: "Texas", teamB: "Texas State" },
+      { id: 15, teamA: "Texas A&M", teamB: "Missouri State" },
+      { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
+    ];
+
+    async function loadDashboard() {
+      const hostGridBody = document.getElementById("hostGridBody");
+      const cousinsList = document.getElementById("cousinsList");
+
+      try {
+        const { data: rows, error } = await supabaseClient
+          .from("picks")
+          .select("*")
+          .eq("week_number", 1)
+          .order("created_at", { ascending: true });
+
+        if (error) throw error;
+
+        const hostRows = rows.filter(r => r.is_host === true);
+        const cousinRows = rows.filter(r => r.is_host === false);
+
+        // Find each host's submission by name
+        const hostMike = hostRows.find(h => h.user_name.toLowerCase() === "mike");
+        const hostShane = hostRows.find(h => h.user_name.toLowerCase() === "shane");
+        const hostSteven = hostRows.find(h => h.user_name.toLowerCase() === "steven");
+
+        // Populate Host Grid Rows (1 row per matchup)
+        hostGridBody.innerHTML = "";
+        week1Games.forEach(game => {
+          const tr = document.createElement("tr");
+
+          const pickMike = (hostMike && hostMike.picks) ? (hostMike.picks[game.id] || "-") : "-";
+          const pickShane = (hostShane && hostShane.picks) ? (hostShane.picks[game.id] || "-") : "-";
+          const pickSteven = (hostSteven && hostSteven.picks) ? (hostSteven.picks[game.id] || "-") : "-";
+
+          tr.innerHTML = `
+            <td class="matchup-cell">${game.teamA} vs ${game.teamB}</td>
+            <td class="pick-cell">${pickMike}</td>
+            <td class="pick-cell">${pickShane}</td>
+            <td class="pick-cell">${pickSteven}</td>
+          `;
+          hostGridBody.appendChild(tr);
+        });
+
+        // Populate Cousins Feed
+        if (cousinRows.length === 0) {
+          cousinsList.innerHTML = `<div class="empty-state">No cousin picks submitted yet. Be the first!</div>`;
+        } else {
+          cousinsList.innerHTML = "";
+          cousinRows.forEach((cousin, index) => {
+            const item = document.createElement("div");
+            item.className = "cousin-item";
+
+            let picksHtml = "";
+            week1Games.forEach(game => {
+              const picked = cousin.picks ? (cousin.picks[game.id] || "No Pick") : "No Pick";
+              picksHtml += `
+                <div class="pick-line">
+                  <span class="pick-matchup">${game.teamA} vs ${game.teamB}</span>
+                  <span class="pick-team">${picked}</span>
+                </div>
+              `;
+            });
+
+            item.innerHTML = `
+              <div class="cousin-header" onclick="toggleAccordion(this)">
+                <div style="display: flex; align-items: center;">
+                  <span class="rank-badge">${index + 1}</span>
+                  <span class="cousin-name">${cousin.user_name}</span>
+                </div>
+                <span class="accordion-icon">+</span>
+              </div>
+              <div class="cousin-picks-body">
+                ${picksHtml}
+              </div>
+            `;
+            cousinsList.appendChild(item);
+          });
+        }
+
+      } catch (err) {
+        hostGridBody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color: var(--danger)">Error: ${err.message}</td></tr>`;
+        cousinsList.innerHTML = "";
+      }
+    }
+
+    function toggleAccordion(headerEl) {
+      const body = headerEl.nextElementSibling;
+      const icon = headerEl.querySelector(".accordion-icon");
+      const isOpen = body.classList.contains("open");
+
+      if (isOpen) {
+        body.classList.remove("open");
+        icon.textContent = "+";
+      } else {
+        body.classList.add("open");
+        icon.textContent = "−";
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
