@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submit Picks - That SEC Podcast</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    label {
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    input[type="text"] {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-main);
+      color: #fff;
+      font-size: 1rem;
+    }
+    input[type="text"]:focus {
+      outline: 2px solid var(--accent-gold);
+    }
+    .btn {
+      margin-top: 1.25rem;
+      padding: 0.75rem 1.5rem;
+      background-color: var(--accent-gold);
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn:hover { background-color: var(--accent-gold-hover); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .hidden { display: none; }
+    .matchup-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .matchup-row:last-child { border-bottom: none; }
+    .vs-text { font-weight: bold; color: #64748b; font-size: 0.85rem; }
+    .team-btn {
+      padding: 0.6rem;
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .team-btn:hover { border-color: var(--accent-gold); }
+    .team-btn.selected {
+      background: var(--accent-gold);
+      color: #0f172a;
+      border-color: var(--accent-gold);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>THAT SEC PODCAST</h1>
+      <p class="sub-header">Week 1 Pick Submission</p>
+    </header>
+
+    <div style="margin-bottom: 1rem;">
+      <a href="index.html" style="color: var(--accent-gold); text-decoration: none; font-size: 0.9rem;">← Back to Live Results</a>
+    </div>
+
+    <!-- Step 1: Alias Entry -->
+    <div id="step-name" class="card">
+      <div class="input-group">
+        <label for="pickerName">Enter a unique alias or your Discord handle:</label>
+        <input 
+          type="text" 
+          id="pickerName" 
+          placeholder="e.g. VolFan99, CousinDave, or @GatorMike" 
+          autocomplete="off" 
+        />
+        <div id="nameError" style="color: var(--danger); font-size: 0.9rem; margin-top: 0.5rem;" class="hidden"></div>
+      </div>
+
+      <button class="btn" id="startBtn">Continue to Week 1 Matchups</button>
+    </div>
+
+    <!-- Step 2: Pick'em Form -->
+    <div id="step-picks" class="card hidden">
+      <h2 style="margin-bottom: 0.25rem; font-size: 1.25rem;" id="greetingHeader"></h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">Select one winner for each matchup:</p>
+      
+      <div id="matchups-container"></div>
+
+      <button class="btn" id="submitPicksBtn" style="margin-top: 1.5rem;">Lock In My Picks</button>
+    </div>
+
+    <!-- Step 3: Confirmation -->
+    <div id="step-summary" class="card hidden">
+      <h2 style="color: var(--success); margin-bottom: 0.5rem; font-size: 1.25rem;">Picks Locked In!</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;" id="summarySubhead"></p>
+      
+      <div id="summary-list"></div>
+
+      <a href="index.html" class="btn" style="margin-top: 1.5rem;">View Full Cousin Leaderboard</a>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const CURRENT_WEEK = 1;
+
+    const week1Games = [
+      { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
+      { id: 2, teamA: "Arkansas", teamB: "North Alabama" },
+      { id: 3, teamA: "Auburn", teamB: "Baylor" },
+      { id: 4, teamA: "Florida", teamB: "Florida Atlantic" },
+      { id: 5, teamA: "Georgia", teamB: "Tenn State" },
+      { id: 6, teamA: "Kentucky", teamB: "Youngstown State" },
+      { id: 7, teamA: "LSU", teamB: "Clemson" },
+      { id: 8, teamA: "Ole Miss", teamB: "Louisville" },
+      { id: 9, teamA: "Miss State", teamB: "ULM" },
+      { id: 10, teamA: "Missouri", teamB: "Peanutbutter" },
+      { id: 11, teamA: "Oklahoma", teamB: "UTEP" },
+      { id: 12, teamA: "South Carolina", teamB: "Kent State" },
+      { id: 13, teamA: "Tennessee", teamB: "Furman" },
+      { id: 14, teamA: "Texas", teamB: "Texas State" },
+      { id: 15, teamA: "Texas A&M", teamB: "Missouri State" },
+      { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
+    ];
+
+    let userSelections = {};
+    let userName = "";
+
+    const nameInput = document.getElementById("pickerName");
+    const nameError = document.getElementById("nameError");
+    const startBtn = document.getElementById("startBtn");
+    const stepName = document.getElementById("step-name");
+    const stepPicks = document.getElementById("step-picks");
+    const stepSummary = document.getElementById("step-summary");
+    const greetingHeader = document.getElementById("greetingHeader");
+    const matchupsContainer = document.getElementById("matchups-container");
+    const submitPicksBtn = document.getElementById("submitPicksBtn");
+    const summaryList = document.getElementById("summary-list");
+    const summarySubhead = document.getElementById("summarySubhead");
+
+    startBtn.addEventListener("click", async () => {
+      nameError.classList.add("hidden");
+      userName = nameInput.value.trim();
+
+      if (!userName) {
+        nameError.textContent = "Please enter an alias or name.";
+        nameError.classList.remove("hidden");
+        return;
+      }
+
+      startBtn.disabled = true;
+      startBtn.textContent = "Checking alias...";
+
+      try {
+        const { data: existing, error } = await supabaseClient
+          .from("picks")
+          .select("id")
+          .eq("week_number", CURRENT_WEEK)
+          .ilike("user_name", userName)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (existing) {
+          nameError.textContent = `That alias (${userName}) has already submitted for Week 1. Please choose a different alias.`;
+          nameError.classList.remove("hidden");
+          startBtn.disabled = false;
+          startBtn.textContent = "Continue to Week 1 Matchups";
+          return;
+        }
+
+        greetingHeader.textContent = `Picks for ${userName}`;
+        stepName.classList.add("hidden");
+        stepPicks.classList.remove("hidden");
+        renderMatchups();
+      } catch (err) {
+        nameError.textContent = "Error: " + err.message;
+        nameError.classList.remove("hidden");
+        startBtn.disabled = false;
+        startBtn.textContent = "Continue to Week 1 Matchups";
+      }
+    });
+
+    function renderMatchups() {
+      matchupsContainer.innerHTML = "";
+      week1Games.forEach(game => {
+        const row = document.createElement("div");
+        row.className = "matchup-row";
+
+        const btnA = document.createElement("button");
+        btnA.type = "button";
+        btnA.className = "team-btn";
+        btnA.textContent = game.teamA;
+        btnA.onclick = () => selectPick(game.id, game.teamA, btnA, btnB);
+
+        const vs = document.createElement("span");
+        vs.className = "vs-text";
+        vs.textContent = "VS";
+
+        const btnB = document.createElement("button");
+        btnB.type = "button";
+        btnB.className = "team-btn";
+        btnB.textContent = game.teamB;
+        btnB.onclick = () => selectPick(game.id, game.teamB, btnB, btnA);
+
+        row.appendChild(btnA);
+        row.appendChild(vs);
+        row.appendChild(btnB);
+        matchupsContainer.appendChild(row);
+      });
+    }
+
+    function selectPick(gameId, pickedTeam, selectedBtn, otherBtn) {
+      userSelections[gameId] = pickedTeam;
+      selectedBtn.classList.add("selected");
+      otherBtn.classList.remove("selected");
+    }
+
+    submitPicksBtn.addEventListener("click", async () => {
+      const totalPicks = Object.keys(userSelections).length;
+      if (totalPicks < week1Games.length) {
+        alert(`You've made ${totalPicks} of ${week1Games.length} picks. Please pick all games.`);
+        return;
+      }
+
+      submitPicksBtn.disabled = true;
+      submitPicksBtn.textContent = "Saving picks...";
+
+      try {
+        const { data, error } = await supabaseClient
+          .from("picks")
+          .insert([{ user_name: userName, week_number: CURRENT_WEEK, picks: userSelections, is_host: false }]);
+
+        if (error) throw error;
+
+        localStorage.setItem(`sec_picks_w${CURRENT_WEEK}_locked`, "true");
+        stepPicks.classList.add("hidden");
+        stepSummary.classList.remove("hidden");
+        summarySubhead.textContent = `${userName}'s picks are locked in for Week 1!`;
+
+        summaryList.innerHTML = "";
+        week1Games.forEach(game => {
+          const item = document.createElement("div");
+          item.style.display = "flex";
+          item.style.justifyContent = "space-between";
+          item.style.padding = "0.35rem 0";
+          item.style.borderBottom = "1px solid var(--border-color)";
+          item.innerHTML = `
+            <span style="color: var(--text-muted); font-size: 0.9rem;">${game.teamA} vs ${game.teamB}</span>
+            <strong style="color: var(--accent-gold); font-size: 0.9rem;">${userSelections[game.id]}</strong>
+          `;
+          summaryList.appendChild(item);
+        });
+      } catch (err) {
+        alert("Failed to save picks: " + err.message);
+        submitPicksBtn.disabled = false;
+        submitPicksBtn.textContent = "Lock In My Picks";
+      }
+    });
+  </script>
+</body>
+</html>
