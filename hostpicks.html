@@ -1,45 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="stylesheet" href="style.css" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SEC Pod Pick'em - Host Portal</title>
+  <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    body {
-      background-color: #0f172a;
-      color: #f8fafc;
-      padding: 2rem 1rem;
-      display: flex;
-      justify-content: center;
-    }
-    .container {
-      width: 100%;
-      max-width: 650px;
-    }
-    header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    h1 {
-      font-size: 1.8rem;
-      color: #fbbf24;
-      margin-bottom: 0.5rem;
-    }
-    .card {
-      background: #1e293b;
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-      margin-bottom: 1.5rem;
-    }
     .input-group {
       display: flex;
       flex-direction: column;
@@ -48,23 +15,23 @@
     }
     label {
       font-weight: 600;
-      color: #94a3b8;
+      color: var(--text-muted);
     }
     select, input[type="password"] {
       padding: 0.75rem 1rem;
       border-radius: 8px;
-      border: 1px solid #334155;
-      background: #0f172a;
+      border: 1px solid var(--border-color);
+      background: var(--bg-main);
       color: #fff;
       font-size: 1rem;
     }
     select:focus, input:focus {
-      outline: 2px solid #fbbf24;
+      outline: 2px solid var(--accent-gold);
     }
     .btn {
       margin-top: 1rem;
       padding: 0.75rem 1.5rem;
-      background-color: #fbbf24;
+      background-color: var(--accent-gold);
       color: #0f172a;
       border: none;
       border-radius: 8px;
@@ -76,37 +43,24 @@
       text-decoration: none;
       display: inline-block;
     }
-    .btn:hover {
-      background-color: #f59e0b;
-    }
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .hidden {
-      display: none;
-    }
+    .btn:hover { background-color: var(--accent-gold-hover); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .hidden { display: none; }
     .matchup-row {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       align-items: center;
       gap: 0.75rem;
       padding: 0.75rem 0;
-      border-bottom: 1px solid #334155;
+      border-bottom: 1px solid var(--border-color);
     }
-    .matchup-row:last-child {
-      border-bottom: none;
-    }
-    .vs-text {
-      font-weight: bold;
-      color: #64748b;
-      font-size: 0.85rem;
-    }
+    .matchup-row:last-child { border-bottom: none; }
+    .vs-text { font-weight: bold; color: #64748b; font-size: 0.85rem; }
     .team-btn {
       padding: 0.6rem;
-      background: #0f172a;
-      border: 1px solid #334155;
-      color: #cbd5e1;
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
       border-radius: 6px;
       cursor: pointer;
       text-align: center;
@@ -114,33 +68,33 @@
       font-size: 0.95rem;
       transition: all 0.15s ease-in-out;
     }
-    .team-btn:hover {
-      border-color: #fbbf24;
-    }
+    .team-btn:hover { border-color: var(--accent-gold); }
     .team-btn.selected {
-      background: #fbbf24;
+      background: var(--accent-gold);
       color: #0f172a;
-      border-color: #fbbf24;
+      border-color: var(--accent-gold);
     }
     .summary-item {
       display: flex;
       justify-content: space-between;
       padding: 0.4rem 0;
-      border-bottom: 1px solid #334155;
+      border-bottom: 1px solid var(--border-color);
       font-size: 0.95rem;
     }
-    .summary-item:last-child {
-      border-bottom: none;
-    }
+    .summary-item:last-child { border-bottom: none; }
   </style>
 </head>
 <body>
 
   <div class="container">
     <header>
-      <h1>SEC Pod Pick'em</h1>
-      <p style="color: #fbbf24; font-weight: 600;">Official Host Submission Portal</p>
+      <h1>THAT SEC PODCAST</h1>
+      <p style="color: var(--accent-gold); font-weight: 600;">Official Host Submission Portal</p>
     </header>
+
+    <div style="margin-bottom: 1rem;">
+      <a href="index.html" style="color: var(--accent-gold); text-decoration: none; font-size: 0.9rem;">← Back to Main Board</a>
+    </div>
 
     <!-- Step 1: Host Login -->
     <div id="step-name" class="card">
@@ -164,8 +118,8 @@
 
     <!-- Step 2: Pick'em Form -->
     <div id="step-picks" class="card hidden">
-      <h2 style="margin-bottom: 0.25rem; font-size: 1.25rem; color: #fbbf24;" id="greetingHeader"></h2>
-      <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.25rem;">Select your official Week 1 picks:</p>
+      <h2 style="margin-bottom: 0.25rem; font-size: 1.25rem; color: var(--accent-gold);" id="greetingHeader"></h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">Select your official Week 1 picks:</p>
       
       <div id="matchups-container"></div>
 
@@ -174,12 +128,13 @@
 
     <!-- Step 3: Confirmation -->
     <div id="step-summary" class="card hidden">
-      <h2 style="color: #4ade80; margin-bottom: 0.5rem; font-size: 1.25rem;">Host Picks Locked In!</h2>
-      <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.25rem;" id="summarySubhead"></p>
+      <h2 style="color: var(--success); margin-bottom: 0.5rem; font-size: 1.25rem;">Host Picks Locked In!</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;" id="summarySubhead"></p>
       
       <div id="summary-list"></div>
 
-     <a href="index.html" class="btn" style="margin-top: 1.5rem;">View Full Live Board</a>
+      <!-- Updated link to index.html -->
+      <a href="index.html" class="btn" style="margin-top: 1.5rem;">View Full Live Board</a>
     </div>
   </div>
 
@@ -189,6 +144,7 @@
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const HOST_SECRET_PIN = "sec2026";
+    const CURRENT_WEEK = 1;
 
     const week1Games = [
       { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
@@ -295,7 +251,7 @@
           .insert([
             {
               user_name: userName,
-              week_number: 1,
+              week_number: CURRENT_WEEK,
               picks: userSelections,
               is_host: true
             }
@@ -312,8 +268,8 @@
           const item = document.createElement("div");
           item.className = "summary-item";
           item.innerHTML = `
-            <span style="color: #94a3b8;">${game.teamA} vs ${game.teamB}</span>
-            <strong style="color: #fbbf24;">${userSelections[game.id]}</strong>
+            <span style="color: var(--text-muted); font-size: 0.9rem;">${game.teamA} vs ${game.teamB}</span>
+            <strong style="color: var(--accent-gold); font-size: 0.9rem;">${userSelections[game.id]}</strong>
           `;
           summaryList.appendChild(item);
         });
