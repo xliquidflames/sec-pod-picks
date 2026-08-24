@@ -4,73 +4,204 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Submit Picks - That SEC Podcast</title>
-  <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    .input-group {
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-alt: #162032;
+      --accent-gold: #fbbf24;
+      --accent-gold-hover: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --success: #4ade80;
+      --danger: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      padding: 2rem 1rem;
       display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
+      justify-content: center;
     }
-    label {
-      font-weight: 600;
-      color: var(--text-muted);
-    }
-    input[type="text"] {
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      background: var(--bg-main);
-      color: #fff;
-      font-size: 1rem;
-    }
-    input[type="text"]:focus {
-      outline: 2px solid var(--accent-gold);
-    }
-    .btn {
-      margin-top: 1.25rem;
-      padding: 0.75rem 1.5rem;
-      background-color: var(--accent-gold);
-      color: #0f172a;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
+
+    .container {
       width: 100%;
+      max-width: 650px;
+    }
+
+    header {
       text-align: center;
-      text-decoration: none;
-      display: inline-block;
+      margin-bottom: 1.5rem;
     }
-    .btn:hover { background-color: var(--accent-gold-hover); }
-    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-    .hidden { display: none; }
-    .matchup-row {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--border-color);
+
+    .logo-container {
+      margin-bottom: 0.5rem;
     }
-    .matchup-row:last-child { border-bottom: none; }
-    .vs-text { font-weight: bold; color: #64748b; font-size: 0.85rem; }
-    .team-btn {
-      padding: 0.6rem;
-      background: var(--bg-main);
-      border: 1px solid var(--border-color);
+
+    h1 {
+      font-size: 1.8rem;
+      color: var(--accent-gold);
+      margin-bottom: 0.25rem;
+    }
+
+    .sub-header {
       color: var(--text-muted);
-      border-radius: 6px;
-      cursor: pointer;
-      text-align: center;
-      font-weight: 600;
       font-size: 0.95rem;
     }
-    .team-btn:hover { border-color: var(--accent-gold); }
-    .team-btn.selected {
+
+    .card {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--text-main);
+      font-size: 0.95rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background-color: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent-gold);
+    }
+
+    .matchup-item {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .matchup-header {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--accent-gold);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .team-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .team-option {
+      position: relative;
+    }
+
+    .team-option input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .team-option label {
+      display: block;
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      padding: 0.75rem 0.5rem;
+      border-radius: 6px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0;
+      transition: all 0.15s ease;
+      color: var(--text-muted);
+    }
+
+    .team-option input[type="radio"]:checked + label {
       background: var(--accent-gold);
       color: #0f172a;
       border-color: var(--accent-gold);
+      font-weight: 800;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #0f172a;
+      font-size: 1.1rem;
+      font-weight: 900;
+      text-align: center;
+      padding: 1.1rem;
+      border-radius: 10px;
+      border: 1px solid #fde68a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #b45309, 0 8px 20px rgba(251, 191, 36, 0.35);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      margin-top: 1rem;
+    }
+
+    .btn-submit:hover {
+      background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 0 #b45309, 0 12px 24px rgba(251, 191, 36, 0.45);
+    }
+
+    .btn-submit:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #b45309, 0 4px 10px rgba(251, 191, 36, 0.3);
+    }
+
+    .btn-back {
+      display: block;
+      text-align: center;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-top: 1.25rem;
+    }
+
+    .btn-back:hover {
+      color: var(--text-main);
+    }
+
+    .error-msg {
+      background: rgba(248, 113, 113, 0.15);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      display: none;
     }
   </style>
 </head>
@@ -78,48 +209,27 @@
 
   <div class="container">
     <header>
-      <h1>THAT SEC PODCAST</h1>
-      <p class="sub-header">Week 1 Pick Submission</p>
+      <div class="logo-container">
+        <h1>THAT SEC PODCAST</h1>
+      </div>
+      <p class="sub-header">Week 1 Listener Pick Submission</p>
     </header>
 
-    <div style="margin-bottom: 1rem;">
-      <a href="index.html" style="color: var(--accent-gold); text-decoration: none; font-size: 0.9rem;">← Back to Live Results</a>
-    </div>
+    <div class="card">
+      <div id="errorBox" class="error-msg"></div>
 
-    <!-- Step 1: Alias Entry -->
-    <div id="step-name" class="card">
-      <div class="input-group">
-        <label for="pickerName">Enter a unique alias or your Discord handle:</label>
-        <input 
-          type="text" 
-          id="pickerName" 
-          placeholder="e.g. VolFan99, CousinDave, or @GatorMike" 
-          autocomplete="off" 
-        />
-        <div id="nameError" style="color: var(--danger); font-size: 0.9rem; margin-top: 0.5rem;" class="hidden"></div>
-      </div>
+      <form id="pickForm">
+        <div class="form-group">
+          <label for="userName">Your Name / Handle</label>
+          <input type="text" id="userName" placeholder="e.g. Cousin Eddie" required />
+        </div>
 
-      <button class="btn" id="startBtn">Continue to Week 1 Matchups</button>
-    </div>
+        <div id="matchupsContainer"></div>
 
-    <!-- Step 2: Pick'em Form -->
-    <div id="step-picks" class="card hidden">
-      <h2 style="margin-bottom: 0.25rem; font-size: 1.25rem;" id="greetingHeader"></h2>
-      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">Select one winner for each matchup:</p>
-      
-      <div id="matchups-container"></div>
+        <button type="submit" class="btn-submit" id="submitBtn">Submit My Picks</button>
+      </form>
 
-      <button class="btn" id="submitPicksBtn" style="margin-top: 1.5rem;">Lock In My Picks</button>
-    </div>
-
-    <!-- Step 3: Confirmation -->
-    <div id="step-summary" class="card hidden">
-      <h2 style="color: var(--success); margin-bottom: 0.5rem; font-size: 1.25rem;">Picks Locked In!</h2>
-      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;" id="summarySubhead"></p>
-      
-      <div id="summary-list"></div>
-
-      <a href="index.html" class="btn" style="margin-top: 1.5rem;">View Full Cousin Leaderboard</a>
+      <a href="index.html" class="btn-back">&larr; Back to Leaderboard</a>
     </div>
   </div>
 
@@ -127,8 +237,6 @@
     const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    const CURRENT_WEEK = 1;
 
     const week1Games = [
       { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
@@ -149,140 +257,72 @@
       { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
     ];
 
-    let userSelections = {};
-    let userName = "";
+    function renderGames() {
+      const container = document.getElementById("matchupsContainer");
+      container.innerHTML = "";
 
-    const nameInput = document.getElementById("pickerName");
-    const nameError = document.getElementById("nameError");
-    const startBtn = document.getElementById("startBtn");
-    const stepName = document.getElementById("step-name");
-    const stepPicks = document.getElementById("step-picks");
-    const stepSummary = document.getElementById("step-summary");
-    const greetingHeader = document.getElementById("greetingHeader");
-    const matchupsContainer = document.getElementById("matchups-container");
-    const submitPicksBtn = document.getElementById("submitPicksBtn");
-    const summaryList = document.getElementById("summary-list");
-    const summarySubhead = document.getElementById("summarySubhead");
-
-    startBtn.addEventListener("click", async () => {
-      nameError.classList.add("hidden");
-      userName = nameInput.value.trim();
-
-      if (!userName) {
-        nameError.textContent = "Please enter an alias or name.";
-        nameError.classList.remove("hidden");
-        return;
-      }
-
-      startBtn.disabled = true;
-      startBtn.textContent = "Checking alias...";
-
-      try {
-        const { data: existing, error } = await supabaseClient
-          .from("picks")
-          .select("id")
-          .eq("week_number", CURRENT_WEEK)
-          .ilike("user_name", userName)
-          .maybeSingle();
-
-        if (error) throw error;
-
-        if (existing) {
-          nameError.textContent = `That alias (${userName}) has already submitted for Week 1. Please choose a different alias.`;
-          nameError.classList.remove("hidden");
-          startBtn.disabled = false;
-          startBtn.textContent = "Continue to Week 1 Matchups";
-          return;
-        }
-
-        greetingHeader.textContent = `Picks for ${userName}`;
-        stepName.classList.add("hidden");
-        stepPicks.classList.remove("hidden");
-        renderMatchups();
-      } catch (err) {
-        nameError.textContent = "Error: " + err.message;
-        nameError.classList.remove("hidden");
-        startBtn.disabled = false;
-        startBtn.textContent = "Continue to Week 1 Matchups";
-      }
-    });
-
-    function renderMatchups() {
-      matchupsContainer.innerHTML = "";
       week1Games.forEach(game => {
-        const row = document.createElement("div");
-        row.className = "matchup-row";
-
-        const btnA = document.createElement("button");
-        btnA.type = "button";
-        btnA.className = "team-btn";
-        btnA.textContent = game.teamA;
-        btnA.onclick = () => selectPick(game.id, game.teamA, btnA, btnB);
-
-        const vs = document.createElement("span");
-        vs.className = "vs-text";
-        vs.textContent = "VS";
-
-        const btnB = document.createElement("button");
-        btnB.type = "button";
-        btnB.className = "team-btn";
-        btnB.textContent = game.teamB;
-        btnB.onclick = () => selectPick(game.id, game.teamB, btnB, btnA);
-
-        row.appendChild(btnA);
-        row.appendChild(vs);
-        row.appendChild(btnB);
-        matchupsContainer.appendChild(row);
+        const div = document.createElement("div");
+        div.className = "matchup-item";
+        div.innerHTML = `
+          <div class="matchup-header">Game ${game.id}: ${game.teamA} vs ${game.teamB}</div>
+          <div class="team-options">
+            <div class="team-option">
+              <input type="radio" id="g${game.id}_a" name="game_${game.id}" value="${game.teamA}" required>
+              <label for="g${game.id}_a">${game.teamA}</label>
+            </div>
+            <div class="team-option">
+              <input type="radio" id="g${game.id}_b" name="game_${game.id}" value="${game.teamB}">
+              <label for="g${game.id}_b">${game.teamB}</label>
+            </div>
+          </div>
+        `;
+        container.appendChild(div);
       });
     }
 
-    function selectPick(gameId, pickedTeam, selectedBtn, otherBtn) {
-      userSelections[gameId] = pickedTeam;
-      selectedBtn.classList.add("selected");
-      otherBtn.classList.remove("selected");
-    }
+    document.getElementById("pickForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submitBtn");
+      const errorBox = document.getElementById("errorBox");
+      const userName = document.getElementById("userName").value.trim();
 
-    submitPicksBtn.addEventListener("click", async () => {
-      const totalPicks = Object.keys(userSelections).length;
-      if (totalPicks < week1Games.length) {
-        alert(`You've made ${totalPicks} of ${week1Games.length} picks. Please pick all games.`);
-        return;
-      }
+      errorBox.style.display = "none";
+      submitBtn.disabled = true;
+      submitBtn.innerText = "Submitting...";
 
-      submitPicksBtn.disabled = true;
-      submitPicksBtn.textContent = "Saving picks...";
+      const userPicks = {};
+      week1Games.forEach(game => {
+        const selected = document.querySelector(`input[name="game_${game.id}"]:checked`);
+        if (selected) {
+          userPicks[game.id] = selected.value;
+        }
+      });
 
       try {
-        const { data, error } = await supabaseClient
+        const { error } = await supabaseClient
           .from("picks")
-          .insert([{ user_name: userName, week_number: CURRENT_WEEK, picks: userSelections, is_host: false }]);
+          .insert([
+            {
+              user_name: userName,
+              week_number: 1,
+              picks: userPicks,
+              is_host: false
+            }
+          ]);
 
         if (error) throw error;
 
-        localStorage.setItem(`sec_picks_w${CURRENT_WEEK}_locked`, "true");
-        stepPicks.classList.add("hidden");
-        stepSummary.classList.remove("hidden");
-        summarySubhead.textContent = `${userName}'s picks are locked in for Week 1!`;
-
-        summaryList.innerHTML = "";
-        week1Games.forEach(game => {
-          const item = document.createElement("div");
-          item.style.display = "flex";
-          item.style.justifyContent = "space-between";
-          item.style.padding = "0.35rem 0";
-          item.style.borderBottom = "1px solid var(--border-color)";
-          item.innerHTML = `
-            <span style="color: var(--text-muted); font-size: 0.9rem;">${game.teamA} vs ${game.teamB}</span>
-            <strong style="color: var(--accent-gold); font-size: 0.9rem;">${userSelections[game.id]}</strong>
-          `;
-          summaryList.appendChild(item);
-        });
+        window.location.href = "index.html";
       } catch (err) {
-        alert("Failed to save picks: " + err.message);
-        submitPicksBtn.disabled = false;
-        submitPicksBtn.textContent = "Lock In My Picks";
+        errorBox.textContent = "Submission failed: " + err.message;
+        errorBox.style.display = "block";
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Submit My Picks";
       }
     });
+
+    renderGames();
   </script>
 </body>
 </html>
