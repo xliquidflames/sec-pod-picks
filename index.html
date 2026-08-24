@@ -4,10 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SEC Pod Pick'em - Leaderboard & Results</title>
-  
-  <!-- Cache-busting link tag -->
-  <link rel="stylesheet" href="./style.css?v=1" />
-  
+  <link rel="stylesheet" href="./style.css?v=2" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -20,10 +17,9 @@
       <p class="sub-header">Week 1 Leaderboard & Results</p>
     </header>
 
-    <!-- Giant Prominent CTA Button -->
     <a href="makepicks.html" class="btn-cta">Submit Your Week 1 Picks</a>
 
-    <!-- Section 1: Official Host Head-to-Head Spreadsheet Grid -->
+    <!-- Host Spreadsheet Grid -->
     <div class="card">
       <h2 class="section-title">Official Host Picks</h2>
       <div class="grid-wrapper">
@@ -45,11 +41,11 @@
       </div>
     </div>
 
-    <!-- Section 2: Cousins Leaderboard -->
+    <!-- Cousins Leaderboard -->
     <div class="card">
-      <h2 class="section-title">The Cousins' Picks</h2>
+      <h2 class="section-title">The Cousins' Leaderboard</h2>
       <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
-        Click any row to expand full picks.
+        Sorted by correct picks. Click any row to expand full picks.
       </p>
 
       <div id="cousinsList">
@@ -82,6 +78,71 @@
       { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
     ];
 
+    // Set official winners when games conclude (e.g. 1: "Alabama")
+    // Keep null for unplayed games
+    const gameWinners = {
+      1: null,
+      2: null,
+      3: null,
+      4: null,
+      5: null,
+      6: null,
+      7: null,
+      8: null,
+      9: null,
+      10: null,
+      11: null,
+      12: null,
+      13: null,
+      14: null,
+      15: null,
+      16: null
+    };
+
+    function gradePicks(picks) {
+      let correct = 0;
+      let incorrect = 0;
+      let pending = 0;
+
+      week1Games.forEach(game => {
+        const winner = gameWinners[game.id];
+        const userPick = picks ? picks[game.id] : null;
+
+        if (!winner) {
+          pending++;
+        } else if (userPick === winner) {
+          correct++;
+        } else {
+          incorrect++;
+        }
+      });
+
+      return { correct, incorrect, pending };
+    }
+
+    function renderPickLine(game, userPick) {
+      const winner = gameWinners[game.id];
+      let statusClass = "pick-pending";
+      let statusText = "";
+
+      if (winner) {
+        if (userPick === winner) {
+          statusClass = "pick-correct";
+          statusText = " ✓";
+        } else {
+          statusClass = "pick-incorrect";
+          statusText = ` ✗ (Winner: ${winner})`;
+        }
+      }
+
+      return `
+        <div class="pick-line">
+          <span class="pick-matchup">${game.teamA} vs ${game.teamB}</span>
+          <span class="pick-team ${statusClass}">${userPick || "No Pick"}${statusText}</span>
+        </div>
+      `;
+    }
+
     async function loadDashboard() {
       const hostGridBody = document.getElementById("hostGridBody");
       const cousinsList = document.getElementById("cousinsList");
@@ -98,6 +159,7 @@
         const hostRows = rows.filter(r => r.is_host === true);
         const cousinRows = rows.filter(r => r.is_host === false);
 
+        // Host Grid Rendering
         const hostMike = hostRows.find(h => h.user_name.toLowerCase() === "mike");
         const hostShane = hostRows.find(h => h.user_name.toLowerCase() === "shane");
         const hostSteven = hostRows.find(h => h.user_name.toLowerCase() === "steven");
@@ -105,7 +167,6 @@
         hostGridBody.innerHTML = "";
         week1Games.forEach(game => {
           const tr = document.createElement("tr");
-
           const pickMike = (hostMike && hostMike.picks) ? (hostMike.picks[game.id] || "-") : "-";
           const pickShane = (hostShane && hostShane.picks) ? (hostShane.picks[game.id] || "-") : "-";
           const pickSteven = (hostSteven && hostSteven.picks) ? (hostSteven.picks[game.id] || "-") : "-";
@@ -119,30 +180,56 @@
           hostGridBody.appendChild(tr);
         });
 
+        // Cousins Scoring & Sorting
+        cousinRows.forEach(c => {
+          c.score = gradePicks(c.picks);
+        });
+
+        // Sort descending by correct picks, then ascending by name
+        cousinRows.sort((a, b) => {
+          if (b.score.correct !== a.score.correct) {
+            return b.score.correct - a.score.correct;
+          }
+          return a.user_name.localeCompare(b.user_name);
+        });
+
+        // Calculate Tied Ranks (1, 1, 3, etc.)
+        let currentRank = 1;
+        cousinRows.forEach((cousin, i) => {
+          if (i > 0 && cousin.score.correct < cousinRows[i - 1].score.correct) {
+            currentRank = i + 1;
+          }
+          cousin.rank = currentRank;
+        });
+
+        const gamesFinished = Object.values(gameWinners).some(w => w !== null);
+
         if (cousinRows.length === 0) {
           cousinsList.innerHTML = `<div class="empty-state">No cousin picks submitted yet. Be the first!</div>`;
         } else {
           cousinsList.innerHTML = "";
-          cousinRows.forEach((cousin, index) => {
+          cousinRows.forEach(cousin => {
             const item = document.createElement("div");
-            item.className = "cousin-item";
+
+            // Apply podium class if games have started and rank is top 3
+            let podiumClass = "";
+            if (gamesFinished && cousin.rank <= 3) {
+              podiumClass = `podium-${cousin.rank}`;
+            }
+
+            item.className = `cousin-item ${podiumClass}`;
 
             let picksHtml = "";
             week1Games.forEach(game => {
-              const picked = cousin.picks ? (cousin.picks[game.id] || "No Pick") : "No Pick";
-              picksHtml += `
-                <div class="pick-line">
-                  <span class="pick-matchup">${game.teamA} vs ${game.teamB}</span>
-                  <span class="pick-team">${picked}</span>
-                </div>
-              `;
+              picksHtml += renderPickLine(game, cousin.picks[game.id]);
             });
 
             item.innerHTML = `
               <div class="cousin-header" onclick="toggleAccordion(this)">
                 <div style="display: flex; align-items: center;">
-                  <span class="rank-badge">${index + 1}</span>
+                  <span class="rank-badge">${cousin.rank}</span>
                   <span class="cousin-name">${cousin.user_name}</span>
+                  <span class="user-record">(${cousin.score.correct}-${cousin.score.incorrect})</span>
                 </div>
                 <span class="accordion-icon">+</span>
               </div>
