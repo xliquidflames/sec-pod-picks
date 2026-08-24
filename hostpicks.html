@@ -95,6 +95,23 @@
       border-color: var(--accent-gold);
     }
 
+    .active-host-banner {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .active-host-name {
+      color: var(--accent-gold);
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
     .matchup-item {
       background: var(--bg-card-alt);
       border: 1px solid var(--border-color);
@@ -218,10 +235,11 @@
     <div class="card">
       <div id="errorBox" class="error-msg"></div>
 
-      <form id="hostPickForm">
+      <!-- Step 1: Authentication Gate -->
+      <div id="stepAuth">
         <div class="form-group">
           <label for="hostSelect">Select Host Name</label>
-          <select id="hostSelect" required>
+          <select id="hostSelect">
             <option value="" disabled selected>Choose your name...</option>
             <option value="Mike">Mike</option>
             <option value="Shane">Shane</option>
@@ -231,7 +249,17 @@
 
         <div class="form-group">
           <label for="hostPin">Host PIN</label>
-          <input type="password" id="hostPin" placeholder="Enter Host PIN" required />
+          <input type="password" id="hostPin" placeholder="Enter 4-digit PIN" />
+        </div>
+
+        <button type="button" class="btn-submit" id="authBtn">Continue to Picks</button>
+      </div>
+
+      <!-- Step 2: Matchup Pick Form (Hidden until PIN verified) -->
+      <form id="hostPickForm" style="display: none;">
+        <div class="active-host-banner">
+          <span>Submitting as:</span>
+          <span class="active-host-name" id="displayHostName"></span>
         </div>
 
         <div id="matchupsContainer"></div>
@@ -249,6 +277,7 @@
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const HOST_PIN = "1998";
+    let authenticatedHost = "";
 
     const week1Games = [
       { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
@@ -293,23 +322,42 @@
       });
     }
 
-    document.getElementById("hostPickForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const submitBtn = document.getElementById("submitBtn");
+    // Step 1: Handle PIN Gate Verification
+    document.getElementById("authBtn").addEventListener("click", () => {
       const errorBox = document.getElementById("errorBox");
-      const hostName = document.getElementById("hostSelect").value;
+      const hostSelect = document.getElementById("hostSelect");
       const hostPin = document.getElementById("hostPin").value.trim();
 
       errorBox.style.display = "none";
 
-      if (hostPin !== HOST_PIN) {
-        errorBox.textContent = "Incorrect Host PIN.";
+      if (!hostSelect.value) {
+        errorBox.textContent = "Please select your host name.";
         errorBox.style.display = "block";
         return;
       }
 
+      if (hostPin !== HOST_PIN) {
+        errorBox.textContent = "Incorrect PIN. Access denied.";
+        errorBox.style.display = "block";
+        return;
+      }
+
+      authenticatedHost = hostSelect.value;
+      document.getElementById("displayHostName").textContent = authenticatedHost;
+      document.getElementById("stepAuth").style.display = "none";
+      document.getElementById("hostPickForm").style.display = "block";
+      renderGames();
+    });
+
+    // Step 2: Handle Host Pick Submission
+    document.getElementById("hostPickForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submitBtn");
+      const errorBox = document.getElementById("errorBox");
+
+      errorBox.style.display = "none";
       submitBtn.disabled = true;
-      submitBtn.innerText = "Submitting...";
+      submitBtn.innerText = "Submitting Picks...";
 
       const userPicks = {};
       week1Games.forEach(game => {
@@ -325,7 +373,7 @@
           .upsert(
             [
               {
-                user_name: hostName,
+                user_name: authenticatedHost,
                 week_number: 1,
                 picks: userPicks,
                 is_host: true
@@ -339,7 +387,7 @@
             .from("picks")
             .insert([
               {
-                user_name: hostName,
+                user_name: authenticatedHost,
                 week_number: 1,
                 picks: userPicks,
                 is_host: true
@@ -356,8 +404,6 @@
         submitBtn.innerText = "Submit Host Picks";
       }
     });
-
-    renderGames();
   </script>
 </body>
 </html>
