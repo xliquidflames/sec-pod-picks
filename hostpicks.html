@@ -248,14 +248,14 @@
         </div>
 
         <div class="form-group">
-          <label for="hostPin">Host PIN</label>
-          <input type="password" id="hostPin" placeholder="Enter 4-digit PIN" />
+          <label for="hostPasscode">Host Access Code</label>
+          <input type="password" id="hostPasscode" placeholder="Enter Access Code" />
         </div>
 
         <button type="button" class="btn-submit" id="authBtn">Continue to Picks</button>
       </div>
 
-      <!-- Step 2: Matchup Pick Form (Hidden until PIN verified) -->
+      <!-- Step 2: Matchup Pick Form (Hidden until code verified) -->
       <form id="hostPickForm" style="display: none;">
         <div class="active-host-banner">
           <span>Submitting as:</span>
@@ -276,8 +276,17 @@
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const HOST_PIN = "1998";
+    // SHA-256 digest of "SEC2026"
+    const _kAuthHash = "8d3902f5e3d7a8d5fc1dc71e98d9e68e4bf9b48b1115bfe4cf6bc303b73ebf16";
     let authenticatedHost = "";
+
+    async function computeSHA256(str) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(str);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    }
 
     const week1Games = [
       { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
@@ -322,11 +331,11 @@
       });
     }
 
-    // Step 1: Handle PIN Gate Verification
-    document.getElementById("authBtn").addEventListener("click", () => {
+    // Handle Authentication Gate
+    document.getElementById("authBtn").addEventListener("click", async () => {
       const errorBox = document.getElementById("errorBox");
       const hostSelect = document.getElementById("hostSelect");
-      const hostPin = document.getElementById("hostPin").value.trim();
+      const passcode = document.getElementById("hostPasscode").value.trim();
 
       errorBox.style.display = "none";
 
@@ -336,8 +345,10 @@
         return;
       }
 
-      if (hostPin !== HOST_PIN) {
-        errorBox.textContent = "Incorrect PIN. Access denied.";
+      const inputHash = await computeSHA256(passcode);
+
+      if (inputHash !== _kAuthHash) {
+        errorBox.textContent = "Incorrect access code. Access denied.";
         errorBox.style.display = "block";
         return;
       }
@@ -349,7 +360,7 @@
       renderGames();
     });
 
-    // Step 2: Handle Host Pick Submission
+    // Handle Host Pick Submission
     document.getElementById("hostPickForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const submitBtn = document.getElementById("submitBtn");
