@@ -276,17 +276,9 @@
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // SHA-256 digest of "SEC2026"
-    const _kAuthHash = "8d3902f5e3d7a8d5fc1dc71e98d9e68e4bf9b48b1115bfe4cf6bc303b73ebf16";
+    // Obfuscated credential verification token
+    const _secToken = "U0VDMjAyNg==";
     let authenticatedHost = "";
-
-    async function computeSHA256(str) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(str);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-    }
 
     const week1Games = [
       { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
@@ -332,7 +324,7 @@
     }
 
     // Handle Authentication Gate
-    document.getElementById("authBtn").addEventListener("click", async () => {
+    document.getElementById("authBtn").addEventListener("click", () => {
       const errorBox = document.getElementById("errorBox");
       const hostSelect = document.getElementById("hostSelect");
       const passcode = document.getElementById("hostPasscode").value.trim();
@@ -345,9 +337,7 @@
         return;
       }
 
-      const inputHash = await computeSHA256(passcode);
-
-      if (inputHash !== _kAuthHash) {
+      if (btoa(passcode) !== _secToken) {
         errorBox.textContent = "Incorrect access code. Access denied.";
         errorBox.style.display = "block";
         return;
