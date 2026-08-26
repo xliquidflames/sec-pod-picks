@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEC Pod Pick'em - Leaderboard & Results</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-alt: #162032;
+      --accent-gold: #fbbf24;
+      --accent-gold-hover: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --success: #4ade80;
+      --danger: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      padding: 2rem 1rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 750px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .logo-container {
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: var(--accent-gold);
+      margin-bottom: 0.25rem;
+    }
+
+    .sub-header {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Tactile 3D CTA Button */
+    .btn-cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #0f172a;
+      font-size: 1.15rem;
+      font-weight: 900;
+      text-align: center;
+      padding: 1.1rem 1.5rem;
+      border-radius: 12px;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid #fde68a;
+      box-shadow: 0 4px 0 #b45309, 0 8px 20px rgba(251, 191, 36, 0.35);
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+      margin-bottom: 1.75rem;
+      cursor: pointer;
+    }
+
+    .btn-cta:hover {
+      background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 0 #b45309, 0 12px 24px rgba(251, 191, 36, 0.45);
+    }
+
+    .btn-cta:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #b45309, 0 4px 10px rgba(251, 191, 36, 0.3);
+    }
+
+    .btn-arrow {
+      font-size: 1.3rem;
+      line-height: 1;
+      transition: transform 0.15s ease;
+    }
+
+    .btn-cta:hover .btn-arrow {
+      transform: translateX(4px);
+    }
+
+    .card {
+      background: var(--bg-card);
+      padding: 1.25rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.2rem;
+      color: var(--accent-gold);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Spreadsheet Grid Container (Hosts Section) */
+    .grid-wrapper {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card-alt);
+    }
+
+    .host-grid-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+      font-size: 0.9rem;
+      min-width: 520px;
+    }
+
+    .host-grid-table th,
+    .host-grid-table td {
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .host-grid-table thead th {
+      background: #1e293b;
+      color: var(--accent-gold);
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .host-grid-table th.matchup-header {
+      text-align: left;
+      width: 40%;
+    }
+
+    .host-grid-table td.matchup-cell {
+      text-align: left;
+      color: var(--text-muted);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .host-grid-table td.pick-cell {
+      color: var(--text-main);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .host-record-badge {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-main);
+      font-weight: 600;
+      margin-top: 0.2rem;
+    }
+
+    /* Expand / Collapse Control Bars */
+    .list-controls-bar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .list-controls-bar.bottom-controls {
+      margin-top: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .btn-ctrl {
+      background: var(--bg-card-alt);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-ctrl:hover {
+      background: var(--border-color);
+      color: var(--text-main);
+      border-color: var(--accent-gold);
+    }
+
+    /* Cousins Accordion List */
+    .cousin-item {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 0.6rem;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .cousin-header {
+      padding: 0.9rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s ease;
+    }
+
+    .cousin-header:hover {
+      background: #1e293b;
+    }
+
+    .cousin-name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text-main);
+    }
+
+    .accordion-icon {
+      color: var(--accent-gold);
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .cousin-picks-body {
+      padding: 0.75rem 1rem 1rem;
+      border-top: 1px solid var(--border-color);
+      display: none;
+    }
+
+    .cousin-picks-body.open {
+      display: block;
+    }
+
+    /* Pick Item Lines inside Accordions */
+    .pick-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      padding: 0.25rem 0;
+    }
+
+    .pick-matchup {
+      color: var(--text-muted);
+    }
+
+    .pick-team {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* Ranking Badges */
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      font-size: 0.8rem;
+      font-weight: 800;
+      margin-right: 0.6rem;
+      background: var(--border-color);
+      color: var(--text-main);
+    }
+
+    .user-record {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      margin-left: 0.5rem;
+    }
+
+    /* Podium Highlights (Gold, Silver, Bronze) */
+    .podium-1 {
+      border: 1px solid #fbbf24 !important;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), var(--bg-card-alt)) !important;
+    }
+    .podium-1 .rank-badge {
+      background: #fbbf24;
+      color: #0f172a;
+    }
+
+    .podium-2 {
+      border: 1px solid #94a3b8 !important;
+      background: linear-gradient(135deg, rgba(148, 163, 184, 0.15), var(--bg-card-alt)) !important;
+    }
+    .podium-2 .rank-badge {
+      background: #94a3b8;
+      color: #0f172a;
+    }
+
+    .podium-3 {
+      border: 1px solid #d97706 !important;
+      background: linear-gradient(135deg, rgba(217, 119, 6, 0.15), var(--bg-card-alt)) !important;
+    }
+    .podium-3 .rank-badge {
+      background: #d97706;
+      color: #0f172a;
+    }
+
+    /* Pick Outcome Status Colors */
+    .pick-correct {
+      color: var(--success) !important;
+      font-weight: 700;
+    }
+    .pick-incorrect {
+      color: var(--danger) !important;
+      text-decoration: line-through;
+    }
+    .pick-pending {
+      color: var(--text-main);
+    }
+
+    /* Status Messages */
+    .empty-state {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 1.5rem 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="logo-container">
+        <h1 style="letter-spacing: -0.5px;">THAT SEC PODCAST</h1>
+      </div>
+      <p class="sub-header">Week 1 Leaderboard & Results</p>
+    </header>
+
+    <!-- Prominent CTA Button -->
+    <a href="makepicks.html" class="btn-cta">
+      <span>Click Here To Submit Your Week 1 Picks</span>
+      <span class="btn-arrow">&rarr;</span>
+    </a>
+
+    <!-- Section 1: Official Host Head-to-Head Spreadsheet Grid -->
+    <div class="card">
+      <h2 class="section-title">Official Host Picks</h2>
+      <div class="grid-wrapper">
+        <table class="host-grid-table" id="hostTable">
+          <thead>
+            <tr>
+              <th class="matchup-header">Matchup</th>
+              <th id="thMike">Mike</th>
+              <th id="thShane">Shane</th>
+              <th id="thSteven">Steven</th>
+            </tr>
+          </thead>
+          <tbody id="hostGridBody">
+            <tr>
+              <td colspan="4" class="empty-state">Loading host picks...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Section 2: Cousins Leaderboard -->
+    <div class="card">
+      <h2 class="section-title">The Cousins' Leaderboard</h2>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+        Ranked by correct picks. Click any row to expand selections.
+      </p>
+
+      <!-- Top Controls -->
+      <div class="list-controls-bar">
+        <button type="button" class="btn-ctrl" onclick="toggleAllCards(true)">Expand All</button>
+        <button type="button" class="btn-ctrl" onclick="toggleAllCards(false)">Collapse All</button>
+      </div>
+
+      <div id="cousinsList">
+        <div class="empty-state">Loading community picks...</div>
+      </div>
+
+      <!-- Bottom Controls -->
+      <div class="list-controls-bar bottom-controls">
+        <button type="button" class="btn-ctrl" onclick="toggleAllCards(true)">Expand All</button>
+        <button type="button" class="btn-ctrl" onclick="toggleAllCards(false)">Collapse All</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const week1Games = [
+      { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
+      { id: 2, teamA: "Arkansas", teamB: "North Alabama" },
+      { id: 3, teamA: "Auburn", teamB: "Baylor" },
+      { id: 4, teamA: "Florida", teamB: "Florida Atlantic" },
+      { id: 5, teamA: "Georgia", teamB: "Tenn State" },
+      { id: 6, teamA: "Kentucky", teamB: "Youngstown State" },
+      { id: 7, teamA: "LSU", teamB: "Clemson" },
+      { id: 8, teamA: "Ole Miss", teamB: "Louisville" },
+      { id: 9, teamA: "Miss State", teamB: "ULM" },
+      { id: 10, teamA: "Missouri", teamB: "Peanutbutter" },
+      { id: 11, teamA: "Oklahoma", teamB: "UTEP" },
+      { id: 12, teamA: "South Carolina", teamB: "Kent State" },
+      { id: 13, teamA: "Tennessee", teamB: "Furman" },
+      { id: 14, teamA: "Texas", teamB: "Texas State" },
+      { id: 15, teamA: "Texas A&M", teamB: "Missouri State" },
+      { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
+    ];
+
+    // Put the winning team name in quotes as games finish (e.g. 1: "Alabama").
+    // Leave as null for games that haven't concluded yet.
+    window.gameWinners = {
+      1: null,   // Alabama vs Eastern Carolina
+      2: null,   // Arkansas vs North Alabama
+      3: null,   // Auburn vs Baylor
+      4: null,   // Florida vs Florida Atlantic
+      5: null,   // Georgia vs Tenn State
+      6: null,   // Kentucky vs Youngstown State
+      7: null,   // LSU vs Clemson
+      8: null,   // Ole Miss vs Louisville
+      9: null,   // Miss State vs ULM
+      10: null,  // Missouri vs Peanutbutter
+      11: null,  // Oklahoma vs UTEP
+      12: null,  // South Carolina vs Kent State
+      13: null,  // Tennessee vs Furman
+      14: null,  // Texas vs Texas State
+      15: null,  // Texas A&M vs Missouri State
+      16: null   // Vanderbilt vs Austin Peay
+    };
+
+    function gradePicks(picks) {
+      let correct = 0;
+      let incorrect = 0;
+      let pending = 0;
+
+      week1Games.forEach(game => {
+        const winner = window.gameWinners[game.id];
+        const userPick = picks ? picks[game.id] : null;
+
+        if (!winner) {
+          pending++;
+        } else if (userPick === winner) {
+          correct++;
+        } else {
+          incorrect++;
+        }
+      });
+
+      return { correct, incorrect, pending };
+    }
+
+    function renderCellContent(gameId, userPick) {
+      const winner = window.gameWinners[gameId];
+      if (!userPick || userPick === "-") {
+        return `<span class="pick-pending">-</span>`;
+      }
+
+      if (!winner) {
+        return `<span class="pick-pending">${userPick}</span>`;
+      }
+
+      if (userPick === winner) {
+        return `<span class="pick-correct">${userPick} ✓</span>`;
+      } else {
+        return `<span class="pick-incorrect">${userPick} ✗</span>`;
+      }
+    }
+
+    function renderPickLine(game, userPick) {
+      const winner = window.gameWinners[game.id];
+      let statusClass = "pick-pending";
+      let statusText = "";
+
+      if (winner) {
+        if (userPick === winner) {
+          statusClass = "pick-correct";
+          statusText = " ✓";
+        } else {
+          statusClass = "pick-incorrect";
+          statusText = ` ✗ (Winner: ${winner})`;
+        }
+      }
+
+      return `
+        <div class="pick-line">
+          <span class="pick-matchup">${game.teamA} vs ${game.teamB}</span>
+          <span class="pick-team ${statusClass}">${userPick || "No Pick"}${statusText}</span>
+        </div>
+      `;
+    }
+
+    async function loadDashboard() {
+      const hostGridBody = document.getElementById("hostGridBody");
+      const cousinsList = document.getElementById("cousinsList");
+
+      try {
+        const { data: rows, error } = await supabaseClient
+          .from("picks")
+          .select("*")
+          .eq("week_number", 1)
+          .order("created_at", { ascending: true });
+
+        if (error) throw error;
+
+        const hostRows = rows.filter(r => r.is_host === true);
+        const cousinRows = rows.filter(r => r.is_host === false);
+
+        // Find hosts and calculate scores
+        const hostMike = hostRows.find(h => h.user_name.toLowerCase() === "mike");
+        const hostShane = hostRows.find(h => h.user_name.toLowerCase() === "shane");
+        const hostSteven = hostRows.find(h => h.user_name.toLowerCase() === "steven");
+
+        const mikeScore = hostMike ? gradePicks(hostMike.picks) : { correct: 0, incorrect: 0 };
+        const shaneScore = hostShane ? gradePicks(hostShane.picks) : { correct: 0, incorrect: 0 };
+        const stevenScore = hostSteven ? gradePicks(hostSteven.picks) : { correct: 0, incorrect: 0 };
+
+        // Update Host Table Headers with live records
+        document.getElementById("thMike").innerHTML = `Mike <span class="host-record-badge">(${mikeScore.correct}-${mikeScore.incorrect})</span>`;
+        document.getElementById("thShane").innerHTML = `Shane <span class="host-record-badge">(${shaneScore.correct}-${shaneScore.incorrect})</span>`;
+        document.getElementById("thSteven").innerHTML = `Steven <span class="host-record-badge">(${stevenScore.correct}-${stevenScore.incorrect})</span>`;
+
+        // Render Host Grid
+        hostGridBody.innerHTML = "";
+        week1Games.forEach(game => {
+          const tr = document.createElement("tr");
+          const pickMike = (hostMike && hostMike.picks) ? hostMike.picks[game.id] : "-";
+          const pickShane = (hostShane && hostShane.picks) ? hostShane.picks[game.id] : "-";
+          const pickSteven = (hostSteven && hostSteven.picks) ? hostSteven.picks[game.id] : "-";
+
+          tr.innerHTML = `
+            <td class="matchup-cell">${game.teamA} vs ${game.teamB}</td>
+            <td class="pick-cell">${renderCellContent(game.id, pickMike)}</td>
+            <td class="pick-cell">${renderCellContent(game.id, pickShane)}</td>
+            <td class="pick-cell">${renderCellContent(game.id, pickSteven)}</td>
+          `;
+          hostGridBody.appendChild(tr);
+        });
+
+        // Cousins Scoring & Sorting
+        cousinRows.forEach(c => {
+          c.score = gradePicks(c.picks);
+        });
+
+        cousinRows.sort((a, b) => {
+          if (b.score.correct !== a.score.correct) {
+            return b.score.correct - a.score.correct;
+          }
+          return a.user_name.localeCompare(b.user_name);
+        });
+
+        // Olympic Ranking for Cousins
+        let currentRank = 1;
+        cousinRows.forEach((cousin, i) => {
+          if (i > 0 && cousin.score.correct < cousinRows[i - 1].score.correct) {
+            currentRank = i + 1;
+          }
+          cousin.rank = currentRank;
+        });
+
+        const gamesFinished = Object.values(window.gameWinners).some(w => w !== null);
+
+        if (cousinRows.length === 0) {
+          cousinsList.innerHTML = `<div class="empty-state">No cousin picks submitted yet. Be the first!</div>`;
+        } else {
+          cousinsList.innerHTML = "";
+          cousinRows.forEach(cousin => {
+            const item = document.createElement("div");
+
+            let podiumClass = "";
+            if (gamesFinished && cousin.rank <= 3) {
+              podiumClass = `podium-${cousin.rank}`;
+            }
+
+            item.className = `cousin-item ${podiumClass}`;
+
+            let picksHtml = "";
+            week1Games.forEach(game => {
+              picksHtml += renderPickLine(game, cousin.picks[game.id]);
+            });
+
+            item.innerHTML = `
+              <div class="cousin-header" onclick="toggleAccordion(this)">
+                <div style="display: flex; align-items: center;">
+                  <span class="rank-badge">${cousin.rank}</span>
+                  <span class="cousin-name">${cousin.user_name}</span>
+                  <span class="user-record">(${cousin.score.correct}-${cousin.score.incorrect})</span>
+                </div>
+                <span class="accordion-icon">+</span>
+              </div>
+              <div class="cousin-picks-body">
+                ${picksHtml}
+              </div>
+            `;
+            cousinsList.appendChild(item);
+          });
+        }
+
+      } catch (err) {
+        hostGridBody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color: var(--danger)">Error: ${err.message}</td></tr>`;
+        cousinsList.innerHTML = "";
+      }
+    }
+
+    function toggleAccordion(headerEl) {
+      const body = headerEl.nextElementSibling;
+      const icon = headerEl.querySelector(".accordion-icon");
+      const isOpen = body.classList.contains("open");
+
+      if (isOpen) {
+        body.classList.remove("open");
+        icon.textContent = "+";
+      } else {
+        body.classList.add("open");
+        icon.textContent = "−";
+      }
+    }
+
+    function toggleAllCards(expand) {
+      const bodies = document.querySelectorAll(".cousin-picks-body");
+      const icons = document.querySelectorAll(".accordion-icon");
+
+      bodies.forEach(body => {
+        if (expand) {
+          body.classList.add("open");
+        } else {
+          body.classList.remove("open");
+        }
+      });
+
+      icons.forEach(icon => {
+        icon.textContent = expand ? "−" : "+";
+      });
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
