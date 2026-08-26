@@ -121,59 +121,72 @@
       gap: 0.5rem;
     }
 
-    /* Spreadsheet Grid Container (Hosts Section) */
+    /* Compact Spreadsheet Grid Container (Hosts Section) */
     .grid-wrapper {
-      overflow-x: auto;
+      overflow-x: hidden;
       border-radius: 8px;
       border: 1px solid var(--border-color);
       background: var(--bg-card-alt);
+      width: 100%;
     }
 
     .host-grid-table {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
       text-align: center;
-      font-size: 0.9rem;
-      min-width: 520px;
+      font-size: 0.78rem;
     }
 
     .host-grid-table th,
     .host-grid-table td {
-      padding: 0.65rem 0.75rem;
+      padding: 0.45rem 0.25rem;
       border: 1px solid var(--border-color);
+      vertical-align: middle;
     }
 
     .host-grid-table thead th {
       background: #1e293b;
       color: var(--accent-gold);
       font-weight: 700;
-      font-size: 1rem;
+      font-size: 0.85rem;
+      line-height: 1.2;
     }
 
     .host-grid-table th.matchup-header {
       text-align: left;
-      width: 40%;
+      width: 37%;
+      padding-left: 0.5rem;
+    }
+
+    .host-grid-table th:not(.matchup-header) {
+      width: 21%;
     }
 
     .host-grid-table td.matchup-cell {
       text-align: left;
       color: var(--text-muted);
       font-weight: 500;
-      white-space: nowrap;
+      white-space: normal;
+      line-height: 1.2;
+      padding-left: 0.5rem;
+      word-break: normal;
     }
 
     .host-grid-table td.pick-cell {
       color: var(--text-main);
       font-weight: 600;
-      white-space: nowrap;
+      white-space: normal;
+      line-height: 1.2;
+      word-break: break-word;
     }
 
     .host-record-badge {
       display: block;
-      font-size: 0.8rem;
+      font-size: 0.72rem;
       color: var(--text-main);
       font-weight: 600;
-      margin-top: 0.2rem;
+      margin-top: 0.15rem;
     }
 
     /* Expand / Collapse & Navigation Control Bars */
