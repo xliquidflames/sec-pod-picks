@@ -138,7 +138,7 @@
       letter-spacing: 0.3px;
     }
 
-    /* Fixed Compact Host Grid (No Horizontal Scroll) */
+    /* Compact Host Grid */
     .grid-wrapper {
       overflow-x: hidden;
       border-radius: 8px;
@@ -190,11 +190,33 @@
       font-size: 0.78rem;
       white-space: normal;
       word-break: break-word;
+      position: relative;
     }
 
     .host-grid-table td.pick-cell {
       color: var(--text-main);
       font-weight: 600;
+    }
+
+    /* Host Lock of the Week Styling */
+    .host-lock-cell {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(30, 41, 59, 0.95)) !important;
+      border: 1px solid #fbbf24 !important;
+      box-shadow: inset 0 0 8px rgba(251, 191, 36, 0.35);
+    }
+
+    .lock-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 900;
+      color: #0f172a;
+      background: #fbbf24;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      margin-left: 0.25rem;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
     }
 
     .host-record-badge {
@@ -336,7 +358,6 @@
       display: block;
     }
 
-    /* Pick Item Lines inside Accordions */
     .pick-line {
       display: flex;
       justify-content: space-between;
@@ -353,7 +374,6 @@
       color: var(--text-main);
     }
 
-    /* Ranking Badges */
     .rank-badge {
       display: inline-flex;
       align-items: center;
@@ -375,7 +395,6 @@
       margin-left: 0.5rem;
     }
 
-    /* Podium Highlights (Gold, Silver, Bronze) */
     .podium-1 {
       border: 1px solid #fbbf24 !important;
       background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), var(--bg-card-alt)) !important;
@@ -403,7 +422,6 @@
       color: #0f172a;
     }
 
-    /* Pick Outcome Status Colors */
     .pick-correct {
       color: var(--success) !important;
       font-weight: 700;
@@ -416,7 +434,6 @@
       color: var(--text-main);
     }
 
-    /* Status Messages */
     .empty-state {
       text-align: center;
       color: var(--text-muted);
@@ -577,7 +594,7 @@
 
       week1Games.forEach(game => {
         const winner = window.gameWinners[game.id];
-        const userPick = picks ? picks[game.id] : null;
+        const userPick = picks ? (picks[game.id] || picks[String(game.id)]) : null;
 
         if (!winner) {
           pending++;
@@ -591,20 +608,22 @@
       return { correct, incorrect, pending };
     }
 
-    function renderCellContent(gameId, userPick) {
+    function renderCellContent(gameId, userPick, isLock = false) {
       const winner = window.gameWinners[gameId];
+      const lockBadge = isLock ? `<span class="lock-badge">LOCK</span>` : '';
+
       if (!userPick || userPick === "-") {
         return `<span class="pick-pending">-</span>`;
       }
 
       if (!winner) {
-        return `<span class="pick-pending">${userPick}</span>`;
+        return `<span class="pick-pending">${userPick}${lockBadge}</span>`;
       }
 
       if (userPick === winner) {
-        return `<span class="pick-correct">${userPick} ✓</span>`;
+        return `<span class="pick-correct">${userPick} ✓${lockBadge}</span>`;
       } else {
-        return `<span class="pick-incorrect">${userPick} ✗</span>`;
+        return `<span class="pick-incorrect">${userPick} ✗${lockBadge}</span>`;
       }
     }
 
@@ -757,16 +776,13 @@
         const hostRows = rows.filter(r => r.is_host === true);
         const cousinRows = rows.filter(r => r.is_host === false);
 
-        // Update Total Entries Badge in header
         if (entryPill) {
           const count = cousinRows.length;
           entryPill.textContent = `${count} ${count === 1 ? 'Entry' : 'Entries'}`;
         }
 
-        // Calculate and display dynamic 3-card pulse metrics safely
         computeCommunityPulse(cousinRows);
 
-        // Find hosts and calculate scores
         const hostMike = hostRows.find(h => h.user_name && h.user_name.toLowerCase() === "mike");
         const hostShane = hostRows.find(h => h.user_name && h.user_name.toLowerCase() === "shane");
         const hostSteven = hostRows.find(h => h.user_name && h.user_name.toLowerCase() === "steven");
@@ -775,7 +791,6 @@
         const shaneScore = hostShane ? gradePicks(hostShane.picks) : { correct: 0, incorrect: 0 };
         const stevenScore = hostSteven ? gradePicks(hostSteven.picks) : { correct: 0, incorrect: 0 };
 
-        // Update Host Table Headers with live records
         const thMike = document.getElementById("thMike");
         const thShane = document.getElementById("thShane");
         const thSteven = document.getElementById("thSteven");
@@ -783,12 +798,16 @@
         if (thShane) thShane.innerHTML = `Shane <span class="host-record-badge">(${shaneScore.correct}-${shaneScore.incorrect})</span>`;
         if (thSteven) thSteven.innerHTML = `Steven <span class="host-record-badge">(${stevenScore.correct}-${stevenScore.incorrect})</span>`;
 
-        // Render Host Grid
         if (hostGridBody) {
           hostGridBody.innerHTML = "";
           const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
           const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
           const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
+
+          // Extract lock_game_id for each host
+          const mikeLockId = mikePicks.lock_game_id ? parseInt(mikePicks.lock_game_id, 10) : null;
+          const shaneLockId = shanePicks.lock_game_id ? parseInt(shanePicks.lock_game_id, 10) : null;
+          const stevenLockId = stevenPicks.lock_game_id ? parseInt(stevenPicks.lock_game_id, 10) : null;
 
           week1Games.forEach(game => {
             const tr = document.createElement("tr");
@@ -796,17 +815,20 @@
             const pickShane = shanePicks[game.id] || shanePicks[String(game.id)] || "-";
             const pickSteven = stevenPicks[game.id] || stevenPicks[String(game.id)] || "-";
 
+            const isMikeLock = mikeLockId === game.id;
+            const isShaneLock = shaneLockId === game.id;
+            const isStevenLock = stevenLockId === game.id;
+
             tr.innerHTML = `
               <td class="matchup-cell">${game.teamA} vs ${game.teamB}</td>
-              <td class="pick-cell">${renderCellContent(game.id, pickMike)}</td>
-              <td class="pick-cell">${renderCellContent(game.id, pickShane)}</td>
-              <td class="pick-cell">${renderCellContent(game.id, pickSteven)}</td>
+              <td class="pick-cell ${isMikeLock ? 'host-lock-cell' : ''}">${renderCellContent(game.id, pickMike, isMikeLock)}</td>
+              <td class="pick-cell ${isShaneLock ? 'host-lock-cell' : ''}">${renderCellContent(game.id, pickShane, isShaneLock)}</td>
+              <td class="pick-cell ${isStevenLock ? 'host-lock-cell' : ''}">${renderCellContent(game.id, pickSteven, isStevenLock)}</td>
             `;
             hostGridBody.appendChild(tr);
           });
         }
 
-        // Cousins Scoring & Sorting
         cousinRows.forEach(c => {
           c.score = gradePicks(c.picks);
         });
@@ -818,7 +840,6 @@
           return (a.user_name || "").localeCompare(b.user_name || "");
         });
 
-        // Olympic Ranking for Cousins
         let currentRank = 1;
         cousinRows.forEach((cousin, i) => {
           if (i > 0 && cousin.score.correct < cousinRows[i - 1].score.correct) {
