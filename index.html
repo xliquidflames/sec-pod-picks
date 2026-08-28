@@ -116,7 +116,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.75rem;
     }
 
     .section-title {
@@ -203,6 +203,49 @@
       color: var(--text-main);
       font-weight: 600;
       margin-top: 0.15rem;
+    }
+
+    /* Community Pulse 3-Card Grid */
+    .pulse-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .pulse-card {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.65rem 0.4rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .pulse-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .pulse-stat {
+      font-size: 0.88rem;
+      font-weight: 900;
+      color: var(--accent-gold);
+      line-height: 1.25;
+      word-break: normal;
+    }
+
+    .pulse-desc {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      line-height: 1.2;
     }
 
     /* Expand / Collapse & Navigation Control Bars */
@@ -425,6 +468,26 @@
         <h2 class="section-title">The Cousins' Leaderboard</h2>
         <span class="entry-pill" id="entryPill">0 Entries</span>
       </div>
+
+      <!-- Community Pulse Stat Cards -->
+      <div class="pulse-grid">
+        <div class="pulse-card">
+          <span class="pulse-label">SEC Loyalty</span>
+          <span class="pulse-stat" id="statSecSweep">--</span>
+          <span class="pulse-desc" id="statSecSweepDesc">Clean Sweeps</span>
+        </div>
+        <div class="pulse-card">
+          <span class="pulse-label">Top Upset</span>
+          <span class="pulse-stat" id="statTopUpset">--</span>
+          <span class="pulse-desc" id="statTopUpsetDesc">Popular Upset</span>
+        </div>
+        <div class="pulse-card">
+          <span class="pulse-label">Lock Pick</span>
+          <span class="pulse-stat" id="statLock">--</span>
+          <span class="pulse-desc" id="statLockDesc">100% Consensus</span>
+        </div>
+      </div>
+
       <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
         Ranked by correct picks. Click any row to expand selections.
       </p>
@@ -477,28 +540,37 @@
       { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
     ];
 
-    // Put the winning team name in quotes as games finish (e.g. 1: "Alabama").
-    // Leave as null for games that haven't concluded yet.
     window.gameWinners = {
-      1: null,   // Alabama vs Eastern Carolina
-      2: null,   // Arkansas vs North Alabama
-      3: null,   // Auburn vs Baylor
-      4: null,   // Florida vs Florida Atlantic
-      5: null,   // Georgia vs Tenn State
-      6: null,   // Kentucky vs Youngstown State
-      7: null,   // LSU vs Clemson
-      8: null,   // Ole Miss vs Louisville
-      9: null,   // Miss State vs ULM
-      10: null,  // Missouri vs Peanutbutter
-      11: null,  // Oklahoma vs UTEP
-      12: null,  // South Carolina vs Kent State
-      13: null,  // Tennessee vs Furman
-      14: null,  // Texas vs Texas State
-      15: null,  // Texas A&M vs Missouri State
-      16: null   // Vanderbilt vs Austin Peay
+      1: null,
+      2: null,
+      3: null,
+      4: null,
+      5: null,
+      6: null,
+      7: null,
+      8: null,
+      9: null,
+      10: null,
+      11: null,
+      12: null,
+      13: null,
+      14: null,
+      15: null,
+      16: null
     };
 
-    function gradePicks(picks) {
+    function parseUserPicks(rawPicks) {
+      if (!rawPicks) return {};
+      if (typeof rawPicks === 'object') return rawPicks;
+      try {
+        return JSON.parse(rawPicks);
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function gradePicks(rawPicks) {
+      const picks = parseUserPicks(rawPicks);
       let correct = 0;
       let incorrect = 0;
       let pending = 0;
@@ -559,6 +631,115 @@
       `;
     }
 
+    function computeCommunityPulse(cousinRows) {
+      try {
+        const totalEntries = cousinRows.length;
+        if (totalEntries === 0) return;
+
+        const nonSecTeams = [
+          "Eastern Carolina", "North Alabama", "Baylor", "Florida Atlantic",
+          "Tenn State", "Youngstown State", "Clemson", "Louisville",
+          "ULM", "Peanutbutter", "UTEP", "Kent State",
+          "Furman", "Texas State", "Missouri State", "Austin Peay"
+        ];
+
+        let secSweepCount = 0;
+        const nonSecCounts = {};
+        const gameTeamCounts = {};
+
+        week1Games.forEach(g => {
+          gameTeamCounts[g.id] = { [g.teamA]: 0, [g.teamB]: 0 };
+        });
+
+        cousinRows.forEach(row => {
+          const picks = parseUserPicks(row.picks);
+          let pickedNonSec = false;
+
+          week1Games.forEach(g => {
+            const userPick = picks[g.id] || picks[String(g.id)];
+            if (userPick && gameTeamCounts[g.id] && gameTeamCounts[g.id][userPick] !== undefined) {
+              gameTeamCounts[g.id][userPick]++;
+            }
+
+            if (userPick && nonSecTeams.includes(userPick)) {
+              pickedNonSec = true;
+              if (!nonSecCounts[userPick]) {
+                const opponent = (userPick === g.teamA) ? g.teamB : g.teamA;
+                nonSecCounts[userPick] = { count: 0, opponent: opponent };
+              }
+              nonSecCounts[userPick].count++;
+            }
+          });
+
+          if (!pickedNonSec) {
+            secSweepCount++;
+          }
+        });
+
+        // 1. SEC Loyalty Stat
+        const sweepPct = Math.round((secSweepCount / totalEntries) * 100);
+        const statSecSweepEl = document.getElementById("statSecSweep");
+        const statSecSweepDescEl = document.getElementById("statSecSweepDesc");
+        if (statSecSweepEl) statSecSweepEl.textContent = `${sweepPct}%`;
+        if (statSecSweepDescEl) statSecSweepDescEl.textContent = `${secSweepCount} of ${totalEntries} Sweeps`;
+
+        // 2. Top Upset Stat
+        let topUpsetTeam = "None";
+        let topUpsetCount = 0;
+        let topUpsetOpponent = "";
+        for (const [team, data] of Object.entries(nonSecCounts)) {
+          if (data.count > topUpsetCount) {
+            topUpsetCount = data.count;
+            topUpsetTeam = team;
+            topUpsetOpponent = data.opponent;
+          }
+        }
+
+        const statTopUpsetEl = document.getElementById("statTopUpset");
+        const statTopUpsetDescEl = document.getElementById("statTopUpsetDesc");
+        if (statTopUpsetEl) {
+          statTopUpsetEl.textContent = topUpsetCount > 0 ? `${topUpsetTeam} over ${topUpsetOpponent}` : "None";
+        }
+        if (statTopUpsetDescEl) {
+          statTopUpsetDescEl.textContent = topUpsetCount > 0 ? `${topUpsetCount} Picks` : "No Upsets Picked";
+        }
+
+        // 3. Consensus Lock Pick
+        let highestConsensusPct = 0;
+        let lockTeam = "Georgia";
+        let lockOpponent = "Tenn State";
+
+        week1Games.forEach(g => {
+          const countA = (gameTeamCounts[g.id] && gameTeamCounts[g.id][g.teamA]) ? gameTeamCounts[g.id][g.teamA] : 0;
+          const countB = (gameTeamCounts[g.id] && gameTeamCounts[g.id][g.teamB]) ? gameTeamCounts[g.id][g.teamB] : 0;
+          const totalGamePicks = countA + countB;
+
+          if (totalGamePicks > 0) {
+            const pctA = Math.round((countA / totalGamePicks) * 100);
+            const pctB = Math.round((countB / totalGamePicks) * 100);
+
+            if (pctA >= highestConsensusPct) {
+              highestConsensusPct = pctA;
+              lockTeam = g.teamA;
+              lockOpponent = g.teamB;
+            }
+            if (pctB >= highestConsensusPct) {
+              highestConsensusPct = pctB;
+              lockTeam = g.teamB;
+              lockOpponent = g.teamA;
+            }
+          }
+        });
+
+        const statLockEl = document.getElementById("statLock");
+        const statLockDescEl = document.getElementById("statLockDesc");
+        if (statLockEl) statLockEl.textContent = `${lockTeam} over ${lockOpponent}`;
+        if (statLockDescEl) statLockDescEl.textContent = `${highestConsensusPct}% Consensus`;
+      } catch (e) {
+        console.error("Pulse stat computation error:", e);
+      }
+    }
+
     async function loadDashboard() {
       const hostGridBody = document.getElementById("hostGridBody");
       const cousinsList = document.getElementById("cousinsList");
@@ -582,36 +763,48 @@
           entryPill.textContent = `${count} ${count === 1 ? 'Entry' : 'Entries'}`;
         }
 
+        // Calculate and display dynamic 3-card pulse metrics safely
+        computeCommunityPulse(cousinRows);
+
         // Find hosts and calculate scores
-        const hostMike = hostRows.find(h => h.user_name.toLowerCase() === "mike");
-        const hostShane = hostRows.find(h => h.user_name.toLowerCase() === "shane");
-        const hostSteven = hostRows.find(h => h.user_name.toLowerCase() === "steven");
+        const hostMike = hostRows.find(h => h.user_name && h.user_name.toLowerCase() === "mike");
+        const hostShane = hostRows.find(h => h.user_name && h.user_name.toLowerCase() === "shane");
+        const hostSteven = hostRows.find(h => h.user_name && h.user_name.toLowerCase() === "steven");
 
         const mikeScore = hostMike ? gradePicks(hostMike.picks) : { correct: 0, incorrect: 0 };
         const shaneScore = hostShane ? gradePicks(hostShane.picks) : { correct: 0, incorrect: 0 };
         const stevenScore = hostSteven ? gradePicks(hostSteven.picks) : { correct: 0, incorrect: 0 };
 
         // Update Host Table Headers with live records
-        document.getElementById("thMike").innerHTML = `Mike <span class="host-record-badge">(${mikeScore.correct}-${mikeScore.incorrect})</span>`;
-        document.getElementById("thShane").innerHTML = `Shane <span class="host-record-badge">(${shaneScore.correct}-${shaneScore.incorrect})</span>`;
-        document.getElementById("thSteven").innerHTML = `Steven <span class="host-record-badge">(${stevenScore.correct}-${stevenScore.incorrect})</span>`;
+        const thMike = document.getElementById("thMike");
+        const thShane = document.getElementById("thShane");
+        const thSteven = document.getElementById("thSteven");
+        if (thMike) thMike.innerHTML = `Mike <span class="host-record-badge">(${mikeScore.correct}-${mikeScore.incorrect})</span>`;
+        if (thShane) thShane.innerHTML = `Shane <span class="host-record-badge">(${shaneScore.correct}-${shaneScore.incorrect})</span>`;
+        if (thSteven) thSteven.innerHTML = `Steven <span class="host-record-badge">(${stevenScore.correct}-${stevenScore.incorrect})</span>`;
 
         // Render Host Grid
-        hostGridBody.innerHTML = "";
-        week1Games.forEach(game => {
-          const tr = document.createElement("tr");
-          const pickMike = (hostMike && hostMike.picks) ? hostMike.picks[game.id] : "-";
-          const pickShane = (hostShane && hostShane.picks) ? hostShane.picks[game.id] : "-";
-          const pickSteven = (hostSteven && hostSteven.picks) ? hostSteven.picks[game.id] : "-";
+        if (hostGridBody) {
+          hostGridBody.innerHTML = "";
+          const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
+          const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
+          const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
 
-          tr.innerHTML = `
-            <td class="matchup-cell">${game.teamA} vs ${game.teamB}</td>
-            <td class="pick-cell">${renderCellContent(game.id, pickMike)}</td>
-            <td class="pick-cell">${renderCellContent(game.id, pickShane)}</td>
-            <td class="pick-cell">${renderCellContent(game.id, pickSteven)}</td>
-          `;
-          hostGridBody.appendChild(tr);
-        });
+          week1Games.forEach(game => {
+            const tr = document.createElement("tr");
+            const pickMike = mikePicks[game.id] || mikePicks[String(game.id)] || "-";
+            const pickShane = shanePicks[game.id] || shanePicks[String(game.id)] || "-";
+            const pickSteven = stevenPicks[game.id] || stevenPicks[String(game.id)] || "-";
+
+            tr.innerHTML = `
+              <td class="matchup-cell">${game.teamA} vs ${game.teamB}</td>
+              <td class="pick-cell">${renderCellContent(game.id, pickMike)}</td>
+              <td class="pick-cell">${renderCellContent(game.id, pickShane)}</td>
+              <td class="pick-cell">${renderCellContent(game.id, pickSteven)}</td>
+            `;
+            hostGridBody.appendChild(tr);
+          });
+        }
 
         // Cousins Scoring & Sorting
         cousinRows.forEach(c => {
@@ -622,7 +815,7 @@
           if (b.score.correct !== a.score.correct) {
             return b.score.correct - a.score.correct;
           }
-          return a.user_name.localeCompare(b.user_name);
+          return (a.user_name || "").localeCompare(b.user_name || "");
         });
 
         // Olympic Ranking for Cousins
@@ -636,45 +829,54 @@
 
         const gamesFinished = Object.values(window.gameWinners).some(w => w !== null);
 
-        if (cousinRows.length === 0) {
-          cousinsList.innerHTML = `<div class="empty-state">No cousin picks submitted yet. Be the first!</div>`;
-        } else {
-          cousinsList.innerHTML = "";
-          cousinRows.forEach(cousin => {
-            const item = document.createElement("div");
+        if (cousinsList) {
+          if (cousinRows.length === 0) {
+            cousinsList.innerHTML = `<div class="empty-state">No cousin picks submitted yet. Be the first!</div>`;
+          } else {
+            cousinsList.innerHTML = "";
+            cousinRows.forEach(cousin => {
+              const item = document.createElement("div");
 
-            let podiumClass = "";
-            if (gamesFinished && cousin.rank <= 3) {
-              podiumClass = `podium-${cousin.rank}`;
-            }
+              let podiumClass = "";
+              if (gamesFinished && cousin.rank <= 3) {
+                podiumClass = `podium-${cousin.rank}`;
+              }
 
-            item.className = `cousin-item ${podiumClass}`;
+              item.className = `cousin-item ${podiumClass}`;
 
-            let picksHtml = "";
-            week1Games.forEach(game => {
-              picksHtml += renderPickLine(game, cousin.picks[game.id]);
-            });
+              const cousinPicks = parseUserPicks(cousin.picks);
+              let picksHtml = "";
+              week1Games.forEach(game => {
+                const pick = cousinPicks[game.id] || cousinPicks[String(game.id)];
+                picksHtml += renderPickLine(game, pick);
+              });
 
-            item.innerHTML = `
-              <div class="cousin-header" onclick="toggleAccordion(this)">
-                <div style="display: flex; align-items: center;">
-                  <span class="rank-badge">${cousin.rank}</span>
-                  <span class="cousin-name">${cousin.user_name}</span>
-                  <span class="user-record">(${cousin.score.correct}-${cousin.score.incorrect})</span>
+              item.innerHTML = `
+                <div class="cousin-header" onclick="toggleAccordion(this)">
+                  <div style="display: flex; align-items: center;">
+                    <span class="rank-badge">${cousin.rank}</span>
+                    <span class="cousin-name">${cousin.user_name}</span>
+                    <span class="user-record">(${cousin.score.correct}-${cousin.score.incorrect})</span>
+                  </div>
+                  <span class="accordion-icon">+</span>
                 </div>
-                <span class="accordion-icon">+</span>
-              </div>
-              <div class="cousin-picks-body">
-                ${picksHtml}
-              </div>
-            `;
-            cousinsList.appendChild(item);
-          });
+                <div class="cousin-picks-body">
+                  ${picksHtml}
+                </div>
+              `;
+              cousinsList.appendChild(item);
+            });
+          }
         }
 
       } catch (err) {
-        hostGridBody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color: var(--danger)">Error: ${err.message}</td></tr>`;
-        cousinsList.innerHTML = "";
+        console.error("Dashboard error:", err);
+        if (hostGridBody) {
+          hostGridBody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color: var(--danger)">Error: ${err.message}</td></tr>`;
+        }
+        if (cousinsList) {
+          cousinsList.innerHTML = `<div class="empty-state" style="color: var(--danger)">Failed to load community picks.</div>`;
+        }
       }
     }
 
