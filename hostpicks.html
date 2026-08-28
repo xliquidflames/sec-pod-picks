@@ -7,14 +7,15 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --bg-main: #0f172a;
-      --bg-card: #1e293b;
-      --bg-card-alt: #162032;
-      --accent-gold: #fbbf24;
-      --accent-gold-hover: #f59e0b;
+      --bg-main: #0a1120;
+      --bg-card: #131d31;
+      --bg-card-inner: #19263e;
+      --accent-gold: #f59e0b;
+      --accent-gold-hover: #d97706;
+      --accent-gold-bright: #fbbf24;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
-      --border-color: #334155;
+      --border-color: #22324f;
       --success: #4ade80;
       --danger: #f87171;
     }
@@ -36,7 +37,7 @@
 
     .container {
       width: 100%;
-      max-width: 650px;
+      max-width: 550px;
     }
 
     header {
@@ -44,181 +45,187 @@
       margin-bottom: 1.5rem;
     }
 
-    .logo-container {
-      margin-bottom: 0.5rem;
-    }
-
     h1 {
       font-size: 1.8rem;
       color: var(--accent-gold);
+      font-weight: 900;
+      letter-spacing: -0.5px;
       margin-bottom: 0.25rem;
     }
 
     .sub-header {
       color: var(--text-muted);
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
 
-    .card {
+    .card-panel {
       background: var(--bg-card);
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-      margin-bottom: 1.5rem;
-    }
-
-    .form-group {
-      margin-bottom: 1.25rem;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 600;
-      color: var(--text-main);
-      font-size: 0.95rem;
-    }
-
-    select, input[type="password"] {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      background-color: var(--bg-card-alt);
+      padding: 1.25rem;
+      border-radius: 14px;
       border: 1px solid var(--border-color);
-      border-radius: 8px;
-      color: var(--text-main);
-      font-size: 1rem;
-      outline: none;
-      transition: border-color 0.2s ease;
     }
 
-    select:focus, input[type="password"]:focus {
-      border-color: var(--accent-gold);
-    }
-
-    .active-host-banner {
-      background: var(--bg-card-alt);
+    /* Submitting Header Banner */
+    .submitting-bar {
+      background: #0d1527;
       border: 1px solid var(--border-color);
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      margin-bottom: 1.25rem;
+      border-radius: 10px;
+      padding: 0.85rem 1.1rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 1.25rem;
     }
 
-    .active-host-name {
-      color: var(--accent-gold);
-      font-weight: 700;
-      font-size: 1.1rem;
-    }
-
-    .matchup-item {
-      background: var(--bg-card-alt);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .matchup-header {
-      font-weight: 700;
-      font-size: 0.9rem;
-      color: var(--accent-gold);
-      margin-bottom: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .team-options {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.75rem;
-    }
-
-    .team-option {
-      position: relative;
-    }
-
-    .team-option input[type="radio"] {
-      position: absolute;
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .team-option label {
-      display: block;
-      background: #1e293b;
-      border: 1px solid var(--border-color);
-      padding: 0.75rem 0.5rem;
-      border-radius: 6px;
-      text-align: center;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.9rem;
-      margin-bottom: 0;
-      transition: all 0.15s ease;
+    .submitting-label {
       color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 500;
     }
 
-    .team-option input[type="radio"]:checked + label {
-      background: var(--accent-gold);
-      color: #0f172a;
-      border-color: var(--accent-gold);
+    .host-select {
+      background: transparent;
+      color: var(--accent-gold-bright);
+      font-size: 1.1rem;
       font-weight: 800;
-    }
-
-    .btn-submit {
-      width: 100%;
-      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
-      color: #0f172a;
-      font-size: 1.1rem;
-      font-weight: 900;
-      text-align: center;
-      padding: 1.1rem;
-      border-radius: 10px;
-      border: 1px solid #fde68a;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      border: none;
+      outline: none;
       cursor: pointer;
-      box-shadow: 0 4px 0 #b45309, 0 8px 20px rgba(251, 191, 36, 0.35);
-      transition: transform 0.1s ease, box-shadow 0.1s ease;
-      margin-top: 1rem;
+      text-align: right;
     }
 
-    .btn-submit:hover {
-      background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 0 #b45309, 0 12px 24px rgba(251, 191, 36, 0.45);
-    }
-
-    .btn-submit:active {
-      transform: translateY(3px);
-      box-shadow: 0 1px 0 #b45309, 0 4px 10px rgba(251, 191, 36, 0.3);
-    }
-
-    .btn-back {
-      display: block;
-      text-align: center;
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.9rem;
-      margin-top: 1.25rem;
-    }
-
-    .btn-back:hover {
+    .host-select option {
+      background: #0d1527;
       color: var(--text-main);
     }
 
-    .error-msg {
-      background: rgba(248, 113, 113, 0.15);
-      border: 1px solid var(--danger);
-      color: var(--danger);
-      padding: 0.75rem;
-      border-radius: 6px;
-      font-size: 0.9rem;
+    /* Game Matchup Cards */
+    .game-card {
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1rem;
       margin-bottom: 1rem;
-      display: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .game-card.is-locked {
+      border: 1.5px solid var(--accent-gold-bright);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
+    }
+
+    .game-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .game-title {
+      color: var(--accent-gold-bright);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* In-Card Lock Toggle Button */
+    .btn-lock-toggle {
+      background: #0e1728;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .btn-lock-toggle:hover {
+      border-color: var(--accent-gold);
+      color: var(--text-main);
+    }
+
+    .btn-lock-toggle.active {
+      background: var(--accent-gold-bright);
+      color: #0a1120;
+      border-color: var(--accent-gold-bright);
+      font-weight: 900;
+    }
+
+    /* Pick Buttons Grid */
+    .pick-buttons-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+
+    .btn-pick {
+      background: #0e1728;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-muted);
+      padding: 0.85rem 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-pick:hover {
+      border-color: #3b4d71;
+      color: var(--text-main);
+    }
+
+    .btn-pick.selected {
+      background: var(--accent-gold-bright);
+      color: #0a1120;
+      font-weight: 900;
+      border-color: var(--accent-gold-bright);
+    }
+
+    /* Submit CTA */
+    .btn-save-all {
+      width: 100%;
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #0a1120;
+      font-size: 1.1rem;
+      font-weight: 900;
+      padding: 1.1rem;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      margin-top: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 0 #b45309;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .btn-save-all:hover {
+      background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
+    }
+
+    .btn-save-all:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #b45309;
+    }
+
+    .status-alert {
+      margin-top: 1rem;
+      text-align: center;
+      font-size: 0.95rem;
+      font-weight: 700;
     }
   </style>
 </head>
@@ -226,48 +233,27 @@
 
   <div class="container">
     <header>
-      <div class="logo-container">
-        <h1>THAT SEC PODCAST</h1>
-      </div>
+      <h1>THAT SEC PODCAST</h1>
       <p class="sub-header">Host Portal (Week 1)</p>
     </header>
 
-    <div class="card">
-      <div id="errorBox" class="error-msg"></div>
-
-      <!-- Step 1: Authentication Gate -->
-      <div id="stepAuth">
-        <div class="form-group">
-          <label for="hostSelect">Select Host Name</label>
-          <select id="hostSelect">
-            <option value="" disabled selected>Choose your name...</option>
-            <option value="Mike">Mike</option>
-            <option value="Shane">Shane</option>
-            <option value="Steven">Steven</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="hostPasscode">Host Access Code</label>
-          <input type="password" id="hostPasscode" placeholder="Enter Access Code" />
-        </div>
-
-        <button type="button" class="btn-submit" id="authBtn">Continue to Picks</button>
+    <div class="card-panel">
+      <!-- Submitting As Banner -->
+      <div class="submitting-bar">
+        <span class="submitting-label">Submitting as:</span>
+        <select class="host-select" id="hostSelect" onchange="onHostSelectChange()">
+          <option value="Mike">Mike</option>
+          <option value="Shane">Shane</option>
+          <option value="Steven">Steven</option>
+        </select>
       </div>
 
-      <!-- Step 2: Matchup Pick Form (Hidden until code verified) -->
-      <form id="hostPickForm" style="display: none;">
-        <div class="active-host-banner">
-          <span>Submitting as:</span>
-          <span class="active-host-name" id="displayHostName"></span>
-        </div>
+      <!-- Matchup Cards Container -->
+      <div id="gamesContainer"></div>
 
-        <div id="matchupsContainer"></div>
-
-        <button type="submit" class="btn-submit" id="submitBtn">Submit Host Picks</button>
-      </form>
-
-      <a href="index.html" class="btn-back">&larr; Back to Leaderboard</a>
+      <!-- Save Button -->
+      <button type="button" class="btn-save-all" onclick="saveHostSelections()">Save Host Picks</button>
+      <div id="statusAlert" class="status-alert"></div>
     </div>
   </div>
 
@@ -275,10 +261,6 @@
     const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // Obfuscated credential verification token
-    const _secToken = "U0VDMjAyNg==";
-    let authenticatedHost = "";
 
     const week1Games = [
       { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
@@ -299,112 +281,156 @@
       { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
     ];
 
-    function renderGames() {
-      const container = document.getElementById("matchupsContainer");
+    let hostPicks = {};
+    let currentLockGameId = null;
+
+    function renderCards() {
+      const container = document.getElementById("gamesContainer");
       container.innerHTML = "";
 
       week1Games.forEach(game => {
-        const div = document.createElement("div");
-        div.className = "matchup-item";
-        div.innerHTML = `
-          <div class="matchup-header">Game ${game.id}: ${game.teamA} vs ${game.teamB}</div>
-          <div class="team-options">
-            <div class="team-option">
-              <input type="radio" id="g${game.id}_a" name="game_${game.id}" value="${game.teamA}" required>
-              <label for="g${game.id}_a">${game.teamA}</label>
-            </div>
-            <div class="team-option">
-              <input type="radio" id="g${game.id}_b" name="game_${game.id}" value="${game.teamB}">
-              <label for="g${game.id}_b">${game.teamB}</label>
-            </div>
+        const card = document.createElement("div");
+        card.className = "game-card";
+        card.id = `card_${game.id}`;
+
+        card.innerHTML = `
+          <div class="game-header-row">
+            <span class="game-title">GAME ${game.id}: ${game.teamA} VS ${game.teamB}</span>
+            <button type="button" class="btn-lock-toggle" id="lock_btn_${game.id}" onclick="toggleLock(${game.id})">
+              Lock of Week
+            </button>
+          </div>
+          <div class="pick-buttons-grid">
+            <button type="button" class="btn-pick" id="btn_${game.id}_A" onclick="selectTeam(${game.id}, '${game.teamA}')">
+              ${game.teamA}
+            </button>
+            <button type="button" class="btn-pick" id="btn_${game.id}_B" onclick="selectTeam(${game.id}, '${game.teamB}')">
+              ${game.teamB}
+            </button>
           </div>
         `;
-        container.appendChild(div);
+        container.appendChild(card);
       });
     }
 
-    // Handle Authentication Gate
-    document.getElementById("authBtn").addEventListener("click", () => {
-      const errorBox = document.getElementById("errorBox");
-      const hostSelect = document.getElementById("hostSelect");
-      const passcode = document.getElementById("hostPasscode").value.trim();
+    function selectTeam(gameId, teamName) {
+      hostPicks[gameId] = teamName;
+      const btnA = document.getElementById(`btn_${gameId}_A`);
+      const btnB = document.getElementById(`btn_${gameId}_B`);
 
-      errorBox.style.display = "none";
-
-      if (!hostSelect.value) {
-        errorBox.textContent = "Please select your host name.";
-        errorBox.style.display = "block";
-        return;
+      if (btnA.textContent.trim() === teamName) {
+        btnA.classList.add("selected");
+        btnB.classList.remove("selected");
+      } else {
+        btnB.classList.add("selected");
+        btnA.classList.remove("selected");
       }
+    }
 
-      if (btoa(passcode) !== _secToken) {
-        errorBox.textContent = "Incorrect access code. Access denied.";
-        errorBox.style.display = "block";
-        return;
+    function toggleLock(gameId) {
+      if (currentLockGameId === gameId) {
+        currentLockGameId = null;
+      } else {
+        currentLockGameId = gameId;
       }
+      refreshLockVisuals();
+    }
 
-      authenticatedHost = hostSelect.value;
-      document.getElementById("displayHostName").textContent = authenticatedHost;
-      document.getElementById("stepAuth").style.display = "none";
-      document.getElementById("hostPickForm").style.display = "block";
-      renderGames();
-    });
-
-    // Handle Host Pick Submission
-    document.getElementById("hostPickForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const submitBtn = document.getElementById("submitBtn");
-      const errorBox = document.getElementById("errorBox");
-
-      errorBox.style.display = "none";
-      submitBtn.disabled = true;
-      submitBtn.innerText = "Submitting Picks...";
-
-      const userPicks = {};
+    function refreshLockVisuals() {
       week1Games.forEach(game => {
-        const selected = document.querySelector(`input[name="game_${game.id}"]:checked`);
-        if (selected) {
-          userPicks[game.id] = selected.value;
+        const card = document.getElementById(`card_${game.id}`);
+        const lockBtn = document.getElementById(`lock_btn_${game.id}`);
+
+        if (currentLockGameId === game.id) {
+          card.classList.add("is-locked");
+          lockBtn.classList.add("active");
+          lockBtn.textContent = "★ Lock Selected";
+        } else {
+          card.classList.remove("is-locked");
+          lockBtn.classList.remove("active");
+          lockBtn.textContent = "Lock of Week";
         }
       });
+    }
+
+    function onHostSelectChange() {
+      hostPicks = {};
+      currentLockGameId = null;
+      document.querySelectorAll(".btn-pick").forEach(btn => btn.classList.remove("selected"));
+      document.getElementById("statusAlert").textContent = "";
+      refreshLockVisuals();
+      fetchHostData();
+    }
+
+    async function fetchHostData() {
+      const hostName = document.getElementById("hostSelect").value;
+      try {
+        const { data, error } = await supabaseClient
+          .from("picks")
+          .select("*")
+          .eq("week_number", 1)
+          .eq("user_name", hostName)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data && data.picks) {
+          const raw = typeof data.picks === 'object' ? data.picks : JSON.parse(data.picks);
+          hostPicks = { ...raw };
+
+          week1Games.forEach(g => {
+            const team = hostPicks[g.id] || hostPicks[String(g.id)];
+            if (team) {
+              selectTeam(g.id, team);
+            }
+          });
+
+          if (hostPicks.lock_game_id) {
+            currentLockGameId = parseInt(hostPicks.lock_game_id, 10);
+            refreshLockVisuals();
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching host data:", e);
+      }
+    }
+
+    async function saveHostSelections() {
+      const hostName = document.getElementById("hostSelect").value;
+      const statusAlert = document.getElementById("statusAlert");
+
+      const pickedKeys = Object.keys(hostPicks).filter(k => k !== 'lock_game_id');
+      if (pickedKeys.length < week1Games.length) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = "Please pick all 16 games before saving.";
+        return;
+      }
+
+      hostPicks.lock_game_id = currentLockGameId;
 
       try {
         const { error } = await supabaseClient
           .from("picks")
-          .upsert(
-            [
-              {
-                user_name: authenticatedHost,
-                week_number: 1,
-                picks: userPicks,
-                is_host: true
-              }
-            ],
-            { onConflict: "user_name,week_number" }
-          );
+          .upsert({
+            user_name: hostName,
+            week_number: 1,
+            is_host: true,
+            picks: hostPicks,
+            created_at: new Date().toISOString()
+          }, { onConflict: 'user_name,week_number' });
 
-        if (error) {
-          const { insertError } = await supabaseClient
-            .from("picks")
-            .insert([
-              {
-                user_name: authenticatedHost,
-                week_number: 1,
-                picks: userPicks,
-                is_host: true
-              }
-            ]);
-          if (insertError) throw insertError;
-        }
+        if (error) throw error;
 
-        window.location.href = "index.html";
+        statusAlert.style.color = "var(--success)";
+        statusAlert.textContent = `All 16 picks & Lock saved for ${hostName}!`;
       } catch (err) {
-        errorBox.textContent = "Submission failed: " + err.message;
-        errorBox.style.display = "block";
-        submitBtn.disabled = false;
-        submitBtn.innerText = "Submit Host Picks";
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = `Error: ${err.message}`;
       }
-    });
+    }
+
+    renderCards();
+    fetchHostData();
   </script>
 </body>
 </html>
