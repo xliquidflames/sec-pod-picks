@@ -396,38 +396,71 @@
     }
 
     async function saveHostSelections() {
-      const hostName = document.getElementById("hostSelect").value;
-      const statusAlert = document.getElementById("statusAlert");
+  const hostName = document.getElementById("hostSelect").value;
+  const statusAlert = document.getElementById("statusAlert");
 
-      const pickedKeys = Object.keys(hostPicks).filter(k => k !== 'lock_game_id');
-      if (pickedKeys.length < week1Games.length) {
-        statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = "Please pick all 16 games before saving.";
-        return;
-      }
+  const pickedKeys = Object.keys(hostPicks).filter(k => k !== 'lock_game_id');
+  if (pickedKeys.length < week1Games.length) {
+    statusAlert.style.color = "var(--danger)";
+    statusAlert.textContent = "Please pick all 16 games before saving.";
+    return;
+  }
 
-      hostPicks.lock_game_id = currentLockGameId;
+  hostPicks.lock_game_id = currentLockGameId;
 
-      try {
-        const { error } = await supabaseClient
-          .from("picks")
-          .upsert({
-            user_name: hostName,
-            week_number: 1,
-            is_host: true,
-            picks: hostPicks,
-            created_at: new Date().toISOString()
-          }, { onConflict: 'user_name,week_number' });
+  try {
+    statusAlert.style.color = "var(--text-muted)";
+    statusAlert.textContent = "Saving...";
 
-        if (error) throw error;
+    // 1. Check if this host already has an entry for Week 1
+    const { data: existing, error: checkError } = await supabaseClient
+      .from("picks")
+      .select("id")
+      .eq("week_number", 1)
+      .eq("user_name", hostName)
+      .maybeSingle();
 
-        statusAlert.style.color = "var(--success)";
-        statusAlert.textContent = `All 16 picks & Lock saved for ${hostName}!`;
-      } catch (err) {
-        statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = `Error: ${err.message}`;
-      }
+    if (checkError) throw checkError;
+
+    let saveError = null;
+
+    if (existing && existing.id) {
+      // 2. Update existing row
+      const { error } = await supabaseClient
+        .from("picks")
+        .update({
+          is_host: true,
+          picks: hostPicks,
+          created_at: new Date().toISOString()
+        })
+        .eq("id", existing.id);
+
+      saveError = error;
+    } else {
+      // 3. Insert new row
+      const { error } = await supabaseClient
+        .from("picks")
+        .insert({
+          user_name: hostName,
+          week_number: 1,
+          is_host: true,
+          picks: hostPicks,
+          created_at: new Date().toISOString()
+        });
+
+      saveError = error;
     }
+
+    if (saveError) throw saveError;
+
+    statusAlert.style.color = "var(--success)";
+    statusAlert.textContent = `All 16 picks & Lock saved successfully for ${hostName}!`;
+  } catch (err) {
+    statusAlert.style.color = "var(--danger)";
+    statusAlert.textContent = `Error: ${err.message}`;
+  }
+}
+
 
     renderCards();
     fetchHostData();
