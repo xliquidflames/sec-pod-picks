@@ -205,6 +205,50 @@
       margin-top: 0.15rem;
     }
 
+    /* Community Pulse 3-Card Grid */
+    .pulse-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .pulse-card {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.65rem 0.5rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .pulse-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .pulse-stat {
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: var(--accent-gold);
+      line-height: 1.2;
+    }
+
+    .pulse-desc {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     /* Expand / Collapse & Navigation Control Bars */
     .list-controls-bar {
       display: flex;
@@ -425,9 +469,28 @@
         <h2 class="section-title">The Cousins' Leaderboard</h2>
         <span class="entry-pill" id="entryPill">0 Entries</span>
       </div>
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
         Ranked by correct picks. Click any row to expand selections.
       </p>
+
+      <!-- Community Pulse Stat Cards -->
+      <div class="pulse-grid">
+        <div class="pulse-card">
+          <span class="pulse-label">SEC Loyalty</span>
+          <span class="pulse-stat" id="statSecSweep">--</span>
+          <span class="pulse-desc" id="statSecSweepDesc">Clean Sweeps</span>
+        </div>
+        <div class="pulse-card">
+          <span class="pulse-label">Top Upset</span>
+          <span class="pulse-stat" id="statTopUpset">--</span>
+          <span class="pulse-desc" id="statTopUpsetDesc">Popular Upset</span>
+        </div>
+        <div class="pulse-card">
+          <span class="pulse-label">Lock Pick</span>
+          <span class="pulse-stat" id="statLock">--</span>
+          <span class="pulse-desc" id="statLockDesc">100% Consensus</span>
+        </div>
+      </div>
 
       <!-- Top Controls -->
       <div class="list-controls-bar">
@@ -559,6 +622,96 @@
       `;
     }
 
+    function computeCommunityPulse(cousinRows) {
+      const totalEntries = cousinRows.length;
+      if (totalEntries === 0) return;
+
+      const nonSecTeams = [
+        "Eastern Carolina", "North Alabama", "Baylor", "Florida Atlantic",
+        "Tenn State", "Youngstown State", "Clemson", "Louisville",
+        "ULM", "Peanutbutter", "UTEP", "Kent State",
+        "Furman", "Texas State", "Missouri State", "Austin Peay"
+      ];
+
+      let secSweepCount = 0;
+      const nonSecCounts = {};
+      const gameTeamCounts = {};
+
+      week1Games.forEach(g => {
+        gameTeamCounts[g.id] = { [g.teamA]: 0, [g.teamB]: 0 };
+      });
+
+      cousinRows.forEach(row => {
+        const picks = row.picks || {};
+        let pickedNonSec = false;
+
+        week1Games.forEach(g => {
+          const userPick = picks[g.id];
+          if (userPick && gameTeamCounts[g.id] && gameTeamCounts[g.id][userPick] !== undefined) {
+            gameTeamCounts[g.id][userPick]++;
+          }
+
+          if (userPick && nonSecTeams.includes(userPick)) {
+            pickedNonSec = true;
+            nonSecCounts[userPick] = (nonSecCounts[userPick] || 0) + 1;
+          }
+        });
+
+        if (!pickedNonSec) {
+          secSweepCount++;
+        }
+      });
+
+      // 1. SEC Loyalty Stat
+      const sweepPct = Math.round((secSweepCount / totalEntries) * 100);
+      document.getElementById("statSecSweep").textContent = `${sweepPct}%`;
+      document.getElementById("statSecSweepDesc").textContent = `${secSweepCount} of ${totalEntries} Sweeps`;
+
+      // 2. Top Upset Stat
+      let topUpsetTeam = "None";
+      let topUpsetCount = 0;
+      for (const [team, count] of Object.entries(nonSecCounts)) {
+        if (count > topUpsetCount) {
+          topUpsetCount = count;
+          topUpsetTeam = team;
+        }
+      }
+
+      if (topUpsetCount > 0) {
+        document.getElementById("statTopUpset").textContent = topUpsetTeam;
+        document.getElementById("statTopUpsetDesc").textContent = `${topUpsetCount} Picks`;
+      } else {
+        document.getElementById("statTopUpset").textContent = "0";
+        document.getElementById("statTopUpsetDesc").textContent = "No Upsets Picked";
+      }
+
+      // 3. Consensus Lock Pick
+      let highestConsensusPct = 0;
+      let lockTeam = "Georgia";
+      week1Games.forEach(g => {
+        const countA = gameTeamCounts[g.id][g.teamA] || 0;
+        const countB = gameTeamCounts[g.id][g.teamB] || 0;
+        const totalGamePicks = countA + countB;
+
+        if (totalGamePicks > 0) {
+          const pctA = Math.round((countA / totalGamePicks) * 100);
+          const pctB = Math.round((countB / totalGamePicks) * 100);
+
+          if (pctA >= highestConsensusPct) {
+            highestConsensusPct = pctA;
+            lockTeam = g.teamA;
+          }
+          if (pctB >= highestConsensusPct) {
+            highestConsensusPct = pctB;
+            lockTeam = g.teamB;
+          }
+        }
+      });
+
+      document.getElementById("statLock").textContent = lockTeam;
+      document.getElementById("statLockDesc").textContent = `${highestConsensusPct}% Consensus`;
+    }
+
     async function loadDashboard() {
       const hostGridBody = document.getElementById("hostGridBody");
       const cousinsList = document.getElementById("cousinsList");
@@ -581,6 +734,9 @@
           const count = cousinRows.length;
           entryPill.textContent = `${count} ${count === 1 ? 'Entry' : 'Entries'}`;
         }
+
+        // Calculate and display dynamic 3-card pulse metrics
+        computeCommunityPulse(cousinRows);
 
         // Find hosts and calculate scores
         const hostMike = hostRows.find(h => h.user_name.toLowerCase() === "mike");
