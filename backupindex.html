@@ -40,24 +40,37 @@
       max-width: 750px;
     }
 
+    /* Centered Logo & Prominent Title Header */
     header {
       text-align: center;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
     }
 
-    h1 {
-      font-size: 1.8rem;
+    .logo-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .main-logo {
+      max-width: 190px;
+      width: 100%;
+      height: auto;
+      display: block;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+    }
+
+    .main-title-badge {
+      font-size: 1.35rem;
       color: var(--accent-gold);
-      letter-spacing: -0.5px;
-      margin-bottom: 0.25rem;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     }
 
-    .sub-header {
-      color: var(--text-muted);
-      font-size: 0.95rem;
-    }
-
-    /* CTA Button */
+    /* Tactile CTA Button */
     .btn-cta {
       display: flex;
       align-items: center;
@@ -146,26 +159,7 @@
       font-size: 0.85rem;
     }
 
-    /* PREVIEW CONTAINER */
-    .preview-box {
-      border: 2px dashed #475569;
-      padding: 1rem;
-      border-radius: 12px;
-      margin-bottom: 1.5rem;
-      background: rgba(15, 23, 42, 0.6);
-    }
-
-    .preview-label {
-      font-size: 0.8rem;
-      font-weight: 800;
-      color: var(--accent-gold);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 0.5rem;
-      display: block;
-    }
-
-    /* OPTION 1: Dropdown + Next/Prev */
+    /* Option 1: Dropdown Selector + Next/Prev Navigation */
     .week-selector-bar {
       display: flex;
       gap: 0.5rem;
@@ -204,80 +198,7 @@
       color: var(--accent-gold);
     }
 
-    /* OPTION 2: Compact Number Badges Grid (W1 - W14) */
-    .tabs-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 0.35rem;
-      margin-bottom: 1.25rem;
-    }
-
-    .tab-mini {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-      padding: 0.55rem 0.2rem;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .tab-mini.active {
-      background: var(--accent-gold);
-      color: #0f172a;
-      border-color: var(--accent-gold);
-      font-weight: 900;
-    }
-
-    /* OPTION 3: Scrollable Pill Carousel */
-    .tabs-wrapper {
-      display: flex;
-      gap: 0.45rem;
-      overflow-x: auto;
-      padding: 0.25rem 0 0.75rem;
-      margin-bottom: 0.5rem;
-      scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .tabs-wrapper::-webkit-scrollbar {
-      height: 6px;
-    }
-    .tabs-wrapper::-webkit-scrollbar-track {
-      background: #0f172a;
-    }
-    .tabs-wrapper::-webkit-scrollbar-thumb {
-      background: var(--border-color);
-      border-radius: 999px;
-    }
-    .tabs-wrapper::-webkit-scrollbar-thumb:hover {
-      background: var(--accent-gold);
-    }
-
-    .tab-btn {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-      padding: 0.6rem 1.1rem;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.15s ease;
-    }
-
-    .tab-btn.active {
-      background: var(--accent-gold);
-      color: #0f172a;
-      border-color: var(--accent-gold);
-      font-weight: 900;
-    }
-
-    /* Table Grid */
+    /* Host Picks Grid */
     .grid-wrapper {
       overflow-x: hidden;
       border-radius: 8px;
@@ -331,7 +252,7 @@
       font-weight: 600;
     }
 
-    /* Lock of Week Highlight */
+    /* Lock of the Week Styling */
     .host-lock-cell {
       background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(30, 41, 59, 0.95)) !important;
       box-shadow: inset 0 0 10px rgba(251, 191, 36, 0.25);
@@ -349,7 +270,7 @@
       vertical-align: middle;
     }
 
-    /* Pulse Stat Cards */
+    /* Community Pulse Stat Cards */
     .pulse-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -385,7 +306,7 @@
       margin-top: 0.2rem;
     }
 
-    /* Cousins Accordion */
+    /* Cousins Accordion List */
     .cousin-item {
       background: var(--bg-card-alt);
       border: 1px solid var(--border-color);
@@ -433,6 +354,10 @@
       padding: 0.2rem 0;
     }
 
+    .pick-correct { color: var(--success) !important; font-weight: 700; }
+    .pick-incorrect { color: var(--danger) !important; text-decoration: line-through; }
+    .pick-pending { color: var(--text-main); }
+
     .btn-ctrl {
       background: var(--bg-card-alt);
       color: var(--text-muted);
@@ -453,19 +378,26 @@
       padding: 0.2rem 0.5rem;
       border-radius: 999px;
     }
+    .section-divider {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+      margin: 2rem auto;
+      width: 85%;
+      opacity: 0.85;
+      border-radius: 999px;
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.45);
+    }
   </style>
 </head>
 <body>
 
   <div class="container" id="pageTop">
     <header>
-      <h1>THAT SEC PODCAST</h1>
-      <p class="sub-header">2026 Pick'em Headquarters</p>
+      <div class="logo-container">
+        <img src="logo.png" alt="That SEC Podcast" class="main-logo" />
+      </div>
+      <div class="main-title-badge">2026 Pick'em Headquarters</div>
     </header>
-
-    <a href="makepicks.html" class="btn-cta" id="ctaBtn">
-      <span>Submit Week 1 Picks &rarr;</span>
-    </a>
 
     <!-- Top Master Section: Season Cumulative Standings -->
     <div class="card">
@@ -489,8 +421,8 @@
         </div>
       </div>
 
-      <!-- Top 5 Overall Cousins -->
-      <div style="margin-top: 0.8rem;">
+     <!-- Top 5 Cousins (Auto-hidden until games finish) -->
+      <div id="top5Section" style="margin-top: 0.8rem; display: none;">
         <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
           Top 5 Cousins (Overall)
         </span>
@@ -499,69 +431,34 @@
         </div>
       </div>
     </div>
+    <!-- Gold Accent Divider -->
+    <div class="section-divider"></div>
 
-    <!-- PREVIEW BOX: ALL 3 NAVIGATION OPTIONS -->
-    <div class="preview-box">
-      <!-- Option 1 Preview -->
-      <span class="preview-label">Option 1: Dropdown + Prev/Next</span>
-      <div class="week-selector-bar">
-        <button type="button" class="btn-step" onclick="changeWeekOffset(-1)">&larr; Prev</button>
-        <select id="mainWeekSelect" class="week-dropdown" onchange="switchWeek(parseInt(this.value, 10))">
-          <option value="1">Week 1</option>
-          <option value="2">Week 2</option>
-          <option value="3">Week 3</option>
-          <option value="4">Week 4</option>
-          <option value="5">Week 5</option>
-          <option value="6">Week 6</option>
-          <option value="7">Week 7</option>
-          <option value="8">Week 8</option>
-          <option value="9">Week 9</option>
-          <option value="10">Week 10</option>
-          <option value="11">Week 11</option>
-          <option value="12">Week 12</option>
-          <option value="13">Week 13</option>
-          <option value="14">Week 14</option>
-        </select>
-        <button type="button" class="btn-step" onclick="changeWeekOffset(1)">Next &rarr;</button>
-      </div>
+    <!-- Main Dynamic CTA Button -->
+    <a href="makepicks.html" class="btn-cta" id="ctaBtn">
+      <span>Submit Week 1 Picks &rarr;</span>
+    </a>
 
-      <!-- Option 2 Preview -->
-      <span class="preview-label" style="margin-top: 1rem;">Option 2: 2-Row Compact Grid (W1 - W14)</span>
-      <div class="tabs-grid">
-        <button type="button" class="tab-mini active" onclick="switchWeek(1)">W1</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(2)">W2</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(3)">W3</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(4)">W4</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(5)">W5</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(6)">W6</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(7)">W7</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(8)">W8</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(9)">W9</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(10)">W10</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(11)">W11</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(12)">W12</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(13)">W13</button>
-        <button type="button" class="tab-mini" onclick="switchWeek(14)">W14</button>
-      </div>
-
-      <!-- Option 3 Preview -->
-      <span class="preview-label" style="margin-top: 1rem;">Option 3: Horizontal Scrollable Strip</span>
-      <div class="tabs-wrapper" id="tabsWrapper">
-        <button type="button" class="tab-btn active" onclick="switchWeek(1)">Week 1</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(2)">Week 2</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(3)">Week 3</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(4)">Week 4</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(5)">Week 5</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(6)">Week 6</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(7)">Week 7</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(8)">Week 8</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(9)">Week 9</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(10)">Week 10</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(11)">Week 11</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(12)">Week 12</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(13)">Week 13</button>
-        <button type="button" class="tab-btn" onclick="switchWeek(14)">Week 14</button>
-      </div>
+    <!-- Option 1: Dropdown Selector + Next/Prev Navigation -->
+    <div class="week-selector-bar">
+      <button type="button" class="btn-step" onclick="changeWeekOffset(-1)">&larr; Prev</button>
+      <select id="mainWeekSelect" class="week-dropdown" onchange="switchWeek(parseInt(this.value, 10))">
+        <option value="1">Week 1</option>
+        <option value="2">Week 2</option>
+        <option value="3">Week 3</option>
+        <option value="4">Week 4</option>
+        <option value="5">Week 5</option>
+        <option value="6">Week 6</option>
+        <option value="7">Week 7</option>
+        <option value="8">Week 8</option>
+        <option value="9">Week 9</option>
+        <option value="10">Week 10</option>
+        <option value="11">Week 11</option>
+        <option value="12">Week 12</option>
+        <option value="13">Week 13</option>
+        <option value="14">Week 14</option>
+      </select>
+      <button type="button" class="btn-step" onclick="changeWeekOffset(1)">Next &rarr;</button>
     </div>
 
     <!-- Active Week Content Container -->
@@ -589,7 +486,7 @@
       <!-- Section: Cousins Leaderboard -->
       <div class="card">
         <div class="section-title-bar">
-          <h2 class="section-title" id="weekCousinsTitle">The Cousins' Leaderboard</h2>
+          <h2 class="section-title" id="weekCousinsTitle">The Cousins' Leaderboard (Week 1)</h2>
           <span class="entry-pill" id="entryPill">0 Entries</span>
         </div>
 
@@ -767,16 +664,21 @@
       }
     }
 
-    function computeSeasonTotals() {
+function computeSeasonTotals() {
       let mikeW = 0, mikeL = 0;
       let shaneW = 0, shaneL = 0;
       let stevenW = 0, stevenL = 0;
 
       const cousinAgg = {};
+      let anyDecidedGames = false;
 
       allWeekRows.forEach(row => {
         const score = gradePicks(row.picks, row.week_number);
         const name = (row.user_name || "").toLowerCase();
+
+        if (score.correct > 0 || score.incorrect > 0) {
+          anyDecidedGames = true;
+        }
 
         if (row.is_host) {
           if (name === "mike") { mikeW += score.correct; mikeL += score.incorrect; }
@@ -795,9 +697,19 @@
       document.getElementById("seasonShane").textContent = `${shaneW}-${shaneL}`;
       document.getElementById("seasonSteven").textContent = `${stevenW}-${stevenL}`;
 
+      const top5Section = document.getElementById("top5Section");
+      const top5Container = document.getElementById("top5CousinsList");
+
+      // Hide section completely until at least one game has finished
+      if (!anyDecidedGames) {
+        if (top5Section) top5Section.style.display = "none";
+        return;
+      }
+
+      if (top5Section) top5Section.style.display = "block";
+
       const sortedCousins = Object.values(cousinAgg).sort((a, b) => b.correct - a.correct);
       const top5 = sortedCousins.slice(0, 5);
-      const top5Container = document.getElementById("top5CousinsList");
 
       if (top5.length === 0) {
         top5Container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 0.4rem 0;">No picks submitted yet.</div>`;
@@ -821,19 +733,8 @@
     async function switchWeek(weekNum) {
       activeWeek = weekNum;
 
-      // Sync Option 1 Dropdown
       const dropdown = document.getElementById("mainWeekSelect");
       if (dropdown) dropdown.value = weekNum;
-
-      // Sync Option 2 Mini Badges
-      document.querySelectorAll(".tab-mini").forEach((btn, i) => {
-        btn.classList.toggle("active", i + 1 === weekNum);
-      });
-
-      // Sync Option 3 Pill Carousel
-      document.querySelectorAll(".tab-btn").forEach((btn, i) => {
-        btn.classList.toggle("active", i + 1 === weekNum);
-      });
 
       document.getElementById("weekHostTitle").textContent = `Official Host Picks (Week ${weekNum})`;
       document.getElementById("weekCousinsTitle").textContent = `The Cousins' Leaderboard (Week ${weekNum})`;
