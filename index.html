@@ -497,7 +497,7 @@
       <div class="countdown-title" id="countdownTitle">SEC FOOTBALL RETURNS IN:</div>
       <div class="countdown-display" id="countdownTimer">--d --h --m --s</div>
       <div class="countdown-subtext" id="countdownSubtext">
-        Missouri hosts Arkansas Peanut Butter on Thursday 9/3 at 8pm on ESPN/SEC Network.
+        Missouri hosts Arkansas Peanut Butter (Pine Bluff) on Thursday 9/3 at 8pm on ESPN/SEC Network.
       </div>
     </div>
 
@@ -669,25 +669,6 @@
     const seasonKickoffTime = new Date("2026-09-03T20:00:00-04:00");
     let countdownInterval = null;
 
-    const week1Games = [
-      { id: 1, teamA: "Alabama", teamB: "Eastern Carolina", detail: "Tuscaloosa, AL" },
-      { id: 2, teamA: "Arkansas", teamB: "North Alabama", detail: "Fayetteville, AR" },
-      { id: 3, teamA: "Auburn", teamB: "Baylor", detail: "Auburn, AL" },
-      { id: 4, teamA: "Florida", teamB: "Florida Atlantic", detail: "Gainesville, FL" },
-      { id: 5, teamA: "Georgia", teamB: "Tenn State", detail: "Athens, GA" },
-      { id: 6, teamA: "Kentucky", teamB: "Youngstown State", detail: "Lexington, KY" },
-      { id: 7, teamA: "LSU", teamB: "Clemson", detail: "Baton Rouge, LA" },
-      { id: 8, teamA: "Ole Miss", teamB: "Louisville", detail: "Oxford, MS" },
-      { id: 9, teamA: "Miss State", teamB: "ULM", detail: "Starkville, MS" },
-      { id: 10, teamA: "Missouri", teamB: "Peanutbutter", detail: "Columbia, MO" },
-      { id: 11, teamA: "Oklahoma", teamB: "UTEP", detail: "Norman, OK" },
-      { id: 12, teamA: "South Carolina", teamB: "Kent State", detail: "Columbia, SC" },
-      { id: 13, teamA: "Tennessee", teamB: "Furman", detail: "Knoxville, TN" },
-      { id: 14, teamA: "Texas", teamB: "Texas State", detail: "Austin, TX" },
-      { id: 15, teamA: "Texas A&M", teamB: "Missouri State", detail: "College Station, TX" },
-      { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay", detail: "Nashville, TN" }
-    ];
-
     // Canonical SEC patterns for exact & fuzzy detection
     const secPatterns = [
       "alabama", "crimson tide", "arkansas", "razorbacks", "auburn", "tigers",
@@ -704,9 +685,22 @@
       return secPatterns.some(p => t === p || t.includes(p) || p.includes(t));
     }
 
+    function cleanTeamName(name) {
+      if (!name) return "";
+      const lower = name.toLowerCase().trim();
+      if (lower.includes("pine bluff") || lower === "uapb" || lower.includes("peanut")) {
+        return "Arkansas Peanut Butter (Pine Bluff)";
+      }
+      return name;
+    }
+
     function normalizeTeam(str) {
       if (!str) return "";
-      return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned === "uapb") {
+        return "arkansaspeanutbutterpinebluff";
+      }
+      return cleaned;
     }
 
     function updateCountdownDisplay() {
@@ -772,41 +766,6 @@
     }
 
     async function fetchEspnSchedule(week) {
-      if (week === 1) {
-        try {
-          const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=1&limit=100`;
-          const res = await fetch(url);
-          const data = await res.json();
-          if (data && data.events) {
-            if (!window.gameWinners[1]) window.gameWinners[1] = {};
-            
-            data.events.forEach(ev => {
-              const comp = ev.competitions[0];
-              const home = comp.competitors.find(c => c.homeAway === 'home');
-              const away = comp.competitors.find(c => c.homeAway === 'away');
-              const homeName = home.team.shortDisplayName || home.team.name;
-              const awayName = away.team.shortDisplayName || away.team.name;
-
-              const matchedGame = week1Games.find(g => 
-                (normalizeTeam(g.teamA).includes(normalizeTeam(homeName)) || normalizeTeam(homeName).includes(normalizeTeam(g.teamA))) ||
-                (normalizeTeam(g.teamB).includes(normalizeTeam(awayName)) || normalizeTeam(awayName).includes(normalizeTeam(g.teamB)))
-              );
-
-              if (matchedGame && comp.status && comp.status.type && comp.status.type.completed) {
-                const winnerComp = comp.competitors.find(c => c.winner === true);
-                if (winnerComp) {
-                  const winName = winnerComp.team.shortDisplayName || winnerComp.team.name;
-                  window.gameWinners[1][matchedGame.id] = normalizeTeam(winName).includes(normalizeTeam(matchedGame.teamA)) ? matchedGame.teamA : matchedGame.teamB;
-                }
-              }
-            });
-          }
-        } catch (e) {
-          console.log("ESPN sync note:", e);
-        }
-        return week1Games;
-      }
-
       try {
         const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
         const res = await fetch(url);
@@ -823,8 +782,8 @@
           const home = comp.competitors.find(c => c.homeAway === 'home');
           const away = comp.competitors.find(c => c.homeAway === 'away');
 
-          const homeName = home.team.shortDisplayName || home.team.name;
-          const awayName = away.team.shortDisplayName || away.team.name;
+          const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
+          const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
           let teamA = homeName;
           let teamB = awayName;
@@ -840,7 +799,7 @@
           if (isFinal) {
             const winnerComp = comp.competitors.find(c => c.winner === true);
             if (winnerComp) {
-              winnerName = winnerComp.team.shortDisplayName || winnerComp.team.name;
+              winnerName = cleanTeamName(winnerComp.team.shortDisplayName || winnerComp.team.name);
             }
           }
 

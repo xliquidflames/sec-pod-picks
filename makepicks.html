@@ -243,27 +243,17 @@
       "Oklahoma", "South Carolina", "Tennessee", "Texas", "Texas A&M", "Vanderbilt"
     ];
 
-    const week1Games = [
-      { id: 1, teamA: "Alabama", teamB: "Eastern Carolina", detail: "Tuscaloosa, AL" },
-      { id: 2, teamA: "Arkansas", teamB: "North Alabama", detail: "Fayetteville, AR" },
-      { id: 3, teamA: "Auburn", teamB: "Baylor", detail: "Auburn, AL" },
-      { id: 4, teamA: "Florida", teamB: "Florida Atlantic", detail: "Gainesville, FL" },
-      { id: 5, teamA: "Georgia", teamB: "Tenn State", detail: "Athens, GA" },
-      { id: 6, teamA: "Kentucky", teamB: "Youngstown State", detail: "Lexington, KY" },
-      { id: 7, teamA: "LSU", teamB: "Clemson", detail: "Baton Rouge, LA" },
-      { id: 8, teamA: "Ole Miss", teamB: "Louisville", detail: "Oxford, MS" },
-      { id: 9, teamA: "Miss State", teamB: "ULM", detail: "Starkville, MS" },
-      { id: 10, teamA: "Missouri", teamB: "Peanutbutter", detail: "Columbia, MO" },
-      { id: 11, teamA: "Oklahoma", teamB: "UTEP", detail: "Norman, OK" },
-      { id: 12, teamA: "South Carolina", teamB: "Kent State", detail: "Columbia, SC" },
-      { id: 13, teamA: "Tennessee", teamB: "Furman", detail: "Knoxville, TN" },
-      { id: 14, teamA: "Texas", teamB: "Texas State", detail: "Austin, TX" },
-      { id: 15, teamA: "Texas A&M", teamB: "Missouri State", detail: "College Station, TX" },
-      { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay", detail: "Nashville, TN" }
-    ];
-
     let currentSchedule = [];
     let userSelections = {};
+
+    function cleanTeamName(name) {
+      if (!name) return "";
+      const lower = name.toLowerCase().trim();
+      if (lower.includes("pine bluff") || lower === "uapb" || lower.includes("peanut")) {
+        return "Arkansas Peanut Butter (Pine Bluff)";
+      }
+      return name;
+    }
 
     function isSecTeam(teamName) {
       if (!teamName) return false;
@@ -319,8 +309,8 @@
           const home = comp.competitors.find(c => c.homeAway === "home");
           const away = comp.competitors.find(c => c.homeAway === "away");
 
-          const homeName = home.team.shortDisplayName || home.team.name;
-          const awayName = away.team.shortDisplayName || away.team.name;
+          const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
+          const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
           let teamA = homeName;
           let teamB = awayName;
@@ -367,12 +357,7 @@
       document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
       document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
 
-      if (targetWeek === 1) {
-        currentSchedule = week1Games;
-      } else {
-        currentSchedule = await fetchEspnSchedule(targetWeek);
-      }
-
+      currentSchedule = await fetchEspnSchedule(targetWeek);
       renderForm();
     }
 
