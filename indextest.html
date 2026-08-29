@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SEC Pod Pick'em - Leaderboard & Results</title>
+  <title>SEC Pod Pick'em - Season & Weekly Leaderboards</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -29,7 +29,7 @@
     body {
       background-color: var(--bg-main);
       color: var(--text-main);
-      padding: 2rem 1rem;
+      padding: 1.5rem 1rem;
       display: flex;
       justify-content: center;
       scroll-behavior: smooth;
@@ -42,16 +42,13 @@
 
     header {
       text-align: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .logo-container {
-      margin-bottom: 0.75rem;
+      margin-bottom: 1.25rem;
     }
 
     h1 {
       font-size: 1.8rem;
       color: var(--accent-gold);
+      letter-spacing: -0.5px;
       margin-bottom: 0.25rem;
     }
 
@@ -60,7 +57,7 @@
       font-size: 0.95rem;
     }
 
-    /* Tactile 3D CTA Button */
+    /* CTA Button */
     .btn-cta {
       display: flex;
       align-items: center;
@@ -68,40 +65,22 @@
       gap: 0.6rem;
       background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
       color: #0f172a;
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       font-weight: 900;
       text-align: center;
-      padding: 1.1rem 1.5rem;
+      padding: 1rem 1.25rem;
       border-radius: 12px;
       text-decoration: none;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       border: 1px solid #fde68a;
-      box-shadow: 0 4px 0 #b45309, 0 8px 20px rgba(251, 191, 36, 0.35);
-      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
-      margin-bottom: 1.75rem;
-      cursor: pointer;
+      box-shadow: 0 4px 0 #b45309, 0 8px 20px rgba(251, 191, 36, 0.3);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      margin-bottom: 1.5rem;
     }
 
     .btn-cta:hover {
       background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 0 #b45309, 0 12px 24px rgba(251, 191, 36, 0.45);
-    }
-
-    .btn-cta:active {
-      transform: translateY(3px);
-      box-shadow: 0 1px 0 #b45309, 0 4px 10px rgba(251, 191, 36, 0.3);
-    }
-
-    .btn-arrow {
-      font-size: 1.3rem;
-      line-height: 1;
-      transition: transform 0.15s ease;
-    }
-
-    .btn-cta:hover .btn-arrow {
-      transform: translateX(4px);
     }
 
     .card {
@@ -120,25 +99,88 @@
     }
 
     .section-title {
-      font-size: 1.2rem;
+      font-size: 1.15rem;
       color: var(--accent-gold);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      font-weight: 800;
     }
 
-    .entry-pill {
+    /* Season Overview Hosts Badges */
+    .host-season-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .host-season-card {
       background: var(--bg-card-alt);
       border: 1px solid var(--border-color);
-      color: var(--accent-gold);
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 0.25rem 0.6rem;
-      border-radius: 999px;
-      letter-spacing: 0.3px;
+      border-radius: 8px;
+      padding: 0.75rem 0.5rem;
+      text-align: center;
     }
 
-    /* Compact Host Grid */
+    .host-season-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 0.2rem;
+    }
+
+    .host-season-record {
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: var(--accent-gold);
+    }
+
+    /* Top 5 Cousins Mini-Leaderboard */
+    .top5-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0.75rem;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-bottom: 0.4rem;
+      font-size: 0.85rem;
+    }
+
+    /* Week Tabs Navigation */
+    .tabs-wrapper {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.25rem;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .tabs-wrapper::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.6rem 1.1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--accent-gold);
+      color: #0f172a;
+      border-color: var(--accent-gold);
+      font-weight: 900;
+    }
+
+    /* Table Grid */
     .grid-wrapper {
       overflow-x: hidden;
       border-radius: 8px;
@@ -164,70 +206,53 @@
       background: #1e293b;
       color: var(--accent-gold);
       font-weight: 700;
+      padding: 0.45rem 0.25rem;
+      font-size: 0.8rem;
     }
 
-    /* Matchup Column (~37% width) */
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
-      width: 37%;
+      width: 40%;
       text-align: left;
       padding: 0.45rem 0.4rem;
-      font-size: 0.78rem;
-      white-space: normal;
-      word-wrap: break-word;
+      font-size: 0.75rem;
     }
 
-    .host-grid-table td.matchup-cell {
+    .matchup-subdetail {
+      display: block;
+      font-size: 0.65rem;
       color: var(--text-muted);
-      font-weight: 500;
+      margin-top: 0.15rem;
+      font-weight: normal;
     }
 
-    /* Host Pick Columns (~21% width each) */
     .host-grid-table th:not(.matchup-header),
     .host-grid-table td.pick-cell {
-      width: 21%;
+      width: 20%;
       padding: 0.45rem 0.25rem;
-      font-size: 0.78rem;
-      white-space: normal;
-      word-break: break-word;
-      position: relative;
-    }
-
-    .host-grid-table td.pick-cell {
-      color: var(--text-main);
+      font-size: 0.75rem;
       font-weight: 600;
     }
 
-    /* Host Lock of the Week Styling */
+    /* Lock of Week Highlight */
     .host-lock-cell {
       background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(30, 41, 59, 0.95)) !important;
-      border: 1px solid #fbbf24 !important;
-      box-shadow: inset 0 0 8px rgba(251, 191, 36, 0.35);
+      box-shadow: inset 0 0 10px rgba(251, 191, 36, 0.25);
     }
 
     .lock-badge {
       display: inline-block;
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       font-weight: 900;
       color: #0f172a;
       background: #fbbf24;
-      padding: 0.1rem 0.35rem;
-      border-radius: 4px;
-      margin-left: 0.25rem;
+      padding: 0.05rem 0.25rem;
+      border-radius: 3px;
+      margin-left: 0.2rem;
       vertical-align: middle;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
     }
 
-    .host-record-badge {
-      display: block;
-      font-size: 0.75rem;
-      color: var(--text-main);
-      font-weight: 600;
-      margin-top: 0.15rem;
-    }
-
-    /* Community Pulse 3-Card Grid */
+    /* Pulse Stat Cards */
     .pulse-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -241,115 +266,61 @@
       border-radius: 8px;
       padding: 0.65rem 0.4rem;
       text-align: center;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
     }
 
     .pulse-label {
-      font-size: 0.68rem;
+      font-size: 0.65rem;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
       font-weight: 700;
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.2rem;
     }
 
     .pulse-stat {
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       font-weight: 900;
       color: var(--accent-gold);
-      line-height: 1.25;
-      word-break: normal;
     }
 
     .pulse-desc {
-      font-size: 0.68rem;
+      font-size: 0.65rem;
       color: var(--text-muted);
-      margin-top: 0.25rem;
-      line-height: 1.2;
+      margin-top: 0.2rem;
     }
 
-    /* Expand / Collapse & Navigation Control Bars */
-    .list-controls-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.75rem;
-      gap: 0.5rem;
-    }
-
-    .list-controls-bar.bottom-controls {
-      margin-top: 0.75rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .ctrl-group-left {
-      display: flex;
-      gap: 0.4rem;
-    }
-
-    .btn-ctrl {
-      background: var(--bg-card-alt);
-      color: var(--text-muted);
-      border: 1px solid var(--border-color);
-      padding: 0.35rem 0.65rem;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      white-space: nowrap;
-    }
-
-    .btn-ctrl:hover {
-      background: var(--border-color);
-      color: var(--text-main);
-      border-color: var(--accent-gold);
-    }
-
-    /* Cousins Accordion List */
+    /* Cousins Accordion */
     .cousin-item {
       background: var(--bg-card-alt);
       border: 1px solid var(--border-color);
       border-radius: 8px;
-      margin-bottom: 0.6rem;
+      margin-bottom: 0.5rem;
       overflow: hidden;
-      transition: all 0.2s ease;
     }
 
     .cousin-header {
-      padding: 0.9rem 1rem;
+      padding: 0.8rem 0.9rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
-      user-select: none;
-      transition: background 0.15s ease;
     }
 
-    .cousin-header:hover {
-      background: #1e293b;
-    }
-
-    .cousin-name {
-      font-weight: 700;
-      font-size: 1rem;
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: 800;
+      margin-right: 0.5rem;
+      background: var(--border-color);
       color: var(--text-main);
     }
 
-    .accordion-icon {
-      color: var(--accent-gold);
-      font-weight: bold;
-      font-size: 1.2rem;
-    }
-
     .cousin-picks-body {
-      padding: 0.75rem 1rem 1rem;
+      padding: 0.65rem 0.9rem 0.85rem;
       border-top: 1px solid var(--border-color);
       display: none;
     }
@@ -361,83 +332,33 @@
     .pick-line {
       display: flex;
       justify-content: space-between;
-      font-size: 0.85rem;
-      padding: 0.25rem 0;
-    }
-
-    .pick-matchup {
-      color: var(--text-muted);
-    }
-
-    .pick-team {
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .rank-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
       font-size: 0.8rem;
-      font-weight: 800;
-      margin-right: 0.6rem;
-      background: var(--border-color);
-      color: var(--text-main);
+      padding: 0.2rem 0;
     }
 
-    .user-record {
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: var(--accent-gold);
-      margin-left: 0.5rem;
-    }
+    .pick-correct { color: var(--success) !important; font-weight: 700; }
+    .pick-incorrect { color: var(--danger) !important; text-decoration: line-through; }
+    .pick-pending { color: var(--text-main); }
 
-    .podium-1 {
-      border: 1px solid #fbbf24 !important;
-      background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), var(--bg-card-alt)) !important;
-    }
-    .podium-1 .rank-badge {
-      background: #fbbf24;
-      color: #0f172a;
-    }
-
-    .podium-2 {
-      border: 1px solid #94a3b8 !important;
-      background: linear-gradient(135deg, rgba(148, 163, 184, 0.15), var(--bg-card-alt)) !important;
-    }
-    .podium-2 .rank-badge {
-      background: #94a3b8;
-      color: #0f172a;
-    }
-
-    .podium-3 {
-      border: 1px solid #d97706 !important;
-      background: linear-gradient(135deg, rgba(217, 119, 6, 0.15), var(--bg-card-alt)) !important;
-    }
-    .podium-3 .rank-badge {
-      background: #d97706;
-      color: #0f172a;
-    }
-
-    .pick-correct {
-      color: var(--success) !important;
-      font-weight: 700;
-    }
-    .pick-incorrect {
-      color: var(--danger) !important;
-      text-decoration: line-through;
-    }
-    .pick-pending {
-      color: var(--text-main);
-    }
-
-    .empty-state {
-      text-align: center;
+    .btn-ctrl {
+      background: var(--bg-card-alt);
       color: var(--text-muted);
-      padding: 1.5rem 0;
+      border: 1px solid var(--border-color);
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .entry-pill {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      color: var(--accent-gold);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
     }
   </style>
 </head>
@@ -445,90 +366,116 @@
 
   <div class="container" id="pageTop">
     <header>
-      <div class="logo-container">
-        <h1 style="letter-spacing: -0.5px;">THAT SEC PODCAST</h1>
-      </div>
-      <p class="sub-header">Week 1 Leaderboard & Results</p>
+      <h1>THAT SEC PODCAST</h1>
+      <p class="sub-header">2026 Pick'em Headquarters</p>
     </header>
 
-    <!-- Prominent CTA Button -->
-    <a href="makepicks.html" class="btn-cta">
-      <span>Click Here To Submit Your Week 1 Picks</span>
-      <span class="btn-arrow">&rarr;</span>
+    <a href="makepicks.html" class="btn-cta" id="ctaBtn">
+      <span>Submit Week 1 Picks &rarr;</span>
     </a>
 
-    <!-- Section 1: Official Host Head-to-Head Spreadsheet Grid -->
+    <!-- Top Master Section: Season Cumulative Standings -->
     <div class="card">
-      <h2 class="section-title" style="margin-bottom: 1rem;">Official Host Picks</h2>
-      <div class="grid-wrapper">
-        <table class="host-grid-table" id="hostTable">
-          <thead>
-            <tr>
-              <th class="matchup-header">Matchup</th>
-              <th id="thMike">Mike</th>
-              <th id="thShane">Shane</th>
-              <th id="thSteven">Steven</th>
-            </tr>
-          </thead>
-          <tbody id="hostGridBody">
-            <tr>
-              <td colspan="4" class="empty-state">Loading host picks...</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="section-title-bar">
+        <h2 class="section-title">Season Standings Overview</h2>
+      </div>
+
+      <!-- Hosts Cumulative Records -->
+      <div class="host-season-strip">
+        <div class="host-season-card">
+          <div class="host-season-name">Mike</div>
+          <div class="host-season-record" id="seasonMike">0-0</div>
+        </div>
+        <div class="host-season-card">
+          <div class="host-season-name">Shane</div>
+          <div class="host-season-record" id="seasonShane">0-0</div>
+        </div>
+        <div class="host-season-card">
+          <div class="host-season-name">Steven</div>
+          <div class="host-season-record" id="seasonSteven">0-0</div>
+        </div>
+      </div>
+
+      <!-- Top 5 Overall Cousins -->
+      <div style="margin-top: 0.8rem;">
+        <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
+          Top 5 Cousins (Overall)
+        </span>
+        <div id="top5CousinsList">
+          <div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 0.5rem 0;">Loading season standings...</div>
+        </div>
       </div>
     </div>
 
-    <!-- Section 2: Cousins Leaderboard -->
-    <div class="card">
-      <div class="section-title-bar">
-        <h2 class="section-title">The Cousins' Leaderboard</h2>
-        <span class="entry-pill" id="entryPill">0 Entries</span>
+    <!-- Tab Strip (Week 1 through Week 14) -->
+    <div class="tabs-wrapper" id="tabsWrapper">
+      <button type="button" class="tab-btn active" onclick="switchWeek(1)">Week 1</button>
+      <button type="button" class="tab-btn" onclick="switchWeek(2)">Week 2</button>
+      <button type="button" class="tab-btn" onclick="switchWeek(3)">Week 3</button>
+      <button type="button" class="tab-btn" onclick="switchWeek(4)">Week 4</button>
+    </div>
+
+    <!-- Active Week Content Container -->
+    <div id="weekContent">
+      <!-- Section: Official Host Picks -->
+      <div class="card">
+        <h2 class="section-title" id="weekHostTitle" style="margin-bottom: 0.8rem;">Official Host Picks (Week 1)</h2>
+        <div class="grid-wrapper">
+          <table class="host-grid-table">
+            <thead>
+              <tr>
+                <th class="matchup-header">Matchup</th>
+                <th id="thMike">Mike</th>
+                <th id="thShane">Shane</th>
+                <th id="thSteven">Steven</th>
+              </tr>
+            </thead>
+            <tbody id="hostGridBody">
+              <tr><td colspan="4" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <!-- Community Pulse Stat Cards -->
-      <div class="pulse-grid">
-        <div class="pulse-card">
-          <span class="pulse-label">SEC Loyalty</span>
-          <span class="pulse-stat" id="statSecSweep">--</span>
-          <span class="pulse-desc" id="statSecSweepDesc">Clean Sweeps</span>
+      <!-- Section: Cousins Leaderboard -->
+      <div class="card">
+        <div class="section-title-bar">
+          <h2 class="section-title" id="weekCousinsTitle">The Cousins' Leaderboard</h2>
+          <span class="entry-pill" id="entryPill">0 Entries</span>
         </div>
-        <div class="pulse-card">
-          <span class="pulse-label">Top Upset</span>
-          <span class="pulse-stat" id="statTopUpset">--</span>
-          <span class="pulse-desc" id="statTopUpsetDesc">Popular Upset</span>
-        </div>
-        <div class="pulse-card">
-          <span class="pulse-label">Lock Pick</span>
-          <span class="pulse-stat" id="statLock">--</span>
-          <span class="pulse-desc" id="statLockDesc">100% Consensus</span>
-        </div>
-      </div>
 
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
-        Ranked by correct picks. Click any row to expand selections.
-      </p>
-
-      <!-- Top Controls -->
-      <div class="list-controls-bar">
-        <div class="ctrl-group-left">
-          <button type="button" class="btn-ctrl" onclick="toggleAllCards(true)">Expand All</button>
-          <button type="button" class="btn-ctrl" onclick="toggleAllCards(false)">Collapse All</button>
+        <div class="pulse-grid">
+          <div class="pulse-card">
+            <div class="pulse-label">SEC Loyalty</div>
+            <div class="pulse-stat" id="statSecSweep">--</div>
+            <div class="pulse-desc" id="statSecSweepDesc">Clean Sweeps</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-label">Top Upset</div>
+            <div class="pulse-stat" id="statTopUpset">--</div>
+            <div class="pulse-desc" id="statTopUpsetDesc">Popular Upset</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-label">Lock Pick</div>
+            <div class="pulse-stat" id="statLock">--</div>
+            <div class="pulse-desc" id="statLockDesc">100% Consensus</div>
+          </div>
         </div>
-        <button type="button" class="btn-ctrl" onclick="scrollToElement('pageBottom')">To Bottom &darr;</button>
-      </div>
 
-      <div id="cousinsList">
-        <div class="empty-state">Loading community picks...</div>
-      </div>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.8rem;">
+          Ranked by correct picks. Click any row to expand selections.
+        </p>
 
-      <!-- Bottom Controls -->
-      <div class="list-controls-bar bottom-controls" id="pageBottom">
-        <div class="ctrl-group-left">
-          <button type="button" class="btn-ctrl" onclick="toggleAllCards(true)">Expand All</button>
-          <button type="button" class="btn-ctrl" onclick="toggleAllCards(false)">Collapse All</button>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+          <div style="display: flex; gap: 0.4rem;">
+            <button type="button" class="btn-ctrl" onclick="toggleAllCards(true)">Expand All</button>
+            <button type="button" class="btn-ctrl" onclick="toggleAllCards(false)">Collapse All</button>
+          </div>
         </div>
-        <button type="button" class="btn-ctrl" onclick="scrollToElement('pageTop')">To Top &uarr;</button>
+
+        <div id="cousinsList">
+          <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">Loading community picks...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -538,408 +485,264 @@
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    let activeWeek = 1;
+    let allWeekRows = [];
+
+    // Week 1 Static Schedule
     const week1Games = [
-      { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
-      { id: 2, teamA: "Arkansas", teamB: "North Alabama" },
-      { id: 3, teamA: "Auburn", teamB: "Baylor" },
-      { id: 4, teamA: "Florida", teamB: "Florida Atlantic" },
-      { id: 5, teamA: "Georgia", teamB: "Tenn State" },
-      { id: 6, teamA: "Kentucky", teamB: "Youngstown State" },
-      { id: 7, teamA: "LSU", teamB: "Clemson" },
-      { id: 8, teamA: "Ole Miss", teamB: "Louisville" },
-      { id: 9, teamA: "Miss State", teamB: "ULM" },
-      { id: 10, teamA: "Missouri", teamB: "Peanutbutter" },
-      { id: 11, teamA: "Oklahoma", teamB: "UTEP" },
-      { id: 12, teamA: "South Carolina", teamB: "Kent State" },
-      { id: 13, teamA: "Tennessee", teamB: "Furman" },
-      { id: 14, teamA: "Texas", teamB: "Texas State" },
-      { id: 15, teamA: "Texas A&M", teamB: "Missouri State" },
-      { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
+      { id: 1, teamA: "Alabama", teamB: "Eastern Carolina", detail: "Tuscaloosa, AL" },
+      { id: 2, teamA: "Arkansas", teamB: "North Alabama", detail: "Fayetteville, AR" },
+      { id: 3, teamA: "Auburn", teamB: "Baylor", detail: "Auburn, AL" },
+      { id: 4, teamA: "Florida", teamB: "Florida Atlantic", detail: "Gainesville, FL" },
+      { id: 5, teamA: "Georgia", teamB: "Tenn State", detail: "Athens, GA" },
+      { id: 6, teamA: "Kentucky", teamB: "Youngstown State", detail: "Lexington, KY" },
+      { id: 7, teamA: "LSU", teamB: "Clemson", detail: "Baton Rouge, LA" },
+      { id: 8, teamA: "Ole Miss", teamB: "Louisville", detail: "Oxford, MS" },
+      { id: 9, teamA: "Miss State", teamB: "ULM", detail: "Starkville, MS" },
+      { id: 10, teamA: "Missouri", teamB: "Peanutbutter", detail: "Columbia, MO" },
+      { id: 11, teamA: "Oklahoma", teamB: "UTEP", detail: "Norman, OK" },
+      { id: 12, teamA: "South Carolina", teamB: "Kent State", detail: "Columbia, SC" },
+      { id: 13, teamA: "Tennessee", teamB: "Furman", detail: "Knoxville, TN" },
+      { id: 14, teamA: "Texas", teamB: "Texas State", detail: "Austin, TX" },
+      { id: 15, teamA: "Texas A&M", teamB: "Missouri State", detail: "College Station, TX" },
+      { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay", detail: "Nashville, TN" }
     ];
 
     window.gameWinners = {
-      1: null,
-      2: null,
-      3: null,
-      4: null,
-      5: null,
-      6: null,
-      7: null,
-      8: null,
-      9: null,
-      10: null,
-      11: null,
-      12: null,
-      13: null,
-      14: null,
-      15: null,
-      16: null
+      1: { 1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null, 8: null, 9: null, 10: null, 11: null, 12: null, 13: null, 14: null, 15: null, 16: null },
+      2: {}
     };
+
+    const secTeamsList = [
+      "Alabama", "Arkansas", "Auburn", "Florida", "Georgia", "Kentucky",
+      "LSU", "Ole Miss", "Miss State", "Missouri", "Oklahoma",
+      "South Carolina", "Tennessee", "Texas", "Texas A&M", "Vanderbilt"
+    ];
+
+    // Automated ESPN Schedule Importer for Week 2+
+    async function fetchEspnSecSchedule(weekNum) {
+      try {
+        const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&week=${weekNum}`);
+        const data = await res.json();
+        const games = [];
+
+        data.events.forEach((ev, idx) => {
+          const comp = ev.competitions[0];
+          const home = comp.competitors.find(c => c.homeAway === 'home');
+          const away = comp.competitors.find(c => c.homeAway === 'away');
+          const odds = comp.odds ? comp.odds[0]?.details : 'Even';
+          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
+          const time = new Date(comp.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+          games.push({
+            id: idx + 1,
+            teamA: home.team.shortDisplayName || home.team.name,
+            teamB: away.team.shortDisplayName || away.team.name,
+            detail: `${time} | ${odds} | ${venue}`
+          });
+        });
+
+        // Alphabetize by SEC team
+        games.sort((a, b) => a.teamA.localeCompare(b.teamA));
+        return games;
+      } catch (err) {
+        console.warn("ESPN auto-import failed, falling back.", err);
+        return [];
+      }
+    }
 
     function parseUserPicks(rawPicks) {
       if (!rawPicks) return {};
       if (typeof rawPicks === 'object') return rawPicks;
-      try {
-        return JSON.parse(rawPicks);
-      } catch (e) {
-        return {};
-      }
+      try { return JSON.parse(rawPicks); } catch (e) { return {}; }
     }
 
-    function gradePicks(rawPicks) {
+    function gradePicks(rawPicks, week) {
       const picks = parseUserPicks(rawPicks);
-      let correct = 0;
-      let incorrect = 0;
-      let pending = 0;
+      const winners = window.gameWinners[week] || {};
+      let correct = 0, incorrect = 0, pending = 0;
 
-      week1Games.forEach(game => {
-        const winner = window.gameWinners[game.id];
-        const userPick = picks ? (picks[game.id] || picks[String(game.id)]) : null;
-
-        if (!winner) {
-          pending++;
-        } else if (userPick === winner) {
-          correct++;
-        } else {
-          incorrect++;
-        }
+      Object.keys(winners).forEach(id => {
+        const winner = winners[id];
+        const userPick = picks[id] || picks[String(id)];
+        if (!winner) pending++;
+        else if (userPick === winner) correct++;
+        else incorrect++;
       });
 
       return { correct, incorrect, pending };
     }
 
-    function renderCellContent(gameId, userPick, isLock = false) {
-      const winner = window.gameWinners[gameId];
-      const lockBadge = isLock ? `<span class="lock-badge">LOCK</span>` : '';
-
-      if (!userPick || userPick === "-") {
-        return `<span class="pick-pending">-</span>`;
-      }
-
-      if (!winner) {
-        return `<span class="pick-pending">${userPick}${lockBadge}</span>`;
-      }
-
-      if (userPick === winner) {
-        return `<span class="pick-correct">${userPick} ✓${lockBadge}</span>`;
-      } else {
-        return `<span class="pick-incorrect">${userPick} ✗${lockBadge}</span>`;
-      }
-    }
-
-    function renderPickLine(game, userPick) {
-      const winner = window.gameWinners[game.id];
-      let statusClass = "pick-pending";
-      let statusText = "";
-
-      if (winner) {
-        if (userPick === winner) {
-          statusClass = "pick-correct";
-          statusText = " ✓";
-        } else {
-          statusClass = "pick-incorrect";
-          statusText = ` ✗ (Winner: ${winner})`;
-        }
-      }
-
-      return `
-        <div class="pick-line">
-          <span class="pick-matchup">${game.teamA} vs ${game.teamB}</span>
-          <span class="pick-team ${statusClass}">${userPick || "No Pick"}${statusText}</span>
-        </div>
-      `;
-    }
-
-    function computeCommunityPulse(cousinRows) {
-      try {
-        const totalEntries = cousinRows.length;
-        if (totalEntries === 0) return;
-
-        const nonSecTeams = [
-          "Eastern Carolina", "North Alabama", "Baylor", "Florida Atlantic",
-          "Tenn State", "Youngstown State", "Clemson", "Louisville",
-          "ULM", "Peanutbutter", "UTEP", "Kent State",
-          "Furman", "Texas State", "Missouri State", "Austin Peay"
-        ];
-
-        let secSweepCount = 0;
-        const nonSecCounts = {};
-        const gameTeamCounts = {};
-
-        week1Games.forEach(g => {
-          gameTeamCounts[g.id] = { [g.teamA]: 0, [g.teamB]: 0 };
-        });
-
-        cousinRows.forEach(row => {
-          const picks = parseUserPicks(row.picks);
-          let pickedNonSec = false;
-
-          week1Games.forEach(g => {
-            const userPick = picks[g.id] || picks[String(g.id)];
-            if (userPick && gameTeamCounts[g.id] && gameTeamCounts[g.id][userPick] !== undefined) {
-              gameTeamCounts[g.id][userPick]++;
-            }
-
-            if (userPick && nonSecTeams.includes(userPick)) {
-              pickedNonSec = true;
-              if (!nonSecCounts[userPick]) {
-                const opponent = (userPick === g.teamA) ? g.teamB : g.teamA;
-                nonSecCounts[userPick] = { count: 0, opponent: opponent };
-              }
-              nonSecCounts[userPick].count++;
-            }
-          });
-
-          if (!pickedNonSec) {
-            secSweepCount++;
-          }
-        });
-
-        // 1. SEC Loyalty Stat
-        const sweepPct = Math.round((secSweepCount / totalEntries) * 100);
-        const statSecSweepEl = document.getElementById("statSecSweep");
-        const statSecSweepDescEl = document.getElementById("statSecSweepDesc");
-        if (statSecSweepEl) statSecSweepEl.textContent = `${sweepPct}%`;
-        if (statSecSweepDescEl) statSecSweepDescEl.textContent = `${secSweepCount} of ${totalEntries} Sweeps`;
-
-        // 2. Top Upset Stat
-        let topUpsetTeam = "None";
-        let topUpsetCount = 0;
-        let topUpsetOpponent = "";
-        for (const [team, data] of Object.entries(nonSecCounts)) {
-          if (data.count > topUpsetCount) {
-            topUpsetCount = data.count;
-            topUpsetTeam = team;
-            topUpsetOpponent = data.opponent;
-          }
-        }
-
-        const statTopUpsetEl = document.getElementById("statTopUpset");
-        const statTopUpsetDescEl = document.getElementById("statTopUpsetDesc");
-        if (statTopUpsetEl) {
-          statTopUpsetEl.textContent = topUpsetCount > 0 ? `${topUpsetTeam} over ${topUpsetOpponent}` : "None";
-        }
-        if (statTopUpsetDescEl) {
-          statTopUpsetDescEl.textContent = topUpsetCount > 0 ? `${topUpsetCount} Picks` : "No Upsets Picked";
-        }
-
-        // 3. Consensus Lock Pick
-        let highestConsensusPct = 0;
-        let lockTeam = "Georgia";
-        let lockOpponent = "Tenn State";
-
-        week1Games.forEach(g => {
-          const countA = (gameTeamCounts[g.id] && gameTeamCounts[g.id][g.teamA]) ? gameTeamCounts[g.id][g.teamA] : 0;
-          const countB = (gameTeamCounts[g.id] && gameTeamCounts[g.id][g.teamB]) ? gameTeamCounts[g.id][g.teamB] : 0;
-          const totalGamePicks = countA + countB;
-
-          if (totalGamePicks > 0) {
-            const pctA = Math.round((countA / totalGamePicks) * 100);
-            const pctB = Math.round((countB / totalGamePicks) * 100);
-
-            if (pctA >= highestConsensusPct) {
-              highestConsensusPct = pctA;
-              lockTeam = g.teamA;
-              lockOpponent = g.teamB;
-            }
-            if (pctB >= highestConsensusPct) {
-              highestConsensusPct = pctB;
-              lockTeam = g.teamB;
-              lockOpponent = g.teamA;
-            }
-          }
-        });
-
-        const statLockEl = document.getElementById("statLock");
-        const statLockDescEl = document.getElementById("statLockDesc");
-        if (statLockEl) statLockEl.textContent = `${lockTeam} over ${lockOpponent}`;
-        if (statLockDescEl) statLockDescEl.textContent = `${highestConsensusPct}% Consensus`;
-      } catch (e) {
-        console.error("Pulse stat computation error:", e);
-      }
-    }
-
-    async function loadDashboard() {
-      const hostGridBody = document.getElementById("hostGridBody");
-      const cousinsList = document.getElementById("cousinsList");
-      const entryPill = document.getElementById("entryPill");
-
+    async function loadAllSeasonData() {
       try {
         const { data: rows, error } = await supabaseClient
           .from("picks")
           .select("*")
-          .eq("week_number", 1)
           .order("created_at", { ascending: true });
 
         if (error) throw error;
+        allWeekRows = rows || [];
 
-        const hostRows = rows.filter(r => r.is_host === true);
-        const cousinRows = rows.filter(r => r.is_host === false);
-
-        if (entryPill) {
-          const count = cousinRows.length;
-          entryPill.textContent = `${count} ${count === 1 ? 'Entry' : 'Entries'}`;
-        }
-
-        computeCommunityPulse(cousinRows);
-
-        const hostMike = hostRows.find(h => h.user_name && h.user_name.toLowerCase() === "mike");
-        const hostShane = hostRows.find(h => h.user_name && h.user_name.toLowerCase() === "shane");
-        const hostSteven = hostRows.find(h => h.user_name && h.user_name.toLowerCase() === "steven");
-
-        const mikeScore = hostMike ? gradePicks(hostMike.picks) : { correct: 0, incorrect: 0 };
-        const shaneScore = hostShane ? gradePicks(hostShane.picks) : { correct: 0, incorrect: 0 };
-        const stevenScore = hostSteven ? gradePicks(hostSteven.picks) : { correct: 0, incorrect: 0 };
-
-        const thMike = document.getElementById("thMike");
-        const thShane = document.getElementById("thShane");
-        const thSteven = document.getElementById("thSteven");
-        if (thMike) thMike.innerHTML = `Mike <span class="host-record-badge">(${mikeScore.correct}-${mikeScore.incorrect})</span>`;
-        if (thShane) thShane.innerHTML = `Shane <span class="host-record-badge">(${shaneScore.correct}-${shaneScore.incorrect})</span>`;
-        if (thSteven) thSteven.innerHTML = `Steven <span class="host-record-badge">(${stevenScore.correct}-${stevenScore.incorrect})</span>`;
-
-        if (hostGridBody) {
-          hostGridBody.innerHTML = "";
-          const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
-          const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
-          const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
-
-          // Extract lock_game_id for each host
-          const mikeLockId = mikePicks.lock_game_id ? parseInt(mikePicks.lock_game_id, 10) : null;
-          const shaneLockId = shanePicks.lock_game_id ? parseInt(shanePicks.lock_game_id, 10) : null;
-          const stevenLockId = stevenPicks.lock_game_id ? parseInt(stevenPicks.lock_game_id, 10) : null;
-
-          week1Games.forEach(game => {
-            const tr = document.createElement("tr");
-            const pickMike = mikePicks[game.id] || mikePicks[String(game.id)] || "-";
-            const pickShane = shanePicks[game.id] || shanePicks[String(game.id)] || "-";
-            const pickSteven = stevenPicks[game.id] || stevenPicks[String(game.id)] || "-";
-
-            const isMikeLock = mikeLockId === game.id;
-            const isShaneLock = shaneLockId === game.id;
-            const isStevenLock = stevenLockId === game.id;
-
-            tr.innerHTML = `
-              <td class="matchup-cell">${game.teamA} vs ${game.teamB}</td>
-              <td class="pick-cell ${isMikeLock ? 'host-lock-cell' : ''}">${renderCellContent(game.id, pickMike, isMikeLock)}</td>
-              <td class="pick-cell ${isShaneLock ? 'host-lock-cell' : ''}">${renderCellContent(game.id, pickShane, isShaneLock)}</td>
-              <td class="pick-cell ${isStevenLock ? 'host-lock-cell' : ''}">${renderCellContent(game.id, pickSteven, isStevenLock)}</td>
-            `;
-            hostGridBody.appendChild(tr);
-          });
-        }
-
-        cousinRows.forEach(c => {
-          c.score = gradePicks(c.picks);
-        });
-
-        cousinRows.sort((a, b) => {
-          if (b.score.correct !== a.score.correct) {
-            return b.score.correct - a.score.correct;
-          }
-          return (a.user_name || "").localeCompare(b.user_name || "");
-        });
-
-        let currentRank = 1;
-        cousinRows.forEach((cousin, i) => {
-          if (i > 0 && cousin.score.correct < cousinRows[i - 1].score.correct) {
-            currentRank = i + 1;
-          }
-          cousin.rank = currentRank;
-        });
-
-        const gamesFinished = Object.values(window.gameWinners).some(w => w !== null);
-
-        if (cousinsList) {
-          if (cousinRows.length === 0) {
-            cousinsList.innerHTML = `<div class="empty-state">No cousin picks submitted yet. Be the first!</div>`;
-          } else {
-            cousinsList.innerHTML = "";
-            cousinRows.forEach(cousin => {
-              const item = document.createElement("div");
-
-              let podiumClass = "";
-              if (gamesFinished && cousin.rank <= 3) {
-                podiumClass = `podium-${cousin.rank}`;
-              }
-
-              item.className = `cousin-item ${podiumClass}`;
-
-              const cousinPicks = parseUserPicks(cousin.picks);
-              let picksHtml = "";
-              week1Games.forEach(game => {
-                const pick = cousinPicks[game.id] || cousinPicks[String(game.id)];
-                picksHtml += renderPickLine(game, pick);
-              });
-
-              item.innerHTML = `
-                <div class="cousin-header" onclick="toggleAccordion(this)">
-                  <div style="display: flex; align-items: center;">
-                    <span class="rank-badge">${cousin.rank}</span>
-                    <span class="cousin-name">${cousin.user_name}</span>
-                    <span class="user-record">(${cousin.score.correct}-${cousin.score.incorrect})</span>
-                  </div>
-                  <span class="accordion-icon">+</span>
-                </div>
-                <div class="cousin-picks-body">
-                  ${picksHtml}
-                </div>
-              `;
-              cousinsList.appendChild(item);
-            });
-          }
-        }
-
+        computeSeasonTotals();
+        renderActiveWeek();
       } catch (err) {
-        console.error("Dashboard error:", err);
-        if (hostGridBody) {
-          hostGridBody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color: var(--danger)">Error: ${err.message}</td></tr>`;
-        }
-        if (cousinsList) {
-          cousinsList.innerHTML = `<div class="empty-state" style="color: var(--danger)">Failed to load community picks.</div>`;
-        }
+        console.error("Season load error:", err);
       }
     }
 
-    function toggleAccordion(headerEl) {
-      const body = headerEl.nextElementSibling;
-      const icon = headerEl.querySelector(".accordion-icon");
-      const isOpen = body.classList.contains("open");
+    function computeSeasonTotals() {
+      let mikeW = 0, mikeL = 0;
+      let shaneW = 0, shaneL = 0;
+      let stevenW = 0, stevenL = 0;
 
-      if (isOpen) {
-        body.classList.remove("open");
-        icon.textContent = "+";
+      const cousinAgg = {};
+
+      allWeekRows.forEach(row => {
+        const score = gradePicks(row.picks, row.week_number);
+        const name = (row.user_name || "").toLowerCase();
+
+        if (row.is_host) {
+          if (name === "mike") { mikeW += score.correct; mikeL += score.incorrect; }
+          if (name === "shane") { shaneW += score.correct; shaneL += score.incorrect; }
+          if (name === "steven") { stevenW += score.correct; stevenL += score.incorrect; }
+        } else {
+          if (!cousinAgg[row.user_name]) {
+            cousinAgg[row.user_name] = { user_name: row.user_name, correct: 0, incorrect: 0 };
+          }
+          cousinAgg[row.user_name].correct += score.correct;
+          cousinAgg[row.user_name].incorrect += score.incorrect;
+        }
+      });
+
+      document.getElementById("seasonMike").textContent = `${mikeW}-${mikeL}`;
+      document.getElementById("seasonShane").textContent = `${shaneW}-${shaneL}`;
+      document.getElementById("seasonSteven").textContent = `${stevenW}-${stevenL}`;
+
+      const sortedCousins = Object.values(cousinAgg).sort((a, b) => b.correct - a.correct);
+      const top5 = sortedCousins.slice(0, 5);
+      const top5Container = document.getElementById("top5CousinsList");
+
+      if (top5.length === 0) {
+        top5Container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 0.4rem 0;">No picks submitted yet.</div>`;
       } else {
-        body.classList.add("open");
-        icon.textContent = "−";
+        top5Container.innerHTML = top5.map((c, i) => `
+          <div class="top5-item">
+            <div><strong>#${i + 1}</strong> ${c.user_name}</div>
+            <div style="font-weight: 800; color: var(--accent-gold);">${c.correct}-${c.incorrect}</div>
+          </div>
+        `).join("");
       }
+    }
+
+    async function switchWeek(weekNum) {
+      activeWeek = weekNum;
+      document.querySelectorAll(".tab-btn").forEach((btn, i) => {
+        btn.classList.toggle("active", i + 1 === weekNum);
+      });
+
+      document.getElementById("weekHostTitle").textContent = `Official Host Picks (Week ${weekNum})`;
+      document.getElementById("weekCousinsTitle").textContent = `The Cousins' Leaderboard (Week ${weekNum})`;
+      document.getElementById("ctaBtn").innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
+      document.getElementById("ctaBtn").href = `makepicks.html?week=${weekNum}`;
+
+      await renderActiveWeek();
+    }
+
+    async function renderActiveWeek() {
+      let games = week1Games;
+      if (activeWeek > 1) {
+        games = await fetchEspnSecSchedule(activeWeek);
+      }
+
+      const rows = allWeekRows.filter(r => r.week_number === activeWeek);
+      const hostRows = rows.filter(r => r.is_host === true);
+      const cousinRows = rows.filter(r => r.is_host === false);
+
+      document.getElementById("entryPill").textContent = `${cousinRows.length} Entries`;
+
+      // Render Hosts
+      const hostMike = hostRows.find(h => h.user_name?.toLowerCase() === "mike");
+      const hostShane = hostRows.find(h => h.user_name?.toLowerCase() === "shane");
+      const hostSteven = hostRows.find(h => h.user_name?.toLowerCase() === "steven");
+
+      const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
+      const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
+      const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
+
+      const mikeScore = gradePicks(mikePicks, activeWeek);
+      const shaneScore = gradePicks(shanePicks, activeWeek);
+      const stevenScore = gradePicks(stevenPicks, activeWeek);
+
+      document.getElementById("thMike").innerHTML = `Mike <span class="matchup-subdetail">(${mikeScore.correct}-${mikeScore.incorrect})</span>`;
+      document.getElementById("thShane").innerHTML = `Shane <span class="matchup-subdetail">(${shaneScore.correct}-${shaneScore.incorrect})</span>`;
+      document.getElementById("thSteven").innerHTML = `Steven <span class="matchup-subdetail">(${stevenScore.correct}-${stevenScore.incorrect})</span>`;
+
+      const hostBody = document.getElementById("hostGridBody");
+      hostBody.innerHTML = "";
+
+      games.forEach(g => {
+        const tr = document.createElement("tr");
+        const pM = mikePicks[g.id] || "-";
+        const pS = shanePicks[g.id] || "-";
+        const pSt = stevenPicks[g.id] || "-";
+
+        const isLockM = mikePicks.lock_game_id === g.id;
+        const isLockS = shanePicks.lock_game_id === g.id;
+        const isLockSt = stevenPicks.lock_game_id === g.id;
+
+        tr.innerHTML = `
+          <td class="matchup-cell">
+            <strong>${g.teamA} vs ${g.teamB}</strong>
+            ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
+          </td>
+          <td class="pick-cell ${isLockM ? 'host-lock-cell' : ''}">${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}</td>
+          <td class="pick-cell ${isLockS ? 'host-lock-cell' : ''}">${pS}${isLockS ? '<span class="lock-badge">LOCK</span>' : ''}</td>
+          <td class="pick-cell ${isLockSt ? 'host-lock-cell' : ''}">${pSt}${isLockSt ? '<span class="lock-badge">LOCK</span>' : ''}</td>
+        `;
+        hostBody.appendChild(tr);
+      });
+
+      // Render Cousins
+      cousinRows.forEach(c => c.score = gradePicks(c.picks, activeWeek));
+      cousinRows.sort((a, b) => b.score.correct - a.score.correct || a.user_name.localeCompare(b.user_name));
+
+      const listContainer = document.getElementById("cousinsList");
+      listContainer.innerHTML = cousinRows.length === 0 
+        ? `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No picks submitted for Week ${activeWeek} yet.</div>`
+        : "";
+
+      cousinRows.forEach((c, idx) => {
+        const item = document.createElement("div");
+        item.className = "cousin-item";
+        const picks = parseUserPicks(c.picks);
+
+        item.innerHTML = `
+          <div class="cousin-header" onclick="this.nextElementSibling.classList.toggle('open')">
+            <div style="display: flex; align-items: center;">
+              <span class="rank-badge">${idx + 1}</span>
+              <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
+              <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.5rem;">(${c.score.correct}-${c.score.incorrect})</span>
+            </div>
+            <span style="color: var(--accent-gold); font-weight: bold;">+</span>
+          </div>
+          <div class="cousin-picks-body">
+            ${games.map(g => `
+              <div class="pick-line">
+                <span style="color: var(--text-muted);">${g.teamA} vs ${g.teamB}</span>
+                <span style="font-weight: 600;">${picks[g.id] || "No Pick"}</span>
+              </div>
+            `).join("")}
+          </div>
+        `;
+        listContainer.appendChild(item);
+      });
     }
 
     function toggleAllCards(expand) {
-      const bodies = document.querySelectorAll(".cousin-picks-body");
-      const icons = document.querySelectorAll(".accordion-icon");
-
-      bodies.forEach(body => {
-        if (expand) {
-          body.classList.add("open");
-        } else {
-          body.classList.remove("open");
-        }
-      });
-
-      icons.forEach(icon => {
-        icon.textContent = expand ? "−" : "+";
-      });
+      document.querySelectorAll(".cousin-picks-body").forEach(b => b.classList.toggle("open", expand));
     }
 
-    function scrollToElement(elementId) {
-      const el = document.getElementById(elementId);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
-      }
-    }
-
-    loadDashboard();
+    loadAllSeasonData();
   </script>
 </body>
 </html>
