@@ -414,6 +414,15 @@
       font-size: 0.72rem;
       font-weight: 600;
       cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.15s ease;
+    }
+
+    .btn-ctrl:hover {
+      border-color: var(--accent-gold);
+      color: var(--accent-gold);
     }
 
     .entry-pill {
@@ -424,6 +433,32 @@
       font-weight: 700;
       padding: 0.2rem 0.5rem;
       border-radius: 999px;
+    }
+
+    /* Floating To Top Button */
+    .btn-float-top {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 0.5rem 0.8rem;
+      border-radius: 999px;
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      z-index: 100;
+      transition: all 0.15s ease;
+    }
+
+    .btn-float-top:hover {
+      background: var(--accent-gold);
+      color: var(--bg-main);
     }
 
     /* Site Footer Styling */
@@ -632,7 +667,7 @@
             <div class="pulse-desc" id="statLockAccuracyDesc">Cousin Locks Hit</div>
           </div>
           <div class="pulse-card">
-            <div class="pulse-label">Cousins vs Hosts Lock Showdown</div>
+            <div class="pulse-label">Cousins vs Hosts Showdown</div>
             <div class="pulse-stat" id="statLockBattle">--</div>
             <div class="pulse-desc" id="statLockBattleDesc">Lock Win Rates</div>
           </div>
@@ -642,11 +677,13 @@
           Ranked by correct picks. Click any row to expand selections.
         </p>
 
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+        <!-- Controls Row with Expand/Collapse & To Bottom Navigation -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
           <div style="display: flex; gap: 0.4rem;">
             <button type="button" class="btn-ctrl" onclick="toggleAllCards(true)">Expand All</button>
             <button type="button" class="btn-ctrl" onclick="toggleAllCards(false)">Collapse All</button>
           </div>
+          <a href="#pageBottom" class="btn-ctrl">&darr; To Bottom</a>
         </div>
 
         <div id="cousinsList">
@@ -655,8 +692,11 @@
       </div>
     </div>
 
+    <!-- Floating To Top Button -->
+    <a href="#pageTop" class="btn-float-top">&uarr; Top</a>
+
     <!-- Footer placed cleanly inside the container -->
-    <footer class="site-footer">
+    <footer class="site-footer" id="pageBottom">
       <div class="footer-container">
         <p class="disclaimer">
           Data is sourced directly from ESPN. Any discrepancies, delays, or stat corrections reflect upstream data from ESPN and will update automatically once ESPN publishes their official updates.
