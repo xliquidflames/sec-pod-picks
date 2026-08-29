@@ -183,6 +183,13 @@
       box-shadow: 0 2px 0 #b45309;
     }
 
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
     .status-alert {
       margin-top: 1rem;
       text-align: center;
@@ -203,14 +210,14 @@
     <div class="card-panel">
       <div class="user-input-group">
         <label for="userNameInput">Your Handle / Name:</label>
-        <input type="text" id="userNameInput" placeholder="e.g. @BigAggie, CousinJohn22, Eric Smith" />
+        <input type="text" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" required />
       </div>
 
       <div id="gamesList">
         <div style="text-align: center; color: var(--text-muted); padding: 2rem 0;">Loading schedule...</div>
       </div>
 
-      <button type="button" class="btn-submit" onclick="submitBallot()">Submit Ballot</button>
+      <button type="button" class="btn-submit" id="submitBtn" onclick="submitBallot()">Submit Ballot</button>
       <div id="statusAlert" class="status-alert"></div>
     </div>
   </div>
@@ -223,10 +230,17 @@
     const urlParams = new URLSearchParams(window.location.search);
     const targetWeek = parseInt(urlParams.get("week"), 10) || 1;
 
+    // Safeguard 1: Immediate local device submission lock check
+    const submittedStorageKey = `sec_picks_submitted_w${targetWeek}`;
+    if (localStorage.getItem(submittedStorageKey)) {
+      alert(`You have already submitted an entry for Week ${targetWeek} from this device! Redirecting to the leaderboard...`);
+      window.location.href = "index.html";
+    }
+
     const secCanonicalList = [
       "Alabama", "Arkansas", "Auburn", "Florida", "Georgia", "Kentucky",
-      "LSU", "Ole Miss", "Mississippi State", "Missouri", "Oklahoma",
-      "South Carolina", "Tennessee", "Texas", "Texas A&M", "Vanderbilt"
+      "LSU", "Ole Miss", "Mississippi State", "Miss State", "Missouri",
+      "Oklahoma", "South Carolina", "Tennessee", "Texas", "Texas A&M", "Vanderbilt"
     ];
 
     const week1Games = [
@@ -253,8 +267,39 @@
 
     function isSecTeam(teamName) {
       if (!teamName) return false;
-      const lower = teamName.toLowerCase();
-      return secCanonicalList.some(sec => lower.includes(sec.toLowerCase()));
+      const lower = teamName.toLowerCase().trim();
+      return secCanonicalList.some(sec => lower.includes(sec.toLowerCase()) || sec.toLowerCase().includes(lower));
+    }
+
+    // Safeguard 2: Automated kickoff verification using ESPN's server time
+    async function checkKickoffLockout(weekNum) {
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${weekNum}&limit=100`;
+        const res = await fetch(url);
+        
+        const serverDateHeader = res.headers.get("date");
+        const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+
+        const data = await res.json();
+        if (!data.events || data.events.length === 0) return;
+
+        const kickoffTimes = data.events
+          .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+          .filter(d => !isNaN(d.getTime()))
+          .sort((a, b) => a - b);
+
+        if (kickoffTimes.length === 0) return;
+
+        const earliestKickoff = kickoffTimes[0];
+
+        if (currentTime >= earliestKickoff) {
+          const timeStr = earliestKickoff.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+          alert(`Picks for Week ${weekNum} are now locked! The earliest game kicked off at ${timeStr}. Redirecting to the leaderboard...`);
+          window.location.href = "index.html";
+        }
+      } catch (err) {
+        console.error("Lockout verification error:", err);
+      }
     }
 
     async function fetchEspnSchedule(week) {
@@ -271,13 +316,12 @@
 
         data.events.forEach(ev => {
           const comp = ev.competitions[0];
-          const home = comp.competitors.find(c => c.homeAway === 'home');
-          const away = comp.competitors.find(c => c.homeAway === 'away');
+          const home = comp.competitors.find(c => c.homeAway === "home");
+          const away = comp.competitors.find(c => c.homeAway === "away");
 
           const homeName = home.team.shortDisplayName || home.team.name;
           const awayName = away.team.shortDisplayName || away.team.name;
 
-          // Always put the SEC team on the left (teamA)
           let teamA = homeName;
           let teamB = awayName;
 
@@ -286,13 +330,13 @@
             teamB = homeName;
           }
 
-          const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : 'Line: TBD';
-          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
+          const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "Line: TBD";
+          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : "";
           
           let time = "TBD";
           if (comp.date) {
-            time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
-                   new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            time = new Date(comp.date).toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " + 
+                   new Date(comp.date).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
           }
 
           rawGames.push({
@@ -302,10 +346,8 @@
           });
         });
 
-        // Sort alphabetically by SEC team name (teamA)
         rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
 
-        // Reassign sequential Game IDs 1..N
         return rawGames.map((g, idx) => ({
           id: idx + 1,
           teamA: g.teamA,
@@ -320,6 +362,8 @@
     }
 
     async function initForm() {
+      await checkKickoffLockout(targetWeek);
+
       document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
       document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
 
@@ -345,7 +389,7 @@
         card.className = "game-card";
         card.innerHTML = `
           <span class="game-title">Game ${g.id}: ${g.teamA} vs ${g.teamB}</span>
-          ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ''}
+          ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           <div class="pick-grid">
             <button type="button" class="btn-pick" id="btn_${g.id}_A" onclick="chooseTeam(${g.id}, '${g.teamA}')">${g.teamA}</button>
             <button type="button" class="btn-pick" id="btn_${g.id}_B" onclick="chooseTeam(${g.id}, '${g.teamB}')">${g.teamB}</button>
@@ -370,6 +414,7 @@
     }
 
     async function submitBallot() {
+      const submitBtn = document.getElementById("submitBtn");
       const username = document.getElementById("userNameInput").value.trim();
       const statusAlert = document.getElementById("statusAlert");
 
@@ -385,10 +430,34 @@
         return;
       }
 
+      // Disable button immediately to prevent double-tap/spamming
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting picks...";
+      }
+
       statusAlert.style.color = "var(--text-muted)";
       statusAlert.textContent = "Submitting your picks...";
 
       try {
+        // Pre-check for duplicate username
+        const { data: existing, error: checkErr } = await supabaseClient
+          .from("picks")
+          .select("id")
+          .ilike("user_name", username)
+          .eq("week_number", targetWeek)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          statusAlert.style.color = "var(--danger)";
+          statusAlert.textContent = `An entry under "${username}" has already been submitted for Week ${targetWeek}! Only one submission per Cousin is allowed.`;
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Submit Ballot";
+          }
+          return;
+        }
+
         const { error } = await supabaseClient
           .from("picks")
           .insert({
@@ -399,17 +468,36 @@
             created_at: new Date().toISOString()
           });
 
-        if (error) throw error;
+        if (error) {
+          if (error.code === "23505" || error.message?.includes("unique")) {
+            statusAlert.style.color = "var(--danger)";
+            statusAlert.textContent = `An entry under "${username}" was already submitted for Week ${targetWeek}!`;
+          } else {
+            throw error;
+          }
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Submit Ballot";
+          }
+          return;
+        }
+
+        // Lock device storage after successful submission
+        localStorage.setItem(submittedStorageKey, "true");
 
         statusAlert.style.color = "var(--success)";
         statusAlert.innerHTML = `Week ${targetWeek} ballot submitted! Returning to Leaderboard...`;
 
         setTimeout(() => {
-          window.location.href = `index.html`;
+          window.location.href = "index.html";
         }, 1800);
       } catch (err) {
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = `Error: ${err.message}`;
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit Ballot";
+        }
       }
     }
 

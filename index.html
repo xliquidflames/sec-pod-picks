@@ -40,6 +40,41 @@
       max-width: 750px;
     }
 
+    /* Season Kickoff Countdown Banner */
+    .countdown-banner {
+      background: linear-gradient(135deg, #131d31 0%, #1e293b 100%);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1.25rem;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .countdown-title {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.35rem;
+    }
+
+    .countdown-display {
+      font-size: 1.45rem;
+      font-weight: 900;
+      color: var(--accent-gold);
+      letter-spacing: 1.5px;
+      text-shadow: 0 2px 8px rgba(251, 191, 36, 0.25);
+    }
+
+    .countdown-subtext {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      line-height: 1.35;
+    }
+
     /* Centered Logo & Prominent Title Header */
     header {
       text-align: center;
@@ -456,6 +491,16 @@
 <body>
 
   <div class="container" id="pageTop">
+
+    <!-- Countdown to SEC Kickoff Banner -->
+    <div class="countdown-banner" id="countdownBanner">
+      <div class="countdown-title" id="countdownTitle">SEC FOOTBALL RETURNS IN:</div>
+      <div class="countdown-display" id="countdownTimer">--d --h --m --s</div>
+      <div class="countdown-subtext" id="countdownSubtext">
+        Missouri hosts Arkansas Peanut Butter on Thursday 9/3 at 8pm on ESPN/SEC Network.
+      </div>
+    </div>
+
     <header>
       <div class="logo-container">
         <img src="logo.png" alt="That SEC Podcast" class="main-logo" />
@@ -620,6 +665,10 @@
     let allWeekRows = [];
     window.gameWinners = {};
 
+    // Season Kickoff Target: Thursday, September 3, 2026 at 8:00 PM ET
+    const seasonKickoffTime = new Date("2026-09-03T20:00:00-04:00");
+    let countdownInterval = null;
+
     const week1Games = [
       { id: 1, teamA: "Alabama", teamB: "Eastern Carolina", detail: "Tuscaloosa, AL" },
       { id: 2, teamA: "Arkansas", teamB: "North Alabama", detail: "Fayetteville, AR" },
@@ -658,6 +707,68 @@
     function normalizeTeam(str) {
       if (!str) return "";
       return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+
+    function updateCountdownDisplay() {
+      const display = document.getElementById("countdownTimer");
+      const title = document.getElementById("countdownTitle");
+      if (!display) return;
+
+      const now = new Date();
+      const diff = seasonKickoffTime - now;
+
+      if (diff <= 0) {
+        title.textContent = "THE 2026 SEASON IS LIVE";
+        display.textContent = "COLLEGE FOOTBALL IS HERE";
+        display.style.color = "var(--success)";
+        return;
+      }
+
+      display.style.color = "var(--accent-gold)";
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / 1000 / 60) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
+      const parts = [];
+      if (days > 0) parts.push(`${days}d`);
+      parts.push(`${String(hours).padStart(2, '0')}h`);
+      parts.push(`${String(minutes).padStart(2, '0')}m`);
+      parts.push(`${String(seconds).padStart(2, '0')}s`);
+
+      display.textContent = parts.join(" ");
+    }
+
+    function initCountdown() {
+      updateCountdownDisplay();
+      if (!countdownInterval) {
+        countdownInterval = setInterval(updateCountdownDisplay, 1000);
+      }
+    }
+
+    async function isWeekLocked(weekNum) {
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${weekNum}&limit=100`;
+        const res = await fetch(url);
+        
+        const serverDateHeader = res.headers.get("date");
+        const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+
+        const data = await res.json();
+        if (!data.events || data.events.length === 0) return false;
+
+        const kickoffTimes = data.events
+          .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+          .filter(d => !isNaN(d.getTime()))
+          .sort((a, b) => a - b);
+
+        if (kickoffTimes.length === 0) return false;
+
+        return currentTime >= kickoffTimes[0];
+      } catch (err) {
+        console.error("Lockout check error:", err);
+        return false;
+      }
     }
 
     async function fetchEspnSchedule(week) {
@@ -818,9 +929,18 @@
           .order("created_at", { ascending: true });
 
         if (error) throw error;
-        allWeekRows = rows || [];
+        
+        // Defensive deduplication by name + week
+        const seen = new Set();
+        allWeekRows = (rows || []).filter(r => {
+          const key = `${r.user_name?.toLowerCase().trim()}_w${r.week_number}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
 
         await fetchEspnSchedule(1);
+        initCountdown();
 
         computeSeasonTotals();
         renderActiveWeek();
@@ -907,9 +1027,14 @@
 
       const ctaBtn = document.getElementById("ctaBtn");
       if (weekNum === CURRENT_OPEN_WEEK) {
-        ctaBtn.style.display = "flex";
-        ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
-        ctaBtn.href = `makepicks.html?week=${weekNum}`;
+        const isLocked = await isWeekLocked(weekNum);
+        if (!isLocked) {
+          ctaBtn.style.display = "flex";
+          ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
+          ctaBtn.href = `makepicks.html?week=${weekNum}`;
+        } else {
+          ctaBtn.style.display = "none";
+        }
       } else {
         ctaBtn.style.display = "none";
       }
