@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Submit Picks - That SEC Podcast</title>
+  <title>Make Picks - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --bg-main: #0f172a;
-      --bg-card: #1e293b;
-      --bg-card-alt: #162032;
+      --bg-main: #0a1120;
+      --bg-card: #131d31;
+      --bg-card-inner: #19263e;
       --accent-gold: #fbbf24;
       --accent-gold-hover: #f59e0b;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
-      --border-color: #334155;
+      --border-color: #22324f;
       --success: #4ade80;
       --danger: #f87171;
     }
@@ -29,14 +29,14 @@
     body {
       background-color: var(--bg-main);
       color: var(--text-main);
-      padding: 2rem 1rem;
+      padding: 1.5rem 1rem 3rem;
       display: flex;
       justify-content: center;
     }
 
     .container {
       width: 100%;
-      max-width: 650px;
+      max-width: 550px;
     }
 
     header {
@@ -44,164 +44,150 @@
       margin-bottom: 1.5rem;
     }
 
-    .logo-container {
-      margin-bottom: 0.5rem;
+    .back-link {
+      display: inline-block;
+      color: var(--accent-gold);
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+      margin-bottom: 0.75rem;
     }
 
     h1 {
       font-size: 1.8rem;
       color: var(--accent-gold);
+      font-weight: 900;
+      letter-spacing: -0.5px;
       margin-bottom: 0.25rem;
     }
 
     .sub-header {
       color: var(--text-muted);
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
 
-    .card {
+    .card-panel {
       background: var(--bg-card);
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-      margin-bottom: 1.5rem;
+      padding: 1.25rem;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
     }
 
-    .form-group {
+    .user-input-group {
       margin-bottom: 1.25rem;
     }
 
     label {
       display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 600;
       color: var(--text-main);
-      font-size: 0.95rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
     }
 
     input[type="text"] {
       width: 100%;
-      padding: 0.75rem 1rem;
-      background-color: var(--bg-card-alt);
-      border: 1px solid var(--border-color);
+      padding: 0.85rem 1rem;
       border-radius: 8px;
+      background: #0d1527;
+      border: 1px solid var(--border-color);
       color: var(--text-main);
       font-size: 1rem;
       outline: none;
-      transition: border-color 0.2s ease;
+      transition: border-color 0.15s ease;
     }
 
     input[type="text"]:focus {
       border-color: var(--accent-gold);
     }
 
-    .matchup-item {
-      background: var(--bg-card-alt);
+    .game-card {
+      background: var(--bg-card-inner);
       border: 1px solid var(--border-color);
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 1rem;
-      margin-bottom: 0.75rem;
+      margin-bottom: 1rem;
     }
 
-    .matchup-header {
-      font-weight: 700;
-      font-size: 0.9rem;
+    .game-title {
       color: var(--accent-gold);
-      margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      display: block;
+      margin-bottom: 0.25rem;
     }
 
-    .team-options {
+    .game-detail {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 0.75rem;
+      line-height: 1.3;
+    }
+
+    .pick-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0.75rem;
+      gap: 0.6rem;
     }
 
-    .team-option {
-      position: relative;
-    }
-
-    .team-option input[type="radio"] {
-      position: absolute;
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .team-option label {
-      display: block;
-      background: #1e293b;
+    .btn-pick {
+      background: #0e1728;
       border: 1px solid var(--border-color);
-      padding: 0.75rem 0.5rem;
-      border-radius: 6px;
-      text-align: center;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.9rem;
-      margin-bottom: 0;
-      transition: all 0.15s ease;
+      border-radius: 8px;
       color: var(--text-muted);
+      padding: 0.85rem 0.4rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .team-option input[type="radio"]:checked + label {
+    .btn-pick:hover {
+      border-color: #3b4d71;
+      color: var(--text-main);
+    }
+
+    .btn-pick.selected {
       background: var(--accent-gold);
-      color: #0f172a;
+      color: #0a1120;
+      font-weight: 900;
       border-color: var(--accent-gold);
-      font-weight: 800;
     }
 
     .btn-submit {
       width: 100%;
       background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
-      color: #0f172a;
+      color: #0a1120;
       font-size: 1.1rem;
       font-weight: 900;
-      text-align: center;
       padding: 1.1rem;
       border-radius: 10px;
-      border: 1px solid #fde68a;
+      border: none;
+      cursor: pointer;
+      margin-top: 1rem;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      cursor: pointer;
-      box-shadow: 0 4px 0 #b45309, 0 8px 20px rgba(251, 191, 36, 0.35);
-      transition: transform 0.1s ease, box-shadow 0.1s ease;
-      margin-top: 1rem;
-    }
-
-    .btn-submit:hover {
-      background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 0 #b45309, 0 12px 24px rgba(251, 191, 36, 0.45);
+      box-shadow: 0 4px 0 #b45309;
+      transition: transform 0.1s ease;
     }
 
     .btn-submit:active {
-      transform: translateY(3px);
-      box-shadow: 0 1px 0 #b45309, 0 4px 10px rgba(251, 191, 36, 0.3);
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #b45309;
     }
 
-    .btn-back {
-      display: block;
+    .status-alert {
+      margin-top: 1rem;
       text-align: center;
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.9rem;
-      margin-top: 1.25rem;
-    }
-
-    .btn-back:hover {
-      color: var(--text-main);
-    }
-
-    .error-msg {
-      background: rgba(248, 113, 113, 0.15);
-      border: 1px solid var(--danger);
-      color: var(--danger);
-      padding: 0.75rem;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      margin-bottom: 1rem;
-      display: none;
+      font-size: 0.95rem;
+      font-weight: 700;
     }
   </style>
 </head>
@@ -209,27 +195,23 @@
 
   <div class="container">
     <header>
-      <div class="logo-container">
-        <h1>THAT SEC PODCAST</h1>
-      </div>
-      <p class="sub-header">Week 1 Cousins Pick Submission</p>
+      <a href="index.html" class="back-link">&larr; Back to Leaderboard</a>
+      <h1 id="pageHeading">SUBMIT PICKS</h1>
+      <p class="sub-header" id="pageSubHeading">Make your selections</p>
     </header>
 
-    <div class="card">
-      <div id="errorBox" class="error-msg"></div>
+    <div class="card-panel">
+      <div class="user-input-group">
+        <label for="userNameInput">Your Handle / Name:</label>
+        <input type="text" id="userNameInput" placeholder="e.g. @CousinShane" />
+      </div>
 
-      <form id="pickForm">
-        <div class="form-group">
-          <label for="userName">Your Name, Handle, or Alias</label>
-          <input type="text" id="userName" placeholder="e.g. John G, @BigBamaFan, VolHomer" required />
-        </div>
+      <div id="gamesList">
+        <div style="text-align: center; color: var(--text-muted); padding: 2rem 0;">Loading schedule...</div>
+      </div>
 
-        <div id="matchupsContainer"></div>
-
-        <button type="submit" class="btn-submit" id="submitBtn">Submit My Picks</button>
-      </form>
-
-      <a href="index.html" class="btn-back">&larr; Back to Leaderboard</a>
+      <button type="button" class="btn-submit" onclick="submitBallot()">Submit Ballot</button>
+      <div id="statusAlert" class="status-alert"></div>
     </div>
   </div>
 
@@ -238,91 +220,200 @@
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const week1Games = [
-      { id: 1, teamA: "Alabama", teamB: "Eastern Carolina" },
-      { id: 2, teamA: "Arkansas", teamB: "North Alabama" },
-      { id: 3, teamA: "Auburn", teamB: "Baylor" },
-      { id: 4, teamA: "Florida", teamB: "Florida Atlantic" },
-      { id: 5, teamA: "Georgia", teamB: "Tenn State" },
-      { id: 6, teamA: "Kentucky", teamB: "Youngstown State" },
-      { id: 7, teamA: "LSU", teamB: "Clemson" },
-      { id: 8, teamA: "Ole Miss", teamB: "Louisville" },
-      { id: 9, teamA: "Miss State", teamB: "ULM" },
-      { id: 10, teamA: "Missouri", teamB: "Peanutbutter" },
-      { id: 11, teamA: "Oklahoma", teamB: "UTEP" },
-      { id: 12, teamA: "South Carolina", teamB: "Kent State" },
-      { id: 13, teamA: "Tennessee", teamB: "Furman" },
-      { id: 14, teamA: "Texas", teamB: "Texas State" },
-      { id: 15, teamA: "Texas A&M", teamB: "Missouri State" },
-      { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay" }
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetWeek = parseInt(urlParams.get("week"), 10) || 1;
+
+    const secCanonicalList = [
+      "Alabama", "Arkansas", "Auburn", "Florida", "Georgia", "Kentucky",
+      "LSU", "Ole Miss", "Mississippi State", "Missouri", "Oklahoma",
+      "South Carolina", "Tennessee", "Texas", "Texas A&M", "Vanderbilt"
     ];
 
-    function renderGames() {
-      const container = document.getElementById("matchupsContainer");
-      container.innerHTML = "";
+    const week1Games = [
+      { id: 1, teamA: "Alabama", teamB: "Eastern Carolina", detail: "Tuscaloosa, AL" },
+      { id: 2, teamA: "Arkansas", teamB: "North Alabama", detail: "Fayetteville, AR" },
+      { id: 3, teamA: "Auburn", teamB: "Baylor", detail: "Auburn, AL" },
+      { id: 4, teamA: "Florida", teamB: "Florida Atlantic", detail: "Gainesville, FL" },
+      { id: 5, teamA: "Georgia", teamB: "Tenn State", detail: "Athens, GA" },
+      { id: 6, teamA: "Kentucky", teamB: "Youngstown State", detail: "Lexington, KY" },
+      { id: 7, teamA: "LSU", teamB: "Clemson", detail: "Baton Rouge, LA" },
+      { id: 8, teamA: "Ole Miss", teamB: "Louisville", detail: "Oxford, MS" },
+      { id: 9, teamA: "Miss State", teamB: "ULM", detail: "Starkville, MS" },
+      { id: 10, teamA: "Missouri", teamB: "Peanutbutter", detail: "Columbia, MO" },
+      { id: 11, teamA: "Oklahoma", teamB: "UTEP", detail: "Norman, OK" },
+      { id: 12, teamA: "South Carolina", teamB: "Kent State", detail: "Columbia, SC" },
+      { id: 13, teamA: "Tennessee", teamB: "Furman", detail: "Knoxville, TN" },
+      { id: 14, teamA: "Texas", teamB: "Texas State", detail: "Austin, TX" },
+      { id: 15, teamA: "Texas A&M", teamB: "Missouri State", detail: "College Station, TX" },
+      { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay", detail: "Nashville, TN" }
+    ];
 
-      week1Games.forEach(game => {
-        const div = document.createElement("div");
-        div.className = "matchup-item";
-        div.innerHTML = `
-          <div class="matchup-header">Game ${game.id}: ${game.teamA} vs ${game.teamB}</div>
-          <div class="team-options">
-            <div class="team-option">
-              <input type="radio" id="g${game.id}_a" name="game_${game.id}" value="${game.teamA}" required>
-              <label for="g${game.id}_a">${game.teamA}</label>
-            </div>
-            <div class="team-option">
-              <input type="radio" id="g${game.id}_b" name="game_${game.id}" value="${game.teamB}">
-              <label for="g${game.id}_b">${game.teamB}</label>
-            </div>
+    let currentSchedule = [];
+    let userSelections = {};
+
+    function isSecTeam(teamName) {
+      if (!teamName) return false;
+      const lower = teamName.toLowerCase();
+      return secCanonicalList.some(sec => lower.includes(sec.toLowerCase()));
+    }
+
+    async function fetchEspnSchedule(week) {
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.events || data.events.length === 0) {
+          return [];
+        }
+
+        const rawGames = [];
+
+        data.events.forEach(ev => {
+          const comp = ev.competitions[0];
+          const home = comp.competitors.find(c => c.homeAway === 'home');
+          const away = comp.competitors.find(c => c.homeAway === 'away');
+
+          const homeName = home.team.shortDisplayName || home.team.name;
+          const awayName = away.team.shortDisplayName || away.team.name;
+
+          // Always put the SEC team on the left (teamA)
+          let teamA = homeName;
+          let teamB = awayName;
+
+          if (!isSecTeam(homeName) && isSecTeam(awayName)) {
+            teamA = awayName;
+            teamB = homeName;
+          }
+
+          const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : 'Line: TBD';
+          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
+          
+          let time = "TBD";
+          if (comp.date) {
+            time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
+                   new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+          }
+
+          rawGames.push({
+            teamA: teamA,
+            teamB: teamB,
+            detail: `${time} | ${odds} | ${venue}`
+          });
+        });
+
+        // Sort alphabetically by SEC team name (teamA)
+        rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
+
+        // Reassign sequential Game IDs 1..N
+        return rawGames.map((g, idx) => ({
+          id: idx + 1,
+          teamA: g.teamA,
+          teamB: g.teamB,
+          detail: g.detail
+        }));
+
+      } catch (e) {
+        console.error("ESPN auto-fetch error:", e);
+        return [];
+      }
+    }
+
+    async function initForm() {
+      document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
+      document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
+
+      if (targetWeek === 1) {
+        currentSchedule = week1Games;
+      } else {
+        currentSchedule = await fetchEspnSchedule(targetWeek);
+      }
+
+      renderForm();
+    }
+
+    function renderForm() {
+      const container = document.getElementById("gamesList");
+      if (currentSchedule.length === 0) {
+        container.innerHTML = `<div style="text-align:center; color: var(--danger); padding: 1.5rem 0;">No scheduled games found for Week ${targetWeek} yet.</div>`;
+        return;
+      }
+
+      container.innerHTML = "";
+      currentSchedule.forEach(g => {
+        const card = document.createElement("div");
+        card.className = "game-card";
+        card.innerHTML = `
+          <span class="game-title">Game ${g.id}: ${g.teamA} vs ${g.teamB}</span>
+          ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ''}
+          <div class="pick-grid">
+            <button type="button" class="btn-pick" id="btn_${g.id}_A" onclick="chooseTeam(${g.id}, '${g.teamA}')">${g.teamA}</button>
+            <button type="button" class="btn-pick" id="btn_${g.id}_B" onclick="chooseTeam(${g.id}, '${g.teamB}')">${g.teamB}</button>
           </div>
         `;
-        container.appendChild(div);
+        container.appendChild(card);
       });
     }
 
-    document.getElementById("pickForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const submitBtn = document.getElementById("submitBtn");
-      const errorBox = document.getElementById("errorBox");
-      const userName = document.getElementById("userName").value.trim();
+    function chooseTeam(gameId, team) {
+      userSelections[gameId] = team;
+      const btnA = document.getElementById(`btn_${gameId}_A`);
+      const btnB = document.getElementById(`btn_${gameId}_B`);
 
-      errorBox.style.display = "none";
-      submitBtn.disabled = true;
-      submitBtn.innerText = "Submitting...";
+      if (btnA.textContent.trim() === team) {
+        btnA.classList.add("selected");
+        btnB.classList.remove("selected");
+      } else {
+        btnB.classList.add("selected");
+        btnA.classList.remove("selected");
+      }
+    }
 
-      const userPicks = {};
-      week1Games.forEach(game => {
-        const selected = document.querySelector(`input[name="game_${game.id}"]:checked`);
-        if (selected) {
-          userPicks[game.id] = selected.value;
-        }
-      });
+    async function submitBallot() {
+      const username = document.getElementById("userNameInput").value.trim();
+      const statusAlert = document.getElementById("statusAlert");
+
+      if (!username) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = "Please enter your handle or name.";
+        return;
+      }
+
+      if (Object.keys(userSelections).length < currentSchedule.length) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = `Please make selections for all ${currentSchedule.length} games.`;
+        return;
+      }
+
+      statusAlert.style.color = "var(--text-muted)";
+      statusAlert.textContent = "Submitting your picks...";
 
       try {
         const { error } = await supabaseClient
           .from("picks")
-          .insert([
-            {
-              user_name: userName,
-              week_number: 1,
-              picks: userPicks,
-              is_host: false
-            }
-          ]);
+          .insert({
+            user_name: username,
+            week_number: targetWeek,
+            is_host: false,
+            picks: userSelections,
+            created_at: new Date().toISOString()
+          });
 
         if (error) throw error;
 
-        window.location.href = "index.html";
-      } catch (err) {
-        errorBox.textContent = "Submission failed: " + err.message;
-        errorBox.style.display = "block";
-        submitBtn.disabled = false;
-        submitBtn.innerText = "Submit My Picks";
-      }
-    });
+        statusAlert.style.color = "var(--success)";
+        statusAlert.innerHTML = `Week ${targetWeek} ballot submitted! Returning to Leaderboard...`;
 
-    renderGames();
+        setTimeout(() => {
+          window.location.href = `index.html`;
+        }, 1800);
+      } catch (err) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = `Error: ${err.message}`;
+      }
+    }
+
+    initForm();
   </script>
 </body>
 </html>
