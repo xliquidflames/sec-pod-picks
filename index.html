@@ -434,10 +434,6 @@
     <!-- Gold Accent Divider -->
     <div class="section-divider"></div>
 
-    <!-- Main Dynamic CTA Button -->
-    <a href="makepicks.html" class="btn-cta" id="ctaBtn">
-      <span>Submit Week 1 Picks &rarr;</span>
-    </a>
 
     <!-- Option 1: Dropdown Selector + Next/Prev Navigation -->
     <div class="week-selector-bar">
@@ -460,6 +456,12 @@
       </select>
       <button type="button" class="btn-step" onclick="changeWeekOffset(1)">Next &rarr;</button>
     </div>
+
+    <!-- Main Dynamic CTA Button -->
+    <a href="makepicks.html" class="btn-cta" id="ctaBtn">
+      <span>Submit Week 1 Picks &rarr;</span>
+    </a>
+
 
     <!-- Active Week Content Container -->
     <div id="weekContent">
@@ -730,6 +732,9 @@ function computeSeasonTotals() {
       switchWeek(target);
     }
 
+// CURRENT WEEK
+    const CURRENT_OPEN_WEEK = 1;
+
     async function switchWeek(weekNum) {
       activeWeek = weekNum;
 
@@ -738,12 +743,19 @@ function computeSeasonTotals() {
 
       document.getElementById("weekHostTitle").textContent = `Official Host Picks (Week ${weekNum})`;
       document.getElementById("weekCousinsTitle").textContent = `The Cousins' Leaderboard (Week ${weekNum})`;
-      document.getElementById("ctaBtn").innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
-      document.getElementById("ctaBtn").href = `makepicks.html?week=${weekNum}`;
+
+      // Dynamic Submit Button Control
+      const ctaBtn = document.getElementById("ctaBtn");
+      if (weekNum === CURRENT_OPEN_WEEK) {
+        ctaBtn.style.display = "flex";
+        ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
+        ctaBtn.href = `makepicks.html?week=${weekNum}`;
+      } else {
+        ctaBtn.style.display = "none";
+      }
 
       await renderActiveWeek();
     }
-
     async function renderActiveWeek() {
       let games = week1Games;
       if (activeWeek > 1) {
