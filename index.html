@@ -390,6 +390,67 @@
       padding: 0.2rem 0.5rem;
       border-radius: 999px;
     }
+
+    /* Site Footer Styling */
+    .site-footer {
+      margin-top: 2.5rem;
+      padding: 1.5rem 1rem 0;
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .footer-container {
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .footer-container p {
+      margin: 0;
+    }
+
+    .disclaimer {
+      font-size: 0.75rem;
+      opacity: 0.85;
+      line-height: 1.4;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .footer-links a {
+      color: var(--accent-gold);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.15s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--accent-gold-hover);
+      text-decoration: underline;
+    }
+
+    .divider {
+      color: var(--border-color);
+    }
+
+    .contact-note {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .contact-note strong {
+      color: var(--text-main);
+    }
   </style>
 </head>
 <body>
@@ -528,7 +589,27 @@
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- Footer placed cleanly inside the container -->
+    <footer class="site-footer">
+      <div class="footer-container">
+        <p class="disclaimer">
+          Data is sourced directly from ESPN. Any discrepancies, delays, or stat corrections reflect upstream data from ESPN and will update automatically once ESPN publishes their official updates.
+        </p>
+
+        <div class="footer-links">
+          <a href="https://www.thatsecpodcast.com" target="_blank" rel="noopener noreferrer">thatsecpodcast.com</a>
+          <span class="divider">|</span>
+          <a href="https://discord.gg/XsPnGkxFSM" target="_blank" rel="noopener noreferrer">Join Our Discord</a>
+        </div>
+
+        <p class="contact-note">
+          Issues, comments, or suggestions? Reach out to <strong>Liquid</strong> on Discord.
+        </p>
+      </div>
+    </footer>
+
+  </div> <!-- /container -->
 
   <script>
     const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
@@ -581,7 +662,6 @@
 
     async function fetchEspnSchedule(week) {
       if (week === 1) {
-        // Fetch ESPN live status to update details & winners on top of week1Games
         try {
           const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=1&limit=100`;
           const res = await fetch(url);
@@ -596,7 +676,6 @@
               const homeName = home.team.shortDisplayName || home.team.name;
               const awayName = away.team.shortDisplayName || away.team.name;
 
-              // Find matching game in week1Games
               const matchedGame = week1Games.find(g => 
                 (normalizeTeam(g.teamA).includes(normalizeTeam(homeName)) || normalizeTeam(homeName).includes(normalizeTeam(g.teamA))) ||
                 (normalizeTeam(g.teamB).includes(normalizeTeam(awayName)) || normalizeTeam(awayName).includes(normalizeTeam(g.teamB)))
@@ -606,7 +685,6 @@
                 const winnerComp = comp.competitors.find(c => c.winner === true);
                 if (winnerComp) {
                   const winName = winnerComp.team.shortDisplayName || winnerComp.team.name;
-                  // Store whether teamA or teamB won based on exact match
                   window.gameWinners[1][matchedGame.id] = normalizeTeam(winName).includes(normalizeTeam(matchedGame.teamA)) ? matchedGame.teamA : matchedGame.teamB;
                 }
               }
@@ -618,7 +696,6 @@
         return week1Games;
       }
 
-      // Future weeks (2+)
       try {
         const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
         const res = await fetch(url);
