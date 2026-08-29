@@ -107,6 +107,19 @@
       border-radius: 10px;
       padding: 1rem;
       margin-bottom: 1rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .game-card.is-locked {
+      border: 1.5px solid var(--accent-gold);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
+    }
+
+    .game-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.4rem;
     }
 
     .game-title {
@@ -115,8 +128,35 @@
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      display: block;
-      margin-bottom: 0.25rem;
+    }
+
+    .btn-lock-toggle {
+      background: #0e1728;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .btn-lock-toggle:hover {
+      border-color: var(--accent-gold);
+      color: var(--text-main);
+    }
+
+    .btn-lock-toggle.active {
+      background: var(--accent-gold);
+      color: #0a1120;
+      border-color: var(--accent-gold);
+      font-weight: 900;
     }
 
     .game-detail {
@@ -245,6 +285,7 @@
 
     let currentSchedule = [];
     let userSelections = {};
+    let currentLockGameId = null;
 
     function cleanTeamName(name) {
       if (!name) return "";
@@ -372,8 +413,14 @@
       currentSchedule.forEach(g => {
         const card = document.createElement("div");
         card.className = "game-card";
+        card.id = `card_${g.id}`;
         card.innerHTML = `
-          <span class="game-title">Game ${g.id}: ${g.teamA} vs ${g.teamB}</span>
+          <div class="game-header-row">
+            <span class="game-title">Game ${g.id}: ${g.teamA} vs ${g.teamB}</span>
+            <button type="button" class="btn-lock-toggle" id="lock_btn_${g.id}" onclick="toggleUserLock(${g.id})">
+              Lock of Week
+            </button>
+          </div>
           ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           <div class="pick-grid">
             <button type="button" class="btn-pick" id="btn_${g.id}_A" onclick="chooseTeam(${g.id}, '${g.teamA}')">${g.teamA}</button>
@@ -398,6 +445,30 @@
       }
     }
 
+    function toggleUserLock(gameId) {
+      currentLockGameId = (currentLockGameId === gameId) ? null : gameId;
+      refreshLockVisuals();
+    }
+
+    function refreshLockVisuals() {
+      currentSchedule.forEach(g => {
+        const card = document.getElementById(`card_${g.id}`);
+        const lockBtn = document.getElementById(`lock_btn_${g.id}`);
+
+        if (card && lockBtn) {
+          if (currentLockGameId === g.id) {
+            card.classList.add("is-locked");
+            lockBtn.classList.add("active");
+            lockBtn.textContent = "★ Lock Selected";
+          } else {
+            card.classList.remove("is-locked");
+            lockBtn.classList.remove("active");
+            lockBtn.textContent = "Lock of Week";
+          }
+        }
+      });
+    }
+
     async function submitBallot() {
       const submitBtn = document.getElementById("submitBtn");
       const username = document.getElementById("userNameInput").value.trim();
@@ -409,11 +480,15 @@
         return;
       }
 
-      if (Object.keys(userSelections).length < currentSchedule.length) {
+      const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_game_id").length;
+      if (pickedGameCount < currentSchedule.length) {
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = `Please make selections for all ${currentSchedule.length} games.`;
         return;
       }
+
+      // Attach chosen lock
+      userSelections.lock_game_id = currentLockGameId;
 
       // Disable button immediately to prevent double-tap/spamming
       if (submitBtn) {
