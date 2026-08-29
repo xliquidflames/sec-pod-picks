@@ -159,12 +159,23 @@
       font-size: 0.85rem;
     }
 
+    /* Gold Accent Divider */
+    .section-divider {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+      margin: 2rem auto;
+      width: 85%;
+      opacity: 0.85;
+      border-radius: 999px;
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.45);
+    }
+
     /* Option 1: Dropdown Selector + Next/Prev Navigation */
     .week-selector-bar {
       display: flex;
       gap: 0.5rem;
       align-items: center;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1rem;
     }
 
     .week-dropdown {
@@ -378,15 +389,6 @@
       padding: 0.2rem 0.5rem;
       border-radius: 999px;
     }
-    .section-divider {
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
-      margin: 2rem auto;
-      width: 85%;
-      opacity: 0.85;
-      border-radius: 999px;
-      box-shadow: 0 0 8px rgba(251, 191, 36, 0.45);
-    }
   </style>
 </head>
 <body>
@@ -421,7 +423,7 @@
         </div>
       </div>
 
-     <!-- Top 5 Cousins (Auto-hidden until games finish) -->
+      <!-- Top 5 Cousins (Auto-hidden until games finish) -->
       <div id="top5Section" style="margin-top: 0.8rem; display: none;">
         <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
           Top 5 Cousins (Overall)
@@ -431,9 +433,9 @@
         </div>
       </div>
     </div>
+
     <!-- Gold Accent Divider -->
     <div class="section-divider"></div>
-
 
     <!-- Option 1: Dropdown Selector + Next/Prev Navigation -->
     <div class="week-selector-bar">
@@ -457,11 +459,10 @@
       <button type="button" class="btn-step" onclick="changeWeekOffset(1)">Next &rarr;</button>
     </div>
 
-    <!-- Main Dynamic CTA Button -->
+    <!-- Main Dynamic CTA Button (Positioned directly under week selector) -->
     <a href="makepicks.html" class="btn-cta" id="ctaBtn">
       <span>Submit Week 1 Picks &rarr;</span>
     </a>
-
 
     <!-- Active Week Content Container -->
     <div id="weekContent">
@@ -538,8 +539,8 @@
 
     const secCanonicalList = [
       "Alabama", "Arkansas", "Auburn", "Florida", "Georgia", "Kentucky",
-      "LSU", "Ole Miss", "Mississippi State", "Missouri", "Oklahoma",
-      "South Carolina", "Tennessee", "Texas", "Texas A&M", "Vanderbilt"
+      "LSU", "Ole Miss", "Mississippi State", "Miss State", "Missouri",
+      "Oklahoma", "South Carolina", "Tennessee", "Texas", "Texas A&M", "Vanderbilt"
     ];
 
     const week1Games = [
@@ -567,8 +568,8 @@
 
     function isSecTeam(teamName) {
       if (!teamName) return false;
-      const lower = teamName.toLowerCase();
-      return secCanonicalList.some(sec => lower.includes(sec.toLowerCase()));
+      const lower = teamName.toLowerCase().trim();
+      return secCanonicalList.some(sec => lower.includes(sec.toLowerCase()) || sec.toLowerCase().includes(lower));
     }
 
     async function fetchEspnSchedule(week) {
@@ -666,7 +667,7 @@
       }
     }
 
-function computeSeasonTotals() {
+    function computeSeasonTotals() {
       let mikeW = 0, mikeL = 0;
       let shaneW = 0, shaneL = 0;
       let stevenW = 0, stevenL = 0;
@@ -732,7 +733,6 @@ function computeSeasonTotals() {
       switchWeek(target);
     }
 
-// CURRENT WEEK
     const CURRENT_OPEN_WEEK = 1;
 
     async function switchWeek(weekNum) {
@@ -756,6 +756,7 @@ function computeSeasonTotals() {
 
       await renderActiveWeek();
     }
+
     async function renderActiveWeek() {
       let games = week1Games;
       if (activeWeek > 1) {
@@ -842,6 +843,85 @@ function computeSeasonTotals() {
         `;
         listContainer.appendChild(item);
       });
+
+      // Community Pulse Stats Calculation
+      if (cousinRows.length > 0) {
+        let secSweepCount = 0;
+        const upsetCounts = {};
+        const teamPickCounts = {};
+
+        cousinRows.forEach(c => {
+          const picks = parseUserPicks(c.picks);
+          let pickedNonSec = false;
+          let answeredCount = 0;
+
+          games.forEach(g => {
+            const pick = picks[g.id] || picks[String(g.id)];
+            if (!pick) return;
+
+            answeredCount++;
+            teamPickCounts[pick] = (teamPickCounts[pick] || 0) + 1;
+
+            const aIsSec = isSecTeam(g.teamA);
+            const bIsSec = isSecTeam(g.teamB);
+
+            // Check if game is SEC vs Non-SEC
+            if (aIsSec && !bIsSec) {
+              if (pick !== g.teamA) {
+                pickedNonSec = true;
+                upsetCounts[pick] = (upsetCounts[pick] || 0) + 1;
+              }
+            } else if (!aIsSec && bIsSec) {
+              if (pick !== g.teamB) {
+                pickedNonSec = true;
+                upsetCounts[pick] = (upsetCounts[pick] || 0) + 1;
+              }
+            }
+          });
+
+          // Clean SEC sweep: filled all picks and never picked against an SEC team
+          if (!pickedNonSec && answeredCount === games.length) {
+            secSweepCount++;
+          }
+        });
+
+        // 1. SEC Loyalty Stat
+        document.getElementById("statSecSweep").textContent = `${secSweepCount} / ${cousinRows.length}`;
+        const sweepPct = Math.round((secSweepCount / cousinRows.length) * 100) || 0;
+        document.getElementById("statSecSweepDesc").textContent = `${sweepPct}% Clean SEC Sweeps`;
+
+        // 2. Top Upset Stat
+        let topUpsetTeam = "--";
+        let maxUpsetVotes = 0;
+        Object.entries(upsetCounts).forEach(([team, votes]) => {
+          if (votes > maxUpsetVotes) {
+            maxUpsetVotes = votes;
+            topUpsetTeam = team;
+          }
+        });
+        document.getElementById("statTopUpset").textContent = topUpsetTeam;
+        document.getElementById("statTopUpsetDesc").textContent = maxUpsetVotes > 0 ? `${maxUpsetVotes} Picked Upset` : "No Upsets Picked";
+
+        // 3. Highest Consensus Lock Pick
+        let topConsensusTeam = "--";
+        let maxConsensusVotes = 0;
+        Object.entries(teamPickCounts).forEach(([team, count]) => {
+          if (count > maxConsensusVotes) {
+            maxConsensusVotes = count;
+            topConsensusTeam = team;
+          }
+        });
+        const lockPct = Math.round((maxConsensusVotes / cousinRows.length) * 100) || 0;
+        document.getElementById("statLock").textContent = topConsensusTeam;
+        document.getElementById("statLockDesc").textContent = `${lockPct}% Consensus`;
+      } else {
+        document.getElementById("statSecSweep").textContent = "--";
+        document.getElementById("statSecSweepDesc").textContent = "Clean Sweeps";
+        document.getElementById("statTopUpset").textContent = "--";
+        document.getElementById("statTopUpsetDesc").textContent = "Popular Upset";
+        document.getElementById("statLock").textContent = "--";
+        document.getElementById("statLockDesc").textContent = "100% Consensus";
+      }
     }
 
     function toggleAllCards(expand) {
