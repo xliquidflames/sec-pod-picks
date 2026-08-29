@@ -263,6 +263,11 @@
       font-weight: 600;
     }
 
+    /* Result State Styling */
+    .pick-correct { color: var(--success) !important; font-weight: 700; }
+    .pick-incorrect { color: var(--danger) !important; text-decoration: line-through; opacity: 0.8; }
+    .pick-pending { color: var(--text-main); }
+
     /* Lock of the Week Styling */
     .host-lock-cell {
       background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(30, 41, 59, 0.95)) !important;
@@ -365,10 +370,6 @@
       padding: 0.2rem 0;
     }
 
-    .pick-correct { color: var(--success) !important; font-weight: 700; }
-    .pick-incorrect { color: var(--danger) !important; text-decoration: line-through; }
-    .pick-pending { color: var(--text-main); }
-
     .btn-ctrl {
       background: var(--bg-card-alt);
       color: var(--text-muted);
@@ -459,7 +460,7 @@
       <button type="button" class="btn-step" onclick="changeWeekOffset(1)">Next &rarr;</button>
     </div>
 
-    <!-- Main Dynamic CTA Button (Positioned directly under week selector) -->
+    <!-- Main Dynamic CTA Button -->
     <a href="makepicks.html" class="btn-cta" id="ctaBtn">
       <span>Submit Week 1 Picks &rarr;</span>
     </a>
@@ -536,12 +537,7 @@
 
     let activeWeek = 1;
     let allWeekRows = [];
-
-    const secCanonicalList = [
-      "Alabama", "Arkansas", "Auburn", "Florida", "Georgia", "Kentucky",
-      "LSU", "Ole Miss", "Mississippi State", "Miss State", "Missouri",
-      "Oklahoma", "South Carolina", "Tennessee", "Texas", "Texas A&M", "Vanderbilt"
-    ];
+    window.gameWinners = {};
 
     const week1Games = [
       { id: 1, teamA: "Alabama", teamB: "Eastern Carolina", detail: "Tuscaloosa, AL" },
@@ -562,23 +558,75 @@
       { id: 16, teamA: "Vanderbilt", teamB: "Austin Peay", detail: "Nashville, TN" }
     ];
 
-    window.gameWinners = {
-      1: { 1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null, 8: null, 9: null, 10: null, 11: null, 12: null, 13: null, 14: null, 15: null, 16: null }
-    };
+    // Canonical SEC patterns for exact & fuzzy detection
+    const secPatterns = [
+      "alabama", "crimson tide", "arkansas", "razorbacks", "auburn", "tigers",
+      "florida", "gators", "georgia", "bulldogs", "kentucky", "wildcats",
+      "lsu", "ole miss", "rebels", "mississippi state", "miss state", "miss st",
+      "missouri", "mizzou", "oklahoma", "sooners", "south carolina", "gamecocks",
+      "tennessee", "volunteers", "vols", "texas", "longhorns", "texas a&m", "aggies",
+      "vanderbilt", "commodores", "vandy"
+    ];
 
     function isSecTeam(teamName) {
       if (!teamName) return false;
-      const lower = teamName.toLowerCase().trim();
-      return secCanonicalList.some(sec => lower.includes(sec.toLowerCase()) || sec.toLowerCase().includes(lower));
+      const t = teamName.toLowerCase().trim();
+      return secPatterns.some(p => t === p || t.includes(p) || p.includes(t));
+    }
+
+    function normalizeTeam(str) {
+      if (!str) return "";
+      return str.toLowerCase().replace(/[^a-z0-9]/g, "");
     }
 
     async function fetchEspnSchedule(week) {
+      if (week === 1) {
+        // Fetch ESPN live status to update details & winners on top of week1Games
+        try {
+          const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=1&limit=100`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data && data.events) {
+            if (!window.gameWinners[1]) window.gameWinners[1] = {};
+            
+            data.events.forEach(ev => {
+              const comp = ev.competitions[0];
+              const home = comp.competitors.find(c => c.homeAway === 'home');
+              const away = comp.competitors.find(c => c.homeAway === 'away');
+              const homeName = home.team.shortDisplayName || home.team.name;
+              const awayName = away.team.shortDisplayName || away.team.name;
+
+              // Find matching game in week1Games
+              const matchedGame = week1Games.find(g => 
+                (normalizeTeam(g.teamA).includes(normalizeTeam(homeName)) || normalizeTeam(homeName).includes(normalizeTeam(g.teamA))) ||
+                (normalizeTeam(g.teamB).includes(normalizeTeam(awayName)) || normalizeTeam(awayName).includes(normalizeTeam(g.teamB)))
+              );
+
+              if (matchedGame && comp.status && comp.status.type && comp.status.type.completed) {
+                const winnerComp = comp.competitors.find(c => c.winner === true);
+                if (winnerComp) {
+                  const winName = winnerComp.team.shortDisplayName || winnerComp.team.name;
+                  // Store whether teamA or teamB won based on exact match
+                  window.gameWinners[1][matchedGame.id] = normalizeTeam(winName).includes(normalizeTeam(matchedGame.teamA)) ? matchedGame.teamA : matchedGame.teamB;
+                }
+              }
+            });
+          }
+        } catch (e) {
+          console.log("ESPN sync note:", e);
+        }
+        return week1Games;
+      }
+
+      // Future weeks (2+)
       try {
         const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
         const res = await fetch(url);
         const data = await res.json();
 
         if (!data.events || data.events.length === 0) return [];
+
+        if (!window.gameWinners[week]) window.gameWinners[week] = {};
 
         const rawGames = [];
 
@@ -598,11 +646,23 @@
             teamB = homeName;
           }
 
+          const isFinal = comp.status && comp.status.type && comp.status.type.completed;
+          let winnerName = null;
+
+          if (isFinal) {
+            const winnerComp = comp.competitors.find(c => c.winner === true);
+            if (winnerComp) {
+              winnerName = winnerComp.team.shortDisplayName || winnerComp.team.name;
+            }
+          }
+
           const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : 'Line: TBD';
           const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
           
           let time = "TBD";
-          if (comp.date) {
+          if (isFinal) {
+            time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+          } else if (comp.date) {
             time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
                    new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
@@ -610,18 +670,25 @@
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
-            detail: `${time} | ${odds} | ${venue}`
+            detail: isFinal ? `${time} | ${venue}` : `${time} | ${odds} | ${venue}`,
+            winner: winnerName
           });
         });
 
         rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
 
-        return rawGames.map((g, idx) => ({
-          id: idx + 1,
-          teamA: g.teamA,
-          teamB: g.teamB,
-          detail: g.detail
-        }));
+        return rawGames.map((g, idx) => {
+          const gameId = idx + 1;
+          if (g.winner) {
+            window.gameWinners[week][gameId] = g.winner;
+          }
+          return {
+            id: gameId,
+            teamA: g.teamA,
+            teamB: g.teamB,
+            detail: g.detail
+          };
+        });
       } catch (e) {
         console.error("ESPN schedule error:", e);
         return [];
@@ -642,12 +709,28 @@
       Object.keys(winners).forEach(id => {
         const winner = winners[id];
         const userPick = picks[id] || picks[String(id)];
-        if (!winner) pending++;
-        else if (userPick === winner) correct++;
-        else incorrect++;
+        if (!winner) {
+          pending++;
+        } else {
+          const uNorm = normalizeTeam(userPick);
+          const wNorm = normalizeTeam(winner);
+          if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
+            correct++;
+          } else {
+            incorrect++;
+          }
+        }
       });
 
       return { correct, incorrect, pending };
+    }
+
+    function getPickClass(userPick, gameId, week) {
+      const winner = (window.gameWinners[week] || {})[gameId];
+      if (!winner || !userPick || userPick === "-") return "pick-pending";
+      const uNorm = normalizeTeam(userPick);
+      const wNorm = normalizeTeam(winner);
+      return (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) ? "pick-correct" : "pick-incorrect";
     }
 
     async function loadAllSeasonData() {
@@ -659,6 +742,8 @@
 
         if (error) throw error;
         allWeekRows = rows || [];
+
+        await fetchEspnSchedule(1);
 
         computeSeasonTotals();
         renderActiveWeek();
@@ -703,7 +788,6 @@
       const top5Section = document.getElementById("top5Section");
       const top5Container = document.getElementById("top5CousinsList");
 
-      // Hide section completely until at least one game has finished
       if (!anyDecidedGames) {
         if (top5Section) top5Section.style.display = "none";
         return;
@@ -744,7 +828,6 @@
       document.getElementById("weekHostTitle").textContent = `Official Host Picks (Week ${weekNum})`;
       document.getElementById("weekCousinsTitle").textContent = `The Cousins' Leaderboard (Week ${weekNum})`;
 
-      // Dynamic Submit Button Control
       const ctaBtn = document.getElementById("ctaBtn");
       if (weekNum === CURRENT_OPEN_WEEK) {
         ctaBtn.style.display = "flex";
@@ -758,10 +841,7 @@
     }
 
     async function renderActiveWeek() {
-      let games = week1Games;
-      if (activeWeek > 1) {
-        games = await fetchEspnSchedule(activeWeek);
-      }
+      const games = await fetchEspnSchedule(activeWeek);
 
       const rows = allWeekRows.filter(r => r.week_number === activeWeek);
       const hostRows = rows.filter(r => r.is_host === true);
@@ -798,14 +878,18 @@
         const isLockS = shanePicks.lock_game_id === g.id;
         const isLockSt = stevenPicks.lock_game_id === g.id;
 
+        const classM = getPickClass(pM, g.id, activeWeek);
+        const classS = getPickClass(pS, g.id, activeWeek);
+        const classSt = getPickClass(pSt, g.id, activeWeek);
+
         tr.innerHTML = `
           <td class="matchup-cell">
             <strong>${g.teamA} vs ${g.teamB}</strong>
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
-          <td class="pick-cell ${isLockM ? 'host-lock-cell' : ''}">${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}</td>
-          <td class="pick-cell ${isLockS ? 'host-lock-cell' : ''}">${pS}${isLockS ? '<span class="lock-badge">LOCK</span>' : ''}</td>
-          <td class="pick-cell ${isLockSt ? 'host-lock-cell' : ''}">${pSt}${isLockSt ? '<span class="lock-badge">LOCK</span>' : ''}</td>
+          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}</td>
+          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">${pS}${isLockS ? '<span class="lock-badge">LOCK</span>' : ''}</td>
+          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">${pSt}${isLockSt ? '<span class="lock-badge">LOCK</span>' : ''}</td>
         `;
         hostBody.appendChild(tr);
       });
@@ -833,19 +917,23 @@
             <span style="color: var(--accent-gold); font-weight: bold;">+</span>
           </div>
           <div class="cousin-picks-body">
-            ${games.map(g => `
-              <div class="pick-line">
-                <span style="color: var(--text-muted);">${g.teamA} vs ${g.teamB}</span>
-                <span style="font-weight: 600;">${picks[g.id] || "No Pick"}</span>
-              </div>
-            `).join("")}
+            ${games.map(g => {
+              const uPick = picks[g.id] || "No Pick";
+              const pClass = getPickClass(uPick, g.id, activeWeek);
+              return `
+                <div class="pick-line">
+                  <span style="color: var(--text-muted);">${g.teamA} vs ${g.teamB}</span>
+                  <span class="${pClass}">${uPick}</span>
+                </div>
+              `;
+            }).join("")}
           </div>
         `;
         listContainer.appendChild(item);
       });
 
       // Community Pulse Stats Calculation
-      if (cousinRows.length > 0) {
+      if (cousinRows.length > 0 && games.length > 0) {
         let secSweepCount = 0;
         const upsetCounts = {};
         const teamPickCounts = {};
@@ -865,21 +953,20 @@
             const aIsSec = isSecTeam(g.teamA);
             const bIsSec = isSecTeam(g.teamB);
 
-            // Check if game is SEC vs Non-SEC
+            // True upset: picking non-SEC opponent over SEC school
             if (aIsSec && !bIsSec) {
-              if (pick !== g.teamA) {
+              if (normalizeTeam(pick) === normalizeTeam(g.teamB) || !isSecTeam(pick)) {
                 pickedNonSec = true;
-                upsetCounts[pick] = (upsetCounts[pick] || 0) + 1;
+                upsetCounts[g.teamB] = (upsetCounts[g.teamB] || 0) + 1;
               }
             } else if (!aIsSec && bIsSec) {
-              if (pick !== g.teamB) {
+              if (normalizeTeam(pick) === normalizeTeam(g.teamA) || !isSecTeam(pick)) {
                 pickedNonSec = true;
-                upsetCounts[pick] = (upsetCounts[pick] || 0) + 1;
+                upsetCounts[g.teamA] = (upsetCounts[g.teamA] || 0) + 1;
               }
             }
           });
 
-          // Clean SEC sweep: filled all picks and never picked against an SEC team
           if (!pickedNonSec && answeredCount === games.length) {
             secSweepCount++;
           }
@@ -922,6 +1009,8 @@
         document.getElementById("statLock").textContent = "--";
         document.getElementById("statLockDesc").textContent = "100% Consensus";
       }
+
+      computeSeasonTotals();
     }
 
     function toggleAllCards(expand) {
