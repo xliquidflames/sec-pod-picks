@@ -273,7 +273,7 @@
     // Safeguard 1: Immediate local device submission lock check
     const submittedStorageKey = `sec_picks_submitted_w${targetWeek}`;
     if (localStorage.getItem(submittedStorageKey)) {
-      alert(`You have already submitted an entry for Week ${targetWeek} from this device! Redirecting to the leaderboard...`);
+      alert(`You have already submitted an entry for Week ${targetWeek}. Redirecting to the leaderboard...`);
       window.location.href = "index.html";
     }
 
