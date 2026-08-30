@@ -644,8 +644,9 @@
           </div>
           <div class="pulse-card">
             <div class="pulse-label">Top Upset</div>
+            <div class="pulse-desc" id="statTopUpsetPre" style="margin-top: 0; margin-bottom: 0.15rem;">Popular Upset</div>
             <div class="pulse-stat" id="statTopUpset">--</div>
-            <div class="pulse-desc" id="statTopUpsetDesc">Popular Upset</div>
+            <div class="pulse-desc" id="statTopUpsetDesc"></div>
           </div>
           <div class="pulse-card">
             <div class="pulse-label">Pick Consensus</div>
@@ -1161,7 +1162,7 @@
       // Community Pulse Stats & Lock Showcase Calculations
       if (cousinRows.length > 0 && games.length > 0) {
         let secSweepCount = 0;
-        const upsetCounts = {};
+        const upsetTracker = {};
         const teamPickCounts = {};
 
         // Lock Metrics Trackers
@@ -1187,16 +1188,22 @@
             const aIsSec = isSecTeam(g.teamA);
             const bIsSec = isSecTeam(g.teamB);
 
-            // True upset check
+            // True upset check: track votes and opponent
             if (aIsSec && !bIsSec) {
               if (normalizeTeam(pick) === normalizeTeam(g.teamB) || !isSecTeam(pick)) {
                 pickedNonSec = true;
-                upsetCounts[g.teamB] = (upsetCounts[g.teamB] || 0) + 1;
+                if (!upsetTracker[g.teamB]) {
+                  upsetTracker[g.teamB] = { count: 0, opponent: g.teamA };
+                }
+                upsetTracker[g.teamB].count += 1;
               }
             } else if (!aIsSec && bIsSec) {
               if (normalizeTeam(pick) === normalizeTeam(g.teamA) || !isSecTeam(pick)) {
                 pickedNonSec = true;
-                upsetCounts[g.teamA] = (upsetCounts[g.teamA] || 0) + 1;
+                if (!upsetTracker[g.teamA]) {
+                  upsetTracker[g.teamA] = { count: 0, opponent: g.teamB };
+                }
+                upsetTracker[g.teamA].count += 1;
               }
             }
 
@@ -1233,14 +1240,24 @@
         // 2. Top Upset Stat
         let topUpsetTeam = "--";
         let maxUpsetVotes = 0;
-        Object.entries(upsetCounts).forEach(([team, votes]) => {
-          if (votes > maxUpsetVotes) {
-            maxUpsetVotes = votes;
+        let topUpsetOpponent = "";
+        Object.entries(upsetTracker).forEach(([team, data]) => {
+          if (data.count > maxUpsetVotes) {
+            maxUpsetVotes = data.count;
             topUpsetTeam = team;
+            topUpsetOpponent = data.opponent;
           }
         });
-        document.getElementById("statTopUpset").textContent = topUpsetTeam;
-        document.getElementById("statTopUpsetDesc").textContent = maxUpsetVotes > 0 ? `${maxUpsetVotes} Picked Upset` : "No Upsets Picked";
+
+        if (maxUpsetVotes > 0) {
+          document.getElementById("statTopUpsetPre").textContent = `${maxUpsetVotes} Cousins Picked`;
+          document.getElementById("statTopUpset").textContent = topUpsetTeam;
+          document.getElementById("statTopUpsetDesc").textContent = `to upset ${topUpsetOpponent}`;
+        } else {
+          document.getElementById("statTopUpsetPre").textContent = "Popular Upset";
+          document.getElementById("statTopUpset").textContent = "--";
+          document.getElementById("statTopUpsetDesc").textContent = "No Upsets Picked";
+        }
 
         // 3. Highest Consensus Pick (Ballot-wide)
         let topConsensusTeam = "--";
@@ -1312,8 +1329,9 @@
       } else {
         document.getElementById("statSecSweep").textContent = "--";
         document.getElementById("statSecSweepDesc").textContent = "Clean Sweeps";
+        document.getElementById("statTopUpsetPre").textContent = "Popular Upset";
         document.getElementById("statTopUpset").textContent = "--";
-        document.getElementById("statTopUpsetDesc").textContent = "Popular Upset";
+        document.getElementById("statTopUpsetDesc").textContent = "No Upsets Picked";
         document.getElementById("statLock").textContent = "--";
         document.getElementById("statLockDesc").textContent = "100% Consensus";
 
