@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>That SEC Podcast Links</title>
+  <style>
+    :root {
+      --bg-main: #0a1120;
+      --bg-card: #131d31;
+      --accent-gold: #fbbf24;
+      --accent-gold-hover: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #22324f;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 450px;
+      text-align: center;
+    }
+
+    .logo {
+      max-width: 140px;
+      height: auto;
+      margin-bottom: 1rem;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: var(--accent-gold);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .links-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .btn-link {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: var(--bg-card);
+      border: 1.5px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.1rem 1rem;
+      text-decoration: none;
+      color: var(--text-main);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      transition: all 0.15s ease;
+    }
+
+    .btn-link:hover {
+      border-color: var(--accent-gold);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(251, 191, 36, 0.2);
+    }
+
+    .btn-link.featured {
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #0a1120;
+      border: 1px solid #fde68a;
+      box-shadow: 0 4px 0 #b45309, 0 6px 16px rgba(251, 191, 36, 0.25);
+    }
+
+    .btn-link.featured:hover {
+      background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
+    }
+
+    .btn-link.featured:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #b45309;
+    }
+
+    .link-title {
+      font-size: 1.05rem;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .link-desc {
+      font-size: 0.75rem;
+      margin-top: 0.2rem;
+      opacity: 0.85;
+      font-weight: 600;
+    }
+
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Drop your logo.png in the same directory -->
+    <img src="logo.png" alt="That SEC Podcast" class="logo" />
+    
+    <h1>Community Hub</h1>
+    <p class="subtitle">Quick access for all Cousins</p>
+
+    <div class="links-stack">
+      <!-- Pick'em Site (Featured) -->
+      <a href="https://xliquidflames.github.io/sec-pickem/" class="btn-link featured" target="_blank" rel="noopener noreferrer">
+        <span class="link-title">Pick'em Headquarters</span>
+        <span class="link-desc">Submit weekly picks and view live leaderboard</span>
+      </a>
+
+      <!-- Discord Community -->
+      <a href="https://discord.gg/XsPnGkxFSM" class="btn-link" target="_blank" rel="noopener noreferrer">
+        <span class="link-title">Official Discord</span>
+        <span class="link-desc">Chat with Mike, Shane, and the Cousins</span>
+      </a>
+
+      <!-- Fantasy League -->
+      <!-- Replace the href below with your actual fantasy league invite/home link -->
+      <a href="https://your-fantasy-league-link-here.com" class="btn-link" target="_blank" rel="noopener noreferrer">
+        <span class="link-title">Fantasy Football League</span>
+        <span class="link-desc">View matchups, standings, and rosters</span>
+      </a>
+    </div>
+
+    <div class="footer">
+      thatsecpodcast.com
+    </div>
+  </div>
+
+</body>
+</html>
