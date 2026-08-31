@@ -269,6 +269,7 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const targetWeek = parseInt(urlParams.get("week"), 10) || 1;
+    const isLockAllowed = (targetWeek !== 1);
 
     // Safeguard 1: Immediate local device submission lock check
     const submittedStorageKey = `sec_picks_submitted_w${targetWeek}`;
@@ -417,9 +418,11 @@
         card.innerHTML = `
           <div class="game-header-row">
             <span class="game-title">Game ${g.id}: ${g.teamA} vs ${g.teamB}</span>
-            <button type="button" class="btn-lock-toggle" id="lock_btn_${g.id}" onclick="toggleUserLock(${g.id})">
-              Lock of the Week
-            </button>
+            ${isLockAllowed ? `
+              <button type="button" class="btn-lock-toggle" id="lock_btn_${g.id}" onclick="toggleUserLock(${g.id})">
+                Lock of the Week
+              </button>
+            ` : ""}
           </div>
           ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           <div class="pick-grid">
@@ -446,11 +449,13 @@
     }
 
     function toggleUserLock(gameId) {
+      if (!isLockAllowed) return;
       currentLockGameId = (currentLockGameId === gameId) ? null : gameId;
       refreshLockVisuals();
     }
 
     function refreshLockVisuals() {
+      if (!isLockAllowed) return;
       currentSchedule.forEach(g => {
         const card = document.getElementById(`card_${g.id}`);
         const lockBtn = document.getElementById(`lock_btn_${g.id}`);
@@ -487,8 +492,12 @@
         return;
       }
 
-      // Attach chosen lock
-      userSelections.lock_game_id = currentLockGameId;
+      // Attach chosen lock only if Lock of the Week is active
+      if (isLockAllowed && currentLockGameId) {
+        userSelections.lock_game_id = currentLockGameId;
+      } else {
+        delete userSelections.lock_game_id;
+      }
 
       // Disable button immediately to prevent double-tap/spamming
       if (submitBtn) {
