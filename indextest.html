@@ -1,15 +1,3 @@
-That is a great call for fairness. Because over 70 Cousins submitted their Week 1 ballots before the Lock selector existed, leaving locks active for Week 1 would give a tiebreaker advantage to the late submitters.
-Disabling locks for Week 1 requires two simple updates:
-1. Update index.html (Display & Scoring)
-We add an explicit check (if (weekNum === 1) or if (activeWeek === 1)) so that for Week 1:
- * The script completely ignores any lock_game_id submitted by any user or host.
- * No one receives credit for a Lock win for Week 1 in the season totals or weekly grading.
- * The gold LOTW badges and lock cell highlights are suppressed for Week 1.
- * The secondary 3-card Lock Showcase row displays a clean notice: "Lock of the Week debuts in Week 2" (or simply stays hidden/bypassed for Week 1).
-2. Update makepicks.html (Submission Ballot)
- * In makepicks.html, hide the Lock radio buttons or disable the required lock selection if activeWeek === 1.
- * When Week 2 opens, the Lock selector turns back on automatically so all participants start on the exact same footing.
-Here is the updated index.html file with Week 1 Lock exemption built in:
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1589,4 +1577,3 @@ Here is the updated index.html file with Week 1 Lock exemption built in:
   </script>
 </body>
 </html>
-
