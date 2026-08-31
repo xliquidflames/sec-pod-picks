@@ -12,7 +12,6 @@
       --bg-card-alt: #162032;
       --accent-gold: #fbbf24;
       --accent-gold-hover: #f59e0b;
-      --accent-blue: #38bdf8;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --border-color: #334155;
@@ -208,24 +207,27 @@
       text-transform: uppercase;
     }
 
-    /* Tie Breakers Accordion */
+    /* Subtle Tie Breakers Toggle & Box */
     .tiebreakers-toggle {
       background: none;
       border: none;
-      color: var(--accent-blue);
+      color: var(--text-muted);
       font-size: 0.75rem;
-      font-weight: 700;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
       cursor: pointer;
-      text-decoration: underline;
+      text-decoration: none;
       display: inline-flex;
       align-items: center;
-      gap: 0.25rem;
+      gap: 0.3rem;
       margin-top: 0.5rem;
       padding: 0;
+      transition: color 0.15s ease;
     }
 
     .tiebreakers-toggle:hover {
-      color: #7dd3fc;
+      color: var(--text-main);
     }
 
     .tiebreakers-box {
@@ -684,7 +686,7 @@
           <div class="top3-pending">Pending Week 1 Results</div>
         </div>
 
-        <!-- Interactive Tie Breakers Link & Dropdown -->
+        <!-- Subtle Tie Breakers Toggle & Dropdown -->
         <button type="button" class="tiebreakers-toggle" onclick="toggleTieBreakers()">
           <span>Tie Breakers</span>
           <span id="tiebreakerArrow">&#9662;</span>
@@ -799,8 +801,8 @@
           </div>
         </div>
 
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.8rem;">
-          Ranked by correct picks. Click any row to expand selections.
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.8rem; line-height: 1.4;">
+          Ranked by correct picks then sorted by LOTW hits, then alphabetical. Click any row to expand selections.
         </p>
 
         <!-- Controls Row with Expand/Collapse & To Bottom Navigation -->
