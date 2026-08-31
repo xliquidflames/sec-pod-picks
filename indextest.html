@@ -12,6 +12,7 @@
       --bg-card-alt: #162032;
       --accent-gold: #fbbf24;
       --accent-gold-hover: #f59e0b;
+      --accent-blue: #38bdf8;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --border-color: #334155;
@@ -205,6 +206,55 @@
       border-radius: 6px;
       letter-spacing: 0.5px;
       text-transform: uppercase;
+    }
+
+    /* Tie Breakers Accordion */
+    .tiebreakers-toggle {
+      background: none;
+      border: none;
+      color: var(--accent-blue);
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-top: 0.5rem;
+      padding: 0;
+    }
+
+    .tiebreakers-toggle:hover {
+      color: #7dd3fc;
+    }
+
+    .tiebreakers-box {
+      display: none;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.85rem;
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .tiebreakers-box.open {
+      display: block;
+    }
+
+    .tiebreakers-box ol {
+      padding-left: 1.25rem;
+      margin-top: 0.35rem;
+    }
+
+    .tiebreakers-box li {
+      margin-bottom: 0.3rem;
+    }
+
+    .tiebreakers-box strong {
+      color: var(--text-main);
     }
 
     /* Gold Accent Divider */
@@ -625,13 +675,28 @@
         </div>
       </div>
 
-      <!-- Top 3 Cousins Podium (Always visible) -->
+      <!-- Top 3 Cousins Podium -->
       <div id="top5Section" style="margin-top: 0.8rem;">
         <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
           Top 3 Cousins (Overall)
         </span>
         <div id="top5CousinsList">
           <div class="top3-pending">Pending Week 1 Results</div>
+        </div>
+
+        <!-- Interactive Tie Breakers Link & Dropdown -->
+        <button type="button" class="tiebreakers-toggle" onclick="toggleTieBreakers()">
+          <span>Tie Breakers</span>
+          <span id="tiebreakerArrow">&#9662;</span>
+        </button>
+        <div id="tiebreakersInfo" class="tiebreakers-box">
+          <div><strong>Season Top 3 Podium Tiebreaker Hierarchy:</strong></div>
+          <ol>
+            <li><strong>Total Correct Wins:</strong> Cumulative correct picks across the entire season.</li>
+            <li><strong>Lock of the Week Hits:</strong> Total correct Lock of the Week picks made during the season.</li>
+            <li><strong>Fewest Total Losses:</strong> Rewards higher overall win percentage.</li>
+            <li><strong>Early Bird Submissions:</strong> Average earliest submission timestamp across the season.</li>
+          </ol>
         </div>
       </div>
     </div>
@@ -858,6 +923,16 @@
       updateCountdownDisplay();
       if (!countdownInterval) {
         countdownInterval = setInterval(updateCountdownDisplay, 1000);
+      }
+    }
+
+    function toggleTieBreakers() {
+      const infoBox = document.getElementById("tiebreakersInfo");
+      const arrow = document.getElementById("tiebreakerArrow");
+      if (!infoBox) return;
+      const isOpen = infoBox.classList.toggle("open");
+      if (arrow) {
+        arrow.innerHTML = isOpen ? "&#9652;" : "&#9662;";
       }
     }
 
