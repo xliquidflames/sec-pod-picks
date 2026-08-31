@@ -1,3 +1,15 @@
+That is a great call for fairness. Because over 70 Cousins submitted their Week 1 ballots before the Lock selector existed, leaving locks active for Week 1 would give a tiebreaker advantage to the late submitters.
+Disabling locks for Week 1 requires two simple updates:
+1. Update index.html (Display & Scoring)
+We add an explicit check (if (weekNum === 1) or if (activeWeek === 1)) so that for Week 1:
+ * The script completely ignores any lock_game_id submitted by any user or host.
+ * No one receives credit for a Lock win for Week 1 in the season totals or weekly grading.
+ * The gold LOTW badges and lock cell highlights are suppressed for Week 1.
+ * The secondary 3-card Lock Showcase row displays a clean notice: "Lock of the Week debuts in Week 2" (or simply stays hidden/bypassed for Week 1).
+2. Update makepicks.html (Submission Ballot)
+ * In makepicks.html, hide the Lock radio buttons or disable the required lock selection if activeWeek === 1.
+ * When Week 2 opens, the Lock selector turns back on automatically so all participants start on the exact same footing.
+Here is the updated index.html file with Week 1 Lock exemption built in:
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -695,7 +707,7 @@
           <div><strong>Season Top 3 Podium Tiebreaker Hierarchy:</strong></div>
           <ol>
             <li><strong>Total Correct Wins:</strong> Cumulative correct picks across the entire season.</li>
-            <li><strong>Lock of the Week Hits:</strong> Total correct Lock of the Week picks made during the season.</li>
+            <li><strong>Lock of the Week Hits:</strong> Total correct Lock of the Week picks made across the season (starts Week 2).</li>
             <li><strong>Fewest Total Losses:</strong> Rewards higher overall win percentage.</li>
             <li><strong>Early Bird Submissions:</strong> Average earliest submission timestamp across the season.</li>
           </ol>
@@ -783,7 +795,7 @@
         </div>
 
         <!-- Secondary 3-Card Row: Dedicated Lock of the Week Showcase -->
-        <div class="pulse-grid">
+        <div class="pulse-grid" id="lockShowcaseRow">
           <div class="pulse-card">
             <div class="pulse-label">Consensus Lock</div>
             <div class="pulse-stat" id="statPeoplesLock">--</div>
@@ -801,8 +813,8 @@
           </div>
         </div>
 
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.8rem; line-height: 1.4;">
-          Ranked by correct picks then sorted by LOTW hits, then alphabetical. Click any row to expand selections.
+        <p id="leaderboardSortDesc" style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.8rem; line-height: 1.4;">
+          Ranked by correct picks then sorted alphabetically. Click any row to expand selections.
         </p>
 
         <!-- Controls Row with Expand/Collapse & To Bottom Navigation -->
@@ -1052,7 +1064,8 @@
       let correct = 0, incorrect = 0, pending = 0;
       let lockCorrect = 0, lockIncorrect = 0;
 
-      const userLockId = picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
+      // Lock of the Week is disabled for Week 1
+      const userLockId = (week !== 1 && picks.lock_game_id) ? parseInt(picks.lock_game_id, 10) : null;
 
       Object.keys(winners).forEach(id => {
         const winner = winners[id];
@@ -1172,7 +1185,7 @@
 
       // 4-Step Tiebreaker Chain to get exact Top 3:
       // 1. Season Total Correct Wins (Desc)
-      // 2. Season Total Correct LOTW (Desc)
+      // 2. Season Total Correct LOTW (Desc - Starts Week 2)
       // 3. Fewest Losses / Higher Win Rate (Asc)
       // 4. Earliest Average Submission Timestamp (Asc)
       const sortedCousins = Object.values(cousinAgg).sort((a, b) => {
@@ -1226,6 +1239,13 @@
       document.getElementById("weekHostTitle").textContent = `Official Host Picks (Week ${weekNum})`;
       document.getElementById("weekCousinsTitle").textContent = `The Cousins' Leaderboard (Week ${weekNum})`;
 
+      const sortDesc = document.getElementById("leaderboardSortDesc");
+      if (sortDesc) {
+        sortDesc.textContent = weekNum === 1
+          ? "Ranked by correct picks then sorted alphabetically. Click any row to expand selections."
+          : "Ranked by correct picks then sorted by LOTW hits, then alphabetical. Click any row to expand selections.";
+      }
+
       const ctaBtn = document.getElementById("ctaBtn");
       if (weekNum === CURRENT_OPEN_WEEK) {
         const isLocked = await isWeekLocked(weekNum);
@@ -1271,15 +1291,17 @@
       const hostBody = document.getElementById("hostGridBody");
       hostBody.innerHTML = "";
 
+      const isLockActiveThisWeek = (activeWeek !== 1);
+
       games.forEach(g => {
         const tr = document.createElement("tr");
         const pM = mikePicks[g.id] || "-";
         const pS = shanePicks[g.id] || "-";
         const pSt = stevenPicks[g.id] || "-";
 
-        const isLockM = mikePicks.lock_game_id === g.id;
-        const isLockS = shanePicks.lock_game_id === g.id;
-        const isLockSt = stevenPicks.lock_game_id === g.id;
+        const isLockM = isLockActiveThisWeek && (mikePicks.lock_game_id === g.id);
+        const isLockS = isLockActiveThisWeek && (shanePicks.lock_game_id === g.id);
+        const isLockSt = isLockActiveThisWeek && (stevenPicks.lock_game_id === g.id);
 
         const classM = getPickClass(pM, g.id, activeWeek);
         const classS = getPickClass(pS, g.id, activeWeek);
@@ -1301,11 +1323,13 @@
 
       // Weekly Sort Chain:
       // 1. Total Correct Wins
-      // 2. Correct Lock Hit
+      // 2. Correct Lock Hit (if active week)
       // 3. Alphabetical
       cousinRows.sort((a, b) => {
         if (b.score.correct !== a.score.correct) return b.score.correct - a.score.correct;
-        if (b.score.lockCorrect !== a.score.lockCorrect) return b.score.lockCorrect - a.score.lockCorrect;
+        if (isLockActiveThisWeek && (b.score.lockCorrect !== a.score.lockCorrect)) {
+          return b.score.lockCorrect - a.score.lockCorrect;
+        }
         return a.user_name.localeCompare(b.user_name);
       });
 
@@ -1347,8 +1371,8 @@
         const item = document.createElement("div");
         item.className = "cousin-item";
         const picks = parseUserPicks(c.picks);
-        const cousinLockId = picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
-        const hitLotw = c.score.lockCorrect > 0;
+        const cousinLockId = isLockActiveThisWeek && picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
+        const hitLotw = isLockActiveThisWeek && (c.score.lockCorrect > 0);
 
         item.innerHTML = `
           <div class="cousin-header" onclick="this.nextElementSibling.classList.toggle('open')">
@@ -1396,7 +1420,7 @@
           const picks = parseUserPicks(c.picks);
           let pickedNonSec = false;
           let answeredCount = 0;
-          const userLockId = picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
+          const userLockId = isLockActiveThisWeek && picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
 
           games.forEach(g => {
             const pick = picks[g.id] || picks[String(g.id)];
@@ -1487,53 +1511,61 @@
         document.getElementById("statLock").textContent = topConsensusTeam;
         document.getElementById("statLockDesc").textContent = `${lockPct}% Consensus`;
 
-        let topLockedTeam = "--";
-        let maxLocks = 0;
-        Object.entries(lockCounts).forEach(([team, count]) => {
-          if (count > maxLocks) {
-            maxLocks = count;
-            topLockedTeam = team;
-          }
-        });
-        document.getElementById("statPeoplesLock").textContent = topLockedTeam;
-        const consensusLockPct = totalLocksPlaced > 0 ? Math.round((maxLocks / totalLocksPlaced) * 100) : 0;
-        document.getElementById("statPeoplesLockDesc").textContent = totalLocksPlaced > 0 ? `${maxLocks} Locks (${consensusLockPct}%)` : "No Locks Placed";
-
-        const decidedLocks = cousinLocksWon + cousinLocksLost;
-        if (decidedLocks > 0) {
-          const lockHitPct = Math.round((cousinLocksWon / decidedLocks) * 100);
-          document.getElementById("statLockAccuracy").textContent = `${lockHitPct}%`;
-          document.getElementById("statLockAccuracyDesc").textContent = `${cousinLocksWon}-${cousinLocksLost} (${cousinLocksPending} pending)`;
+        // Secondary Row Display (Starts Week 2)
+        const lockRow = document.getElementById("lockShowcaseRow");
+        if (!isLockActiveThisWeek) {
+          if (lockRow) lockRow.style.display = "none";
         } else {
-          document.getElementById("statLockAccuracy").textContent = totalLocksPlaced > 0 ? `${totalLocksPlaced} Locked` : "--";
-          document.getElementById("statLockAccuracyDesc").textContent = totalLocksPlaced > 0 ? "Awaiting Results" : "No Locks Placed";
-        }
+          if (lockRow) lockRow.style.display = "grid";
 
-        let hostLocksWon = 0;
-        let hostLocksDecided = 0;
-        [hostMike, hostShane, hostSteven].forEach(h => {
-          if (!h) return;
-          const hPicks = parseUserPicks(h.picks);
-          if (hPicks.lock_game_id) {
-            const lGameId = parseInt(hPicks.lock_game_id, 10);
-            const winner = (window.gameWinners[activeWeek] || {})[lGameId];
-            if (winner) {
-              hostLocksDecided++;
-              const uNorm = normalizeTeam(hPicks[lGameId] || hPicks[String(lGameId)]);
-              const wNorm = normalizeTeam(winner);
-              if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
-                hostLocksWon++;
+          let topLockedTeam = "--";
+          let maxLocks = 0;
+          Object.entries(lockCounts).forEach(([team, count]) => {
+            if (count > maxLocks) {
+              maxLocks = count;
+              topLockedTeam = team;
+            }
+          });
+          document.getElementById("statPeoplesLock").textContent = topLockedTeam;
+          const consensusLockPct = totalLocksPlaced > 0 ? Math.round((maxLocks / totalLocksPlaced) * 100) : 0;
+          document.getElementById("statPeoplesLockDesc").textContent = totalLocksPlaced > 0 ? `${maxLocks} Locks (${consensusLockPct}%)` : "No Locks Placed";
+
+          const decidedLocks = cousinLocksWon + cousinLocksLost;
+          if (decidedLocks > 0) {
+            const lockHitPct = Math.round((cousinLocksWon / decidedLocks) * 100);
+            document.getElementById("statLockAccuracy").textContent = `${lockHitPct}%`;
+            document.getElementById("statLockAccuracyDesc").textContent = `${cousinLocksWon}-${cousinLocksLost} (${cousinLocksPending} pending)`;
+          } else {
+            document.getElementById("statLockAccuracy").textContent = totalLocksPlaced > 0 ? `${totalLocksPlaced} Locked` : "--";
+            document.getElementById("statLockAccuracyDesc").textContent = totalLocksPlaced > 0 ? "Awaiting Results" : "No Locks Placed";
+          }
+
+          let hostLocksWon = 0;
+          let hostLocksDecided = 0;
+          [hostMike, hostShane, hostSteven].forEach(h => {
+            if (!h) return;
+            const hPicks = parseUserPicks(h.picks);
+            if (hPicks.lock_game_id) {
+              const lGameId = parseInt(hPicks.lock_game_id, 10);
+              const winner = (window.gameWinners[activeWeek] || {})[lGameId];
+              if (winner) {
+                hostLocksDecided++;
+                const uNorm = normalizeTeam(hPicks[lGameId] || hPicks[String(lGameId)]);
+                const wNorm = normalizeTeam(winner);
+                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
+                  hostLocksWon++;
+                }
               }
             }
-          }
-        });
+          });
 
-        if (hostLocksDecided > 0 || decidedLocks > 0) {
-          document.getElementById("statLockBattle").textContent = `C: ${cousinLocksWon}/${decidedLocks} | H: ${hostLocksWon}/${hostLocksDecided}`;
-          document.getElementById("statLockBattleDesc").textContent = "Lock Win Rates";
-        } else {
-          document.getElementById("statLockBattle").textContent = "Pending";
-          document.getElementById("statLockBattleDesc").textContent = "Awaiting Kickoffs";
+          if (hostLocksDecided > 0 || decidedLocks > 0) {
+            document.getElementById("statLockBattle").textContent = `C: ${cousinLocksWon}/${decidedLocks} | H: ${hostLocksWon}/${hostLocksDecided}`;
+            document.getElementById("statLockBattleDesc").textContent = "Lock Win Rates";
+          } else {
+            document.getElementById("statLockBattle").textContent = "Pending";
+            document.getElementById("statLockBattleDesc").textContent = "Awaiting Kickoffs";
+          }
         }
 
       } else {
@@ -1544,13 +1576,6 @@
         document.getElementById("statTopUpsetDesc").textContent = "No Upsets Picked";
         document.getElementById("statLock").textContent = "--";
         document.getElementById("statLockDesc").textContent = "100% Consensus";
-
-        document.getElementById("statPeoplesLock").textContent = "--";
-        document.getElementById("statPeoplesLockDesc").textContent = "Most Locked Team";
-        document.getElementById("statLockAccuracy").textContent = "--";
-        document.getElementById("statLockAccuracyDesc").textContent = "Cousin Locks Hit";
-        document.getElementById("statLockBattle").textContent = "--";
-        document.getElementById("statLockBattleDesc").textContent = "Lock Win Rates";
       }
 
       computeSeasonTotals();
@@ -1564,3 +1589,4 @@
   </script>
 </body>
 </html>
+
