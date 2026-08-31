@@ -205,7 +205,7 @@
       box-shadow: 0 0 8px rgba(251, 191, 36, 0.45);
     }
 
-    /* Option 1: Dropdown Selector + Next/Prev Navigation */
+    /* Dropdown Selector + Next/Prev Navigation */
     .week-selector-bar {
       display: flex;
       gap: 0.5rem;
@@ -321,6 +321,67 @@
       vertical-align: middle;
     }
 
+    .lotw-hit-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.62rem;
+      font-weight: 900;
+      color: #0f172a;
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      margin-left: 0.45rem;
+      border: 1px solid #fde68a;
+      vertical-align: middle;
+      box-shadow: 0 1px 4px rgba(251, 191, 36, 0.3);
+    }
+
+    .lotw-check {
+      color: #15803d;
+      font-weight: 900;
+      font-size: 0.7rem;
+    }
+
+    /* Podium Tier Ranks */
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: 800;
+      margin-right: 0.5rem;
+      background: var(--border-color);
+      color: var(--text-main);
+    }
+
+    .rank-gold {
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%) !important;
+      color: #0f172a !important;
+      font-weight: 900 !important;
+      box-shadow: 0 0 10px rgba(251, 191, 36, 0.55);
+      border: 1px solid #fde68a;
+    }
+
+    .rank-silver {
+      background: linear-gradient(180deg, #f1f5f9 0%, #cbd5e1 100%) !important;
+      color: #0f172a !important;
+      font-weight: 900 !important;
+      box-shadow: 0 0 10px rgba(203, 213, 225, 0.45);
+      border: 1px solid #ffffff;
+    }
+
+    .rank-bronze {
+      background: linear-gradient(180deg, #fdba74 0%, #c2410c 100%) !important;
+      color: #ffffff !important;
+      font-weight: 900 !important;
+      box-shadow: 0 0 10px rgba(194, 65, 12, 0.45);
+      border: 1px solid #fed7aa;
+    }
+
     /* Community Pulse Stat Grids */
     .pulse-grid {
       display: grid;
@@ -372,20 +433,6 @@
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
-    }
-
-    .rank-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      font-size: 0.75rem;
-      font-weight: 800;
-      margin-right: 0.5rem;
-      background: var(--border-color);
-      color: var(--text-main);
     }
 
     .cousin-picks-body {
@@ -579,7 +626,7 @@
     <!-- Gold Accent Divider -->
     <div class="section-divider"></div>
 
-    <!-- Option 1: Dropdown Selector + Next/Prev Navigation -->
+    <!-- Dropdown Selector + Next/Prev Navigation -->
     <div class="week-selector-bar">
       <button type="button" class="btn-step" onclick="changeWeekOffset(-1)">&larr; Prev</button>
       <select id="mainWeekSelect" class="week-dropdown" onchange="switchWeek(parseInt(this.value, 10))">
@@ -696,7 +743,7 @@
     <!-- Floating To Top Button -->
     <a href="#pageTop" class="btn-float-top">&uarr; Top</a>
 
-    <!-- Footer placed cleanly inside the container -->
+    <!-- Footer -->
     <footer class="site-footer" id="pageBottom">
       <div class="footer-container">
         <p class="disclaimer">
@@ -715,7 +762,7 @@
       </div>
     </footer>
 
-  </div> <!-- /container -->
+  </div>
 
   <script>
     const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
@@ -913,6 +960,9 @@
       const picks = parseUserPicks(rawPicks);
       const winners = window.gameWinners[week] || {};
       let correct = 0, incorrect = 0, pending = 0;
+      let lockCorrect = 0, lockIncorrect = 0;
+
+      const userLockId = picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
 
       Object.keys(winners).forEach(id => {
         const winner = winners[id];
@@ -922,15 +972,19 @@
         } else {
           const uNorm = normalizeTeam(userPick);
           const wNorm = normalizeTeam(winner);
-          if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
+          const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
+
+          if (isHit) {
             correct++;
+            if (userLockId === parseInt(id, 10)) lockCorrect++;
           } else {
             incorrect++;
+            if (userLockId === parseInt(id, 10)) lockIncorrect++;
           }
         }
       });
 
-      return { correct, incorrect, pending };
+      return { correct, incorrect, pending, lockCorrect, lockIncorrect };
     }
 
     function getPickClass(userPick, gameId, week) {
@@ -950,7 +1004,6 @@
 
         if (error) throw error;
         
-        // Defensive deduplication by name + week
         const seen = new Set();
         allWeekRows = (rows || []).filter(r => {
           const key = `${r.user_name?.toLowerCase().trim()}_w${r.week_number}`;
@@ -991,10 +1044,18 @@
           if (name === "steven") { stevenW += score.correct; stevenL += score.incorrect; }
         } else {
           if (!cousinAgg[row.user_name]) {
-            cousinAgg[row.user_name] = { user_name: row.user_name, correct: 0, incorrect: 0 };
+            cousinAgg[row.user_name] = { 
+              user_name: row.user_name, 
+              correct: 0, 
+              incorrect: 0, 
+              lockCorrect: 0,
+              lockIncorrect: 0
+            };
           }
           cousinAgg[row.user_name].correct += score.correct;
           cousinAgg[row.user_name].incorrect += score.incorrect;
+          cousinAgg[row.user_name].lockCorrect += score.lockCorrect;
+          cousinAgg[row.user_name].lockIncorrect += score.lockIncorrect;
         }
       });
 
@@ -1012,19 +1073,56 @@
 
       if (top5Section) top5Section.style.display = "block";
 
-      const sortedCousins = Object.values(cousinAgg).sort((a, b) => b.correct - a.correct);
-      const top5 = sortedCousins.slice(0, 5);
+      // Season Sort Chain:
+      // 1. Total Correct Wins
+      // 2. Total Correct Locks
+      // 3. Alphabetical
+      const sortedCousins = Object.values(cousinAgg).sort((a, b) => {
+        if (b.correct !== a.correct) return b.correct - a.correct;
+        if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
+        return a.user_name.localeCompare(b.user_name);
+      });
 
-      if (top5.length === 0) {
+      if (sortedCousins.length === 0) {
         top5Container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 0.4rem 0;">No picks submitted yet.</div>`;
-      } else {
-        top5Container.innerHTML = top5.map((c, i) => `
-          <div class="top5-item">
-            <div><strong>#${i + 1}</strong> ${c.user_name}</div>
-            <div style="font-weight: 800; color: var(--accent-gold);">${c.correct}-${c.incorrect}</div>
-          </div>
-        `).join("");
+        return;
       }
+
+      // Assign Tier Ranks for Season Top 5
+      const uniqueWinCounts = Array.from(new Set(sortedCousins.map(c => c.correct))).sort((a, b) => b - a);
+      const tier1Wins = uniqueWinCounts[0];
+      const tier2Wins = uniqueWinCounts[1];
+      const tier3Wins = uniqueWinCounts[2];
+
+      let sequentialCounter = 4;
+      sortedCousins.forEach(c => {
+        if (c.correct === tier1Wins) {
+          c.rank = 1;
+          c.rankClass = "rank-gold";
+        } else if (tier2Wins !== undefined && c.correct === tier2Wins) {
+          c.rank = 2;
+          c.rankClass = "rank-silver";
+        } else if (tier3Wins !== undefined && c.correct === tier3Wins) {
+          c.rank = 3;
+          c.rankClass = "rank-bronze";
+        } else {
+          c.rank = sequentialCounter++;
+          c.rankClass = "";
+        }
+      });
+
+      const topLeaders = sortedCousins.filter(c => c.rank <= 5);
+
+      top5Container.innerHTML = topLeaders.map(c => `
+        <div class="top5-item">
+          <div style="display: flex; align-items: center;">
+            <span class="rank-badge ${c.rankClass}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">#${c.rank}</span>
+            <strong>${c.user_name}</strong>
+            ${c.lockCorrect > 0 ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
+          </div>
+          <div style="font-weight: 800; color: var(--accent-gold);">${c.correct}-${c.incorrect}</div>
+        </div>
+      `).join("");
     }
 
     function changeWeekOffset(delta) {
@@ -1117,25 +1215,64 @@
       });
 
       cousinRows.forEach(c => c.score = gradePicks(c.picks, activeWeek));
-      cousinRows.sort((a, b) => b.score.correct - a.score.correct || a.user_name.localeCompare(b.user_name));
+
+      // Weekly Sort Chain:
+      // 1. Total Correct Wins
+      // 2. Correct Lock Hit (1 = Hit, 0 = Pending/Loss)
+      // 3. Alphabetical
+      cousinRows.sort((a, b) => {
+        if (b.score.correct !== a.score.correct) return b.score.correct - a.score.correct;
+        if (b.score.lockCorrect !== a.score.lockCorrect) return b.score.lockCorrect - a.score.lockCorrect;
+        return a.user_name.localeCompare(b.user_name);
+      });
+
+      // Weekly Podium Tier Assignment (Tier 1 Gold, Tier 2 Silver, Tier 3 Bronze, Tier 4+ Sequential 4 to N)
+      const uniqueWeeklyWins = Array.from(new Set(cousinRows.map(c => c.score.correct))).sort((a, b) => b - a);
+      const wTier1Wins = uniqueWeeklyWins[0];
+      const wTier2Wins = uniqueWeeklyWins[1];
+      const wTier3Wins = uniqueWeeklyWins[2];
+
+      const gamesHaveStarted = cousinRows.some(c => c.score.correct > 0 || c.score.incorrect > 0);
+
+      let seqWeeklyRank = 4;
+      cousinRows.forEach(c => {
+        if (!gamesHaveStarted) {
+          c.rank = "-";
+          c.rankClass = "";
+        } else if (c.score.correct === wTier1Wins) {
+          c.rank = 1;
+          c.rankClass = "rank-gold";
+        } else if (wTier2Wins !== undefined && c.score.correct === wTier2Wins) {
+          c.rank = 2;
+          c.rankClass = "rank-silver";
+        } else if (wTier3Wins !== undefined && c.score.correct === wTier3Wins) {
+          c.rank = 3;
+          c.rankClass = "rank-bronze";
+        } else {
+          c.rank = seqWeeklyRank++;
+          c.rankClass = "";
+        }
+      });
 
       const listContainer = document.getElementById("cousinsList");
       listContainer.innerHTML = cousinRows.length === 0 
         ? `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No picks submitted for Week ${activeWeek} yet.</div>`
         : "";
 
-      cousinRows.forEach((c, idx) => {
+      cousinRows.forEach(c => {
         const item = document.createElement("div");
         item.className = "cousin-item";
         const picks = parseUserPicks(c.picks);
         const cousinLockId = picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
+        const hitLotw = c.score.lockCorrect > 0;
 
         item.innerHTML = `
           <div class="cousin-header" onclick="this.nextElementSibling.classList.toggle('open')">
-            <div style="display: flex; align-items: center;">
-              <span class="rank-badge">${idx + 1}</span>
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+              <span class="rank-badge ${c.rankClass}">#${c.rank}</span>
               <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
-              <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.5rem;">(${c.score.correct}-${c.score.incorrect})</span>
+              ${hitLotw ? `<span class="lotw-hit-badge">LOTW <span class="lotw-check">✓</span></span>` : ''}
+              <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">(${c.score.correct}-${c.score.incorrect})</span>
             </div>
             <span style="color: var(--accent-gold); font-weight: bold;">+</span>
           </div>
@@ -1165,7 +1302,6 @@
         const upsetTracker = {};
         const teamPickCounts = {};
 
-        // Lock Metrics Trackers
         const lockCounts = {};
         let totalLocksPlaced = 0;
         let cousinLocksWon = 0;
@@ -1188,7 +1324,6 @@
             const aIsSec = isSecTeam(g.teamA);
             const bIsSec = isSecTeam(g.teamB);
 
-            // True upset check: track votes and opponent
             if (aIsSec && !bIsSec) {
               if (normalizeTeam(pick) === normalizeTeam(g.teamB) || !isSecTeam(pick)) {
                 pickedNonSec = true;
@@ -1207,7 +1342,6 @@
               }
             }
 
-            // Lock of the Week Metrics
             if (userLockId === g.id) {
               totalLocksPlaced++;
               lockCounts[pick] = (lockCounts[pick] || 0) + 1;
@@ -1232,12 +1366,10 @@
           }
         });
 
-        // 1. SEC Loyalty Stat
         document.getElementById("statSecSweep").textContent = `${secSweepCount} / ${cousinRows.length}`;
         const sweepPct = Math.round((secSweepCount / cousinRows.length) * 100) || 0;
         document.getElementById("statSecSweepDesc").textContent = `${sweepPct}% Clean SEC Sweeps`;
 
-        // 2. Top Upset Stat
         let topUpsetTeam = "--";
         let maxUpsetVotes = 0;
         let topUpsetOpponent = "";
@@ -1259,7 +1391,6 @@
           document.getElementById("statTopUpsetDesc").textContent = "No Upsets Picked";
         }
 
-        // 3. Highest Consensus Pick (Ballot-wide)
         let topConsensusTeam = "--";
         let maxConsensusVotes = 0;
         Object.entries(teamPickCounts).forEach(([team, count]) => {
@@ -1272,9 +1403,6 @@
         document.getElementById("statLock").textContent = topConsensusTeam;
         document.getElementById("statLockDesc").textContent = `${lockPct}% Consensus`;
 
-        // --- LOCK SPOTLIGHT CARDS ---
-
-        // Card 1: Consensus Lock (Most Locked Team)
         let topLockedTeam = "--";
         let maxLocks = 0;
         Object.entries(lockCounts).forEach(([team, count]) => {
@@ -1287,7 +1415,6 @@
         const consensusLockPct = totalLocksPlaced > 0 ? Math.round((maxLocks / totalLocksPlaced) * 100) : 0;
         document.getElementById("statPeoplesLockDesc").textContent = totalLocksPlaced > 0 ? `${maxLocks} Locks (${consensusLockPct}%)` : "No Locks Placed";
 
-        // Card 2: Lock Accuracy Gauge
         const decidedLocks = cousinLocksWon + cousinLocksLost;
         if (decidedLocks > 0) {
           const lockHitPct = Math.round((cousinLocksWon / decidedLocks) * 100);
@@ -1298,7 +1425,6 @@
           document.getElementById("statLockAccuracyDesc").textContent = totalLocksPlaced > 0 ? "Awaiting Results" : "No Locks Placed";
         }
 
-        // Card 3: Cousins vs Hosts Showdown
         let hostLocksWon = 0;
         let hostLocksDecided = 0;
         [hostMike, hostShane, hostSteven].forEach(h => {
