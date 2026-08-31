@@ -181,17 +181,30 @@
       color: var(--accent-gold);
     }
 
-    /* Top 5 Cousins Mini-Leaderboard */
-    .top5-item {
+    /* Top 3 Cousins Podium */
+    .top3-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0.5rem 0.75rem;
+      padding: 0.55rem 0.75rem;
       background: var(--bg-card-alt);
       border: 1px solid var(--border-color);
       border-radius: 6px;
       margin-bottom: 0.4rem;
       font-size: 0.85rem;
+    }
+
+    .top3-pending {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 0.65rem 0;
+      font-weight: 700;
+      background: var(--bg-card-alt);
+      border: 1px dashed var(--border-color);
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
 
     /* Gold Accent Divider */
@@ -612,13 +625,13 @@
         </div>
       </div>
 
-      <!-- Top 5 Cousins (Auto-hidden until games finish) -->
-      <div id="top5Section" style="margin-top: 0.8rem; display: none;">
+      <!-- Top 3 Cousins Podium (Always visible) -->
+      <div id="top5Section" style="margin-top: 0.8rem;">
         <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
-          Top 5 Cousins (Overall)
+          Top 3 Cousins (Overall)
         </span>
         <div id="top5CousinsList">
-          <div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 0.5rem 0;">Loading season standings...</div>
+          <div class="top3-pending">Pending Week 1 Results</div>
         </div>
       </div>
     </div>
@@ -1049,13 +1062,23 @@
               correct: 0, 
               incorrect: 0, 
               lockCorrect: 0,
-              lockIncorrect: 0
+              lockIncorrect: 0,
+              totalTimestampMs: 0,
+              entryCount: 0
             };
           }
           cousinAgg[row.user_name].correct += score.correct;
           cousinAgg[row.user_name].incorrect += score.incorrect;
           cousinAgg[row.user_name].lockCorrect += score.lockCorrect;
           cousinAgg[row.user_name].lockIncorrect += score.lockIncorrect;
+
+          if (row.created_at) {
+            const timeMs = new Date(row.created_at).getTime();
+            if (!isNaN(timeMs)) {
+              cousinAgg[row.user_name].totalTimestampMs += timeMs;
+              cousinAgg[row.user_name].entryCount += 1;
+            }
+          }
         }
       });
 
@@ -1063,60 +1086,43 @@
       document.getElementById("seasonShane").textContent = `${shaneW}-${shaneL}`;
       document.getElementById("seasonSteven").textContent = `${stevenW}-${stevenL}`;
 
-      const top5Section = document.getElementById("top5Section");
       const top5Container = document.getElementById("top5CousinsList");
 
       if (!anyDecidedGames) {
-        if (top5Section) top5Section.style.display = "none";
+        top5Container.innerHTML = `<div class="top3-pending">Pending Week 1 Results</div>`;
         return;
       }
 
-      if (top5Section) top5Section.style.display = "block";
-
-      // Season Sort Chain:
-      // 1. Total Correct Wins
-      // 2. Total Correct Locks
-      // 3. Alphabetical
+      // 4-Step Tiebreaker Chain to get exact Top 3:
+      // 1. Season Total Correct Wins (Desc)
+      // 2. Season Total Correct LOTW (Desc)
+      // 3. Fewest Losses / Higher Win Rate (Asc)
+      // 4. Earliest Average Submission Timestamp (Asc)
       const sortedCousins = Object.values(cousinAgg).sort((a, b) => {
         if (b.correct !== a.correct) return b.correct - a.correct;
         if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
+        if (a.incorrect !== b.incorrect) return a.incorrect - b.incorrect;
+
+        const aAvgTime = a.entryCount > 0 ? (a.totalTimestampMs / a.entryCount) : Infinity;
+        const bAvgTime = b.entryCount > 0 ? (b.totalTimestampMs / b.entryCount) : Infinity;
+        if (aAvgTime !== bAvgTime) return aAvgTime - bAvgTime;
+
         return a.user_name.localeCompare(b.user_name);
       });
 
       if (sortedCousins.length === 0) {
-        top5Container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 0.4rem 0;">No picks submitted yet.</div>`;
+        top5Container.innerHTML = `<div class="top3-pending">No Picks Submitted Yet</div>`;
         return;
       }
 
-      // Assign Tier Ranks for Season Top 5
-      const uniqueWinCounts = Array.from(new Set(sortedCousins.map(c => c.correct))).sort((a, b) => b - a);
-      const tier1Wins = uniqueWinCounts[0];
-      const tier2Wins = uniqueWinCounts[1];
-      const tier3Wins = uniqueWinCounts[2];
+      // Exact Top 3 Podium
+      const top3Podium = sortedCousins.slice(0, 3);
+      const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
 
-      let sequentialCounter = 4;
-      sortedCousins.forEach(c => {
-        if (c.correct === tier1Wins) {
-          c.rank = 1;
-          c.rankClass = "rank-gold";
-        } else if (tier2Wins !== undefined && c.correct === tier2Wins) {
-          c.rank = 2;
-          c.rankClass = "rank-silver";
-        } else if (tier3Wins !== undefined && c.correct === tier3Wins) {
-          c.rank = 3;
-          c.rankClass = "rank-bronze";
-        } else {
-          c.rank = sequentialCounter++;
-          c.rankClass = "";
-        }
-      });
-
-      const topLeaders = sortedCousins.filter(c => c.rank <= 5);
-
-      top5Container.innerHTML = topLeaders.map(c => `
-        <div class="top5-item">
+      top5Container.innerHTML = top3Podium.map((c, idx) => `
+        <div class="top3-item">
           <div style="display: flex; align-items: center;">
-            <span class="rank-badge ${c.rankClass}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">#${c.rank}</span>
+            <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">#${idx + 1}</span>
             <strong>${c.user_name}</strong>
             ${c.lockCorrect > 0 ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
           </div>
@@ -1218,7 +1224,7 @@
 
       // Weekly Sort Chain:
       // 1. Total Correct Wins
-      // 2. Correct Lock Hit (1 = Hit, 0 = Pending/Loss)
+      // 2. Correct Lock Hit
       // 3. Alphabetical
       cousinRows.sort((a, b) => {
         if (b.score.correct !== a.score.correct) return b.score.correct - a.score.correct;
@@ -1226,7 +1232,8 @@
         return a.user_name.localeCompare(b.user_name);
       });
 
-      // Weekly Podium Tier Assignment (Tier 1 Gold, Tier 2 Silver, Tier 3 Bronze, Tier 4+ Sequential 4 to N)
+      // Weekly Podium Tier Assignment:
+      // Tier 1 Gold #1, Tier 2 Silver #2, Tier 3 Bronze #3, Tier 4+ Sequential 4 to N
       const uniqueWeeklyWins = Array.from(new Set(cousinRows.map(c => c.score.correct))).sort((a, b) => b - a);
       const wTier1Wins = uniqueWeeklyWins[0];
       const wTier2Wins = uniqueWeeklyWins[1];
