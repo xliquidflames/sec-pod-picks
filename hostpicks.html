@@ -313,8 +313,8 @@
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // SHA-256 hash for "sec2026"
-    const AUTH_HASH = "a9980a3739bf82255745dc24619717013da03c14a242f3fbdb070a7d515a45ae";
+
+const AUTH_HASH = "9da9e31d79a296b1b5e58120b0051e7040aa8838384b6f1ca54b61330e7195bb";
 
     async function hashPin(pin) {
       const msgBuffer = new TextEncoder().encode(pin);
