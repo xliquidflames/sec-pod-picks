@@ -291,7 +291,7 @@
         </div>
       </div>
 
-      <!-- Obfuscated Host PIN Input -->
+      <!-- Host PIN Input -->
       <div class="control-group">
         <label for="hostPin">Host Security PIN:</label>
         <input type="password" id="hostPin" placeholder="Enter Host PIN" />
@@ -312,16 +312,6 @@
     const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // Standard SHA-256 hash for pin
-    const AUTH_HASH = "9da9e31d79a296b1b5e58120b0051e7040aa8838384b6f1ca54b61330e7195bb";
-
-    async function hashPin(pin) {
-  const msgBuffer = new TextEncoder().encode(pin);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
     const secCanonicalList = [
       "Alabama", "Arkansas", "Auburn", "Florida", "Georgia", "Kentucky",
@@ -544,13 +534,13 @@
     }
 
     async function saveHostSelections() {
-      const pinInput = document.getElementById("hostPin").value.trim().toLowerCase();
+      const pinInput = document.getElementById("hostPin").value.trim();
       const hostName = document.getElementById("hostSelect").value;
       const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
       const statusAlert = document.getElementById("statusAlert");
 
-      const hashedEnteredPin = await hashPin(pinInput);
-      if (hashedEnteredPin !== AUTH_HASH) {
+      // Plaintext check for "SEC2026" (case-insensitive)
+      if (pinInput.toUpperCase() !== "SEC2026") {
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = "Invalid Host Security PIN.";
         return;
