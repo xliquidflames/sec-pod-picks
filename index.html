@@ -1086,34 +1086,38 @@
       return (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) ? "pick-correct" : "pick-incorrect";
     }
 
-    async function loadAllSeasonData() {
-      try {
-        const { data: rows, error } = await supabaseClient
-          .from("picks")
-          .select("*")
-          .order("created_at", { ascending: true });
+async function loadAllSeasonData() {
+  try {
+    const { data: rows, error } = await supabaseClient
+      .from("picks")
+      .select("*")
+      .order("created_at", { ascending: true });
 
-        if (error) throw error;
-        
-        const seen = new Set();
-        allWeekRows = (rows || []).filter(r => {
-          const key = `${r.user_name?.toLowerCase().trim()}_w${r.week_number}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+    if (error) throw error;
+    
+    const seen = new Set();
+    allWeekRows = (rows || []).filter(r => {
+      const key = `${r.user_name?.toLowerCase().trim()}_w${r.week_number}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
-        await fetchEspnSchedule(1);
-        initCountdown();
+    // Identify all unique week numbers present in database rows (plus activeWeek and Week 1)
+    const uniqueWeeks = Array.from(
+      new Set(allWeekRows.map(r => r.week_number).concat([1, activeWeek]))
+    ).filter(w => w >= 1 && w <= 14);
 
-        computeSeasonTotals();
-        renderActiveWeek();
-      } catch (err) {
-        console.error("Season load error:", err);
-      }
-    }
+    // Fetch schedules for all relevant weeks in parallel so window.gameWinners has complete data
+    await Promise.all(uniqueWeeks.map(w => fetchEspnSchedule(w)));
 
-    function computeSeasonTotals() {
+    initCountdown();
+    computeSeasonTotals();
+    renderActiveWeek();
+  } catch (err) {
+    console.error("Season load error:", err);
+  }
+}    function computeSeasonTotals() {
       let mikeW = 0, mikeL = 0;
       let shaneW = 0, shaneL = 0;
       let stevenW = 0, stevenL = 0;
