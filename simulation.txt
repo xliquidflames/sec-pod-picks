@@ -1,20 +1,39 @@
-(async function simulateWeek1Completion() {
-  // 1. Fetch Week 1 schedule so game objects and team names are loaded
+(async function simulateFullWeek1WithHosts() {
+  // 1. Fetch Week 1 schedule to get actual game objects
   const games = await fetchEspnSchedule(1);
-  
-  if (!window.gameWinners[1]) {
-    window.gameWinners[1] = {};
-  }
+  if (!window.gameWinners[1]) window.gameWinners[1] = {};
 
   // 2. Assign winning teams to every game on the Week 1 slate
-  // (Alternates selecting teamA and teamB to simulate split results and underdog hits)
-  games.forEach((g, index) => {
-    window.gameWinners[1][g.id] = (index % 2 === 0) ? g.teamA : g.teamB;
+  games.forEach((g, idx) => {
+    window.gameWinners[1][g.id] = (idx % 2 === 0) ? g.teamA : g.teamB;
   });
 
-  // 3. Recalculate season standings with consensus divergence & underdog scoring
+  // 3. Generate mock picks for Mike, Shane, and Steven
+  const mikePicks = {};
+  const shanePicks = {};
+  const stevenPicks = {};
+
+  games.forEach((g, idx) => {
+    // Mike: Mostly follows slate pattern (high win count)
+    mikePicks[g.id] = (idx % 3 === 0) ? g.teamB : g.teamA;
+    // Shane: Leans alternate team picks
+    shanePicks[g.id] = (idx % 2 === 0) ? g.teamA : g.teamB;
+    // Steven: Different split mix
+    stevenPicks[g.id] = (idx % 4 === 0) ? g.teamA : g.teamB;
+  });
+
+  // 4. Remove any existing Week 1 host entries from allWeekRows and insert fresh ones
+  allWeekRows = allWeekRows.filter(r => !(r.is_host && r.week_number === 1));
+
+  allWeekRows.push(
+    { user_name: "Mike", week_number: 1, is_host: true, picks: mikePicks, created_at: new Date().toISOString() },
+    { user_name: "Shane", week_number: 1, is_host: true, picks: shanePicks, created_at: new Date().toISOString() },
+    { user_name: "Steven", week_number: 1, is_host: true, picks: stevenPicks, created_at: new Date().toISOString() }
+  );
+
+  // 5. Recompute season totals & re-render active week
   computeSeasonTotals();
   await renderActiveWeek();
 
-  console.log("Simulated Week 1 Results Applied:", window.gameWinners[1]);
+  console.log("Simulated Week 1 results & host picks applied successfully.");
 })();
