@@ -374,11 +374,14 @@
             teamB = homeName;
           }
 
+          const isFinal = comp.status && comp.status.type && comp.status.type.completed;
           const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : 'Line: TBD';
           const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
           
           let time = "TBD";
-          if (comp.date) {
+          if (isFinal) {
+            time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+          } else if (comp.date) {
             time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
                    new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
