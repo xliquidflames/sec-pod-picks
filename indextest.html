@@ -259,6 +259,23 @@
       color: var(--text-main);
     }
 
+    .tiebreaker-decision-log {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .tiebreaker-decision-item {
+      background: #111a2c;
+      border-left: 3px solid var(--accent-gold);
+      padding: 0.4rem 0.6rem;
+      border-radius: 0 4px 4px 0;
+      margin-top: 0.4rem;
+      font-size: 0.73rem;
+      color: var(--text-main);
+      line-height: 1.4;
+    }
+
     /* Gold Accent Divider */
     .section-divider {
       height: 2px;
@@ -309,6 +326,43 @@
       color: var(--accent-gold);
     }
 
+    /* Prominent Host Section Header Toggle */
+    .host-header-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      padding: 0.25rem 0;
+      border-radius: 8px;
+      user-select: none;
+      transition: opacity 0.15s ease;
+    }
+
+    .host-header-toggle:hover {
+      opacity: 0.9;
+    }
+
+    .host-toggle-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      color: var(--accent-gold);
+      font-size: 0.85rem;
+      font-weight: 900;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      transition: all 0.15s ease;
+    }
+
+    .host-header-toggle:hover .host-toggle-badge {
+      border-color: var(--accent-gold);
+      background: #1e293b;
+    }
+
     /* Host Picks Grid */
     .grid-wrapper {
       overflow-x: hidden;
@@ -316,6 +370,11 @@
       border: 1px solid var(--border-color);
       background: var(--bg-card-alt);
       width: 100%;
+      display: block;
+    }
+
+    .grid-wrapper.collapsed {
+      display: none;
     }
 
     .host-grid-table {
@@ -337,6 +396,14 @@
       font-weight: 700;
       padding: 0.45rem 0.25rem;
       font-size: 0.8rem;
+    }
+
+    .host-header-score {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      margin-top: 0.15rem;
     }
 
     .host-grid-table th.matchup-header,
@@ -680,7 +747,7 @@
       <!-- Top 3 Cousins Podium -->
       <div id="top5Section" style="margin-top: 0.8rem;">
         <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
-          Top 3 Cousins (Overall)
+          Top 3 Cousins
         </span>
         <div id="top5CousinsList">
           <div class="top3-pending">Pending Week 1 Results</div>
@@ -695,10 +762,14 @@
           <div><strong>Season Top 3 Podium Tiebreaker Hierarchy:</strong></div>
           <ol>
             <li><strong>Total Correct Wins:</strong> Cumulative correct picks across the entire season.</li>
-            <li><strong>Lock of the Week Hits:</strong> Total correct Lock of the Week picks made across the season (starts Week 2).</li>
+            <li><strong>Lock of the Week Hits:</strong> Total correct Lock of the Week picks.</li>
             <li><strong>Fewest Total Losses:</strong> Rewards higher overall win percentage.</li>
-            <li><strong>Early Bird Submissions:</strong> Average earliest submission timestamp across the season.</li>
+            <li><strong>Consensus Divergence:</strong> Total winning picks that go against the grain of the Cousins.</li>
+            <li><strong>Underdog Upset Accuracy:</strong> Total winning picks made on underdog teams.</li>
           </ol>
+
+          <!-- Dynamic Tiebreaker Decision Log -->
+          <div id="tiebreakerDecisionLog" class="tiebreaker-decision-log" style="display: none;"></div>
         </div>
       </div>
     </div>
@@ -737,8 +808,11 @@
     <div id="weekContent">
       <!-- Section: Official Host Picks -->
       <div class="card">
-        <h2 class="section-title" id="weekHostTitle" style="margin-bottom: 0.8rem;">Official Host Picks (Week 1)</h2>
-        <div class="grid-wrapper">
+        <div class="host-header-toggle" onclick="toggleHostGrid()">
+          <h2 class="section-title" id="weekHostTitle">Hosts' Week 1 Picks</h2>
+          <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
+        </div>
+        <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.85rem;">
           <table class="host-grid-table">
             <thead>
               <tr>
@@ -758,7 +832,7 @@
       <!-- Section: Cousins Leaderboard -->
       <div class="card">
         <div class="section-title-bar">
-          <h2 class="section-title" id="weekCousinsTitle">The Cousins' Leaderboard (Week 1)</h2>
+          <h2 class="section-title" id="weekCousinsTitle">The Cousins' Week 1 Picks</h2>
           <span class="entry-pill" id="entryPill">0 Entries</span>
         </div>
 
@@ -852,6 +926,7 @@
     let activeWeek = 1;
     let allWeekRows = [];
     window.gameWinners = {};
+    window.weekSchedules = {};
 
     // Season Kickoff Target: Thursday, September 3, 2026 at 8:00 PM ET
     const seasonKickoffTime = new Date("2026-09-03T20:00:00-04:00");
@@ -935,6 +1010,16 @@
       const isOpen = infoBox.classList.toggle("open");
       if (arrow) {
         arrow.innerHTML = isOpen ? "&#9652;" : "&#9662;";
+      }
+    }
+
+    function toggleHostGrid() {
+      const wrapper = document.getElementById("hostGridWrapper");
+      const arrow = document.getElementById("hostGridArrow");
+      if (!wrapper) return;
+      const isCollapsed = wrapper.classList.toggle("collapsed");
+      if (arrow) {
+        arrow.innerHTML = isCollapsed ? "&#9656;" : "&#9662;";
       }
     }
 
@@ -1022,7 +1107,7 @@
 
         rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
 
-        return rawGames.map((g, idx) => {
+        const mappedGames = rawGames.map((g, idx) => {
           const gameId = idx + 1;
           if (g.winner) {
             window.gameWinners[week][gameId] = g.winner;
@@ -1034,6 +1119,9 @@
             detail: g.detail
           };
         });
+
+        window.weekSchedules[week] = mappedGames;
+        return mappedGames;
       } catch (e) {
         console.error("ESPN schedule error:", e);
         return [];
@@ -1103,9 +1191,14 @@
           return true;
         });
 
-        await fetchEspnSchedule(1);
-        initCountdown();
+        // Fetch schedules for all relevant weeks concurrently
+        const uniqueWeeks = Array.from(
+          new Set(allWeekRows.map(r => r.week_number).concat([1, activeWeek]))
+        ).filter(w => w >= 1 && w <= 14);
 
+        await Promise.all(uniqueWeeks.map(w => fetchEspnSchedule(w)));
+
+        initCountdown();
         computeSeasonTotals();
         renderActiveWeek();
       } catch (err) {
@@ -1121,6 +1214,25 @@
       const cousinAgg = {};
       let anyDecidedGames = false;
 
+      // 1. Calculate community pick distributions per week & game for divergence scoring
+      const weekGameDistributions = {};
+      allWeekRows.forEach(row => {
+        if (row.is_host) return;
+        const w = row.week_number;
+        if (!weekGameDistributions[w]) weekGameDistributions[w] = {};
+        const picks = parseUserPicks(row.picks);
+        Object.keys(picks).forEach(gid => {
+          if (gid === "lock_game_id") return;
+          const p = picks[gid];
+          if (!p) return;
+          if (!weekGameDistributions[w][gid]) weekGameDistributions[w][gid] = { total: 0, counts: {} };
+          const pNorm = normalizeTeam(p);
+          weekGameDistributions[w][gid].total += 1;
+          weekGameDistributions[w][gid].counts[pNorm] = (weekGameDistributions[w][gid].counts[pNorm] || 0) + 1;
+        });
+      });
+
+      // 2. Aggregate season performance metrics for each cousin
       allWeekRows.forEach(row => {
         const score = gradePicks(row.picks, row.week_number);
         const name = (row.user_name || "").toLowerCase();
@@ -1141,8 +1253,10 @@
               incorrect: 0, 
               lockCorrect: 0,
               lockIncorrect: 0,
-              totalTimestampMs: 0,
-              entryCount: 0
+              consensusDivergenceWins: 0,
+              divergencePickList: [],
+              underdogUpsetWins: 0,
+              underdogPickList: []
             };
           }
           cousinAgg[row.user_name].correct += score.correct;
@@ -1150,13 +1264,47 @@
           cousinAgg[row.user_name].lockCorrect += score.lockCorrect;
           cousinAgg[row.user_name].lockIncorrect += score.lockIncorrect;
 
-          if (row.created_at) {
-            const timeMs = new Date(row.created_at).getTime();
-            if (!isNaN(timeMs)) {
-              cousinAgg[row.user_name].totalTimestampMs += timeMs;
-              cousinAgg[row.user_name].entryCount += 1;
+          // Performance tiebreakers calculation
+          const picks = parseUserPicks(row.picks);
+          const winners = window.gameWinners[row.week_number] || {};
+          const sched = window.weekSchedules[row.week_number] || [];
+
+          Object.keys(winners).forEach(gid => {
+            const winner = winners[gid];
+            const userPick = picks[gid] || picks[String(gid)];
+            if (!winner || !userPick) return;
+
+            const uNorm = normalizeTeam(userPick);
+            const wNorm = normalizeTeam(winner);
+            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
+
+            if (isHit) {
+              // Tiebreaker 4: Consensus Divergence (Winning pick made on minority community choice <= 45%)
+              const gameDist = (weekGameDistributions[row.week_number] || {})[gid];
+              if (gameDist && gameDist.total > 0) {
+                const pickCount = gameDist.counts[uNorm] || 0;
+                const pickRatio = pickCount / gameDist.total;
+                if (pickRatio <= 0.45) {
+                  cousinAgg[row.user_name].consensusDivergenceWins += 1;
+                  cousinAgg[row.user_name].divergencePickList.push(userPick);
+                }
+              }
+
+              // Tiebreaker 5: Underdog Upset Pick Accuracy (Winning pick for non-SEC team vs SEC opponent)
+              const gameObj = sched.find(g => String(g.id) === String(gid));
+              if (gameObj) {
+                const aIsSec = isSecTeam(gameObj.teamA);
+                const bIsSec = isSecTeam(gameObj.teamB);
+                if (aIsSec && !bIsSec && !isSecTeam(userPick)) {
+                  cousinAgg[row.user_name].underdogUpsetWins += 1;
+                  cousinAgg[row.user_name].underdogPickList.push(`${userPick} over ${gameObj.teamA}`);
+                } else if (!aIsSec && bIsSec && !isSecTeam(userPick)) {
+                  cousinAgg[row.user_name].underdogUpsetWins += 1;
+                  cousinAgg[row.user_name].underdogPickList.push(`${userPick} over ${gameObj.teamB}`);
+                }
+              }
             }
-          }
+          });
         }
       });
 
@@ -1165,31 +1313,37 @@
       document.getElementById("seasonSteven").textContent = `${stevenW}-${stevenL}`;
 
       const top5Container = document.getElementById("top5CousinsList");
+      const decisionLog = document.getElementById("tiebreakerDecisionLog");
 
       if (!anyDecidedGames) {
         top5Container.innerHTML = `<div class="top3-pending">Pending Week 1 Results</div>`;
+        if (decisionLog) decisionLog.style.display = "none";
         return;
       }
 
-      // 4-Step Tiebreaker Chain to get exact Top 3:
-      // 1. Season Total Correct Wins (Desc)
-      // 2. Season Total Correct LOTW (Desc - Starts Week 2)
-      // 3. Fewest Losses / Higher Win Rate (Asc)
-      // 4. Earliest Average Submission Timestamp (Asc)
+      // 5-Step Performance-Based Tiebreaker Chain:
+      // 1. Total Correct Wins (Desc)
+      // 2. Lock of the Week Hits (Desc)
+      // 3. Fewest Total Losses (Asc)
+      // 4. Consensus Divergence Wins (Desc)
+      // 5. Underdog Upset Accuracy Wins (Desc)
+      // 6. Alphabetical
       const sortedCousins = Object.values(cousinAgg).sort((a, b) => {
         if (b.correct !== a.correct) return b.correct - a.correct;
         if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
         if (a.incorrect !== b.incorrect) return a.incorrect - b.incorrect;
-
-        const aAvgTime = a.entryCount > 0 ? (a.totalTimestampMs / a.entryCount) : Infinity;
-        const bAvgTime = b.entryCount > 0 ? (b.totalTimestampMs / b.entryCount) : Infinity;
-        if (aAvgTime !== bAvgTime) return aAvgTime - bAvgTime;
-
+        if (b.consensusDivergenceWins !== a.consensusDivergenceWins) {
+          return b.consensusDivergenceWins - a.consensusDivergenceWins;
+        }
+        if (b.underdogUpsetWins !== a.underdogUpsetWins) {
+          return b.underdogUpsetWins - a.underdogUpsetWins;
+        }
         return a.user_name.localeCompare(b.user_name);
       });
 
       if (sortedCousins.length === 0) {
         top5Container.innerHTML = `<div class="top3-pending">No Picks Submitted Yet</div>`;
+        if (decisionLog) decisionLog.style.display = "none";
         return;
       }
 
@@ -1207,6 +1361,70 @@
           <div style="font-weight: 800; color: var(--accent-gold);">${c.correct}-${c.incorrect}</div>
         </div>
       `).join("");
+
+      // Generate Tiebreaker Decision Log for Top 3
+      if (decisionLog) {
+        const decisions = [];
+        const topWins = top3Podium[0]?.correct;
+        const contenders = sortedCousins.filter(c => c.correct === topWins);
+
+        if (contenders.length > 1) {
+          // Check if Lock of the Week separated contenders
+          const lockHits = Array.from(new Set(contenders.map(c => c.lockCorrect))).sort((a, b) => b - a);
+          if (lockHits.length > 1 && lockHits[0] > 0) {
+            const topLockCousins = contenders.filter(c => c.lockCorrect === lockHits[0]);
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Lock of the Week:</strong> ${topLockCousins.map(c => c.user_name).join(", ")} hit their Lock of the Week (${lockHits[0]}), breaking the tie over contenders with fewer lock wins.
+              </div>
+            `);
+          }
+
+          // Check if Consensus Divergence separated contenders
+          const divergenceCounts = Array.from(new Set(contenders.map(c => c.consensusDivergenceWins))).sort((a, b) => b - a);
+          if (divergenceCounts.length > 1 && divergenceCounts[0] > 0) {
+            const topDiv = contenders.filter(c => c.consensusDivergenceWins === divergenceCounts[0]);
+            const divPicks = topDiv[0]?.divergencePickList.join(", ") || "contrarian picks";
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Consensus Divergence:</strong> ${topDiv.map(c => c.user_name).join(", ")} hit ${divergenceCounts[0]} against-the-grain pick(s) (${divPicks}) to earn tiebreaker advantage over other tied Cousins.
+              </div>
+            `);
+          }
+
+          // Check if Underdog Upsets separated contenders
+          const underdogCounts = Array.from(new Set(contenders.map(c => c.underdogUpsetWins))).sort((a, b) => b - a);
+          if (underdogCounts.length > 1 && underdogCounts[0] > 0) {
+            const topDog = contenders.filter(c => c.underdogUpsetWins === underdogCounts[0]);
+            const dogPicks = topDog[0]?.underdogPickList.join(", ") || "underdog picks";
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Underdog Upset Accuracy:</strong> ${topDog.map(c => c.user_name).join(", ")} correctly called ${dogPicks} to claim the higher podium seed.
+              </div>
+            `);
+          }
+
+          if (decisions.length === 0) {
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Alphabetical Seeding:</strong> Contenders are deadlocked across all performance metrics, so podium positions currently follow alphabetical ordering.
+              </div>
+            `);
+          }
+        } else {
+          decisions.push(`
+            <div class="tiebreaker-decision-item">
+              <strong>Outright Score:</strong> Season podium ranks are currently determined outright by total correct wins.
+            </div>
+          `);
+        }
+
+        decisionLog.innerHTML = `
+          <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Live Podium Decision Logic:</div>
+          ${decisions.join("")}
+        `;
+        decisionLog.style.display = "block";
+      }
     }
 
     function changeWeekOffset(delta) {
@@ -1224,8 +1442,8 @@
       const dropdown = document.getElementById("mainWeekSelect");
       if (dropdown) dropdown.value = weekNum;
 
-      document.getElementById("weekHostTitle").textContent = `Official Host Picks (Week ${weekNum})`;
-      document.getElementById("weekCousinsTitle").textContent = `The Cousins' Leaderboard (Week ${weekNum})`;
+      document.getElementById("weekHostTitle").textContent = `Hosts' Week ${weekNum} Picks`;
+      document.getElementById("weekCousinsTitle").textContent = `The Cousins' Week ${weekNum} Picks`;
 
       const sortDesc = document.getElementById("leaderboardSortDesc");
       if (sortDesc) {
@@ -1272,9 +1490,9 @@
       const shaneScore = gradePicks(shanePicks, activeWeek);
       const stevenScore = gradePicks(stevenPicks, activeWeek);
 
-      document.getElementById("thMike").innerHTML = `Mike <span class="matchup-subdetail">(${mikeScore.correct}-${mikeScore.incorrect})</span>`;
-      document.getElementById("thShane").innerHTML = `Shane <span class="matchup-subdetail">(${shaneScore.correct}-${shaneScore.incorrect})</span>`;
-      document.getElementById("thSteven").innerHTML = `Steven <span class="matchup-subdetail">(${stevenScore.correct}-${stevenScore.incorrect})</span>`;
+      document.getElementById("thMike").innerHTML = `Mike <span class="host-header-score">${mikeScore.correct}-${mikeScore.incorrect}</span>`;
+      document.getElementById("thShane").innerHTML = `Shane <span class="host-header-score">${shaneScore.correct}-${shaneScore.incorrect}</span>`;
+      document.getElementById("thSteven").innerHTML = `Steven <span class="host-header-score">${stevenScore.correct}-${stevenScore.incorrect}</span>`;
 
       const hostBody = document.getElementById("hostGridBody");
       hostBody.innerHTML = "";
@@ -1368,7 +1586,7 @@
               <span class="rank-badge ${c.rankClass}">#${c.rank}</span>
               <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
               ${hitLotw ? `<span class="lotw-hit-badge">LOTW <span class="lotw-check">✓</span></span>` : ''}
-              <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">(${c.score.correct}-${c.score.incorrect})</span>
+              <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">${c.score.correct}-${c.score.incorrect}</span>
             </div>
             <span style="color: var(--accent-gold); font-weight: bold;">+</span>
           </div>
@@ -1522,7 +1740,7 @@
           if (decidedLocks > 0) {
             const lockHitPct = Math.round((cousinLocksWon / decidedLocks) * 100);
             document.getElementById("statLockAccuracy").textContent = `${lockHitPct}%`;
-            document.getElementById("statLockAccuracyDesc").textContent = `${cousinLocksWon}-${cousinLocksLost} (${cousinLocksPending} pending)`;
+            document.getElementById("statLockAccuracyDesc").textContent = `${cousinLocksWon}-${cousinLocksLost}, ${cousinLocksPending} pending`;
           } else {
             document.getElementById("statLockAccuracy").textContent = totalLocksPlaced > 0 ? `${totalLocksPlaced} Locked` : "--";
             document.getElementById("statLockAccuracyDesc").textContent = totalLocksPlaced > 0 ? "Awaiting Results" : "No Locks Placed";

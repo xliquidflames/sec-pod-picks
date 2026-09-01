@@ -1,0 +1,20 @@
+(async function simulateWeek1Completion() {
+  // 1. Fetch Week 1 schedule so game objects and team names are loaded
+  const games = await fetchEspnSchedule(1);
+  
+  if (!window.gameWinners[1]) {
+    window.gameWinners[1] = {};
+  }
+
+  // 2. Assign winning teams to every game on the Week 1 slate
+  // (Alternates selecting teamA and teamB to simulate split results and underdog hits)
+  games.forEach((g, index) => {
+    window.gameWinners[1][g.id] = (index % 2 === 0) ? g.teamA : g.teamB;
+  });
+
+  // 3. Recalculate season standings with consensus divergence & underdog scoring
+  computeSeasonTotals();
+  await renderActiveWeek();
+
+  console.log("Simulated Week 1 Results Applied:", window.gameWinners[1]);
+})();
