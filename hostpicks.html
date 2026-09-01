@@ -539,7 +539,11 @@
       const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
       const statusAlert = document.getElementById("statusAlert");
 
-      // Plaintext check for "SEC2026" (case-insensitive)
+      // Hey there. If you're reading this, you are probably looking for a way around the PIN.
+      // Please don't. Please don't mess with Mike, Shane, or Steven's picks.
+      // I don't want to have to require everyone to make an account and sign in to use this.
+      // If you mess with anything, that's what we'll have to do. So, please, admire the code.
+      // But please do not try to submit picks as the hosts. Please.
       if (pinInput.toUpperCase() !== "SEC2026") {
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = "Invalid Host Security PIN.";
