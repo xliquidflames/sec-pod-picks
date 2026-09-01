@@ -313,15 +313,15 @@
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Standard SHA-256 hash for "sec2026"
+    // Standard SHA-256 hash for pin
     const AUTH_HASH = "9da9e31d79a296b1b5e58120b0051e7040aa8838384b6f1ca54b61330e7195bb";
 
     async function hashPin(pin) {
-      const msgBuffer = new TextEncoder().encode(pin);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
+  const msgBuffer = new TextEncoder().encode(pin);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
     const secCanonicalList = [
       "Alabama", "Arkansas", "Auburn", "Florida", "Georgia", "Kentucky",
