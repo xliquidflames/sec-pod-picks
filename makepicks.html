@@ -32,6 +32,7 @@
       padding: 1.5rem 1rem 3rem;
       display: flex;
       justify-content: center;
+      min-height: 100dvh;
     }
 
     .container {
@@ -41,7 +42,7 @@
 
     header {
       text-align: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
     }
 
     .back-link {
@@ -64,6 +65,30 @@
     .sub-header {
       color: var(--text-muted);
       font-size: 0.9rem;
+    }
+
+    /* Clarification Notice Banner */
+    .pick-format-banner {
+      background: #19263e;
+      border: 1.5px solid var(--accent-gold);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.25rem;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .pick-format-text {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: 0.3px;
+      line-height: 1.4;
+    }
+
+    .pick-format-highlight {
+      color: var(--accent-gold);
+      text-transform: uppercase;
     }
 
     .card-panel {
@@ -246,6 +271,13 @@
       <h1 id="pageHeading">SUBMIT PICKS</h1>
       <p class="sub-header" id="pageSubHeading">Make your selections</p>
     </header>
+
+    <!-- Straight-Up Clarification Notice -->
+    <div class="pick-format-banner">
+      <div class="pick-format-text">
+        <span class="pick-format-highlight">Straight-Up Picks Only:</span> Select the outright winner for each game (not against the spread). Betting lines are shown for reference only.
+      </div>
+    </div>
 
     <div class="card-panel">
       <div class="user-input-group">
