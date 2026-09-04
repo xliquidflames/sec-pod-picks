@@ -339,11 +339,13 @@
     }
 
     .grid-wrapper {
-      overflow-x: hidden;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       border-radius: 8px;
       border: 1px solid var(--border-color);
       background: var(--bg-card-alt);
       width: 100%;
+      max-width: 100%;
       display: block;
     }
 
@@ -379,6 +381,7 @@
       color: var(--accent-gold);
       margin-top: 0.15rem;
     }
+
 
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
