@@ -1804,13 +1804,28 @@
 
         let topConsensusTeam = "--";
         let maxConsensusVotes = 0;
-        Object.entries(teamPickCounts).forEach(([team, count]) => {
-          if (count > maxConsensusVotes) {
-            maxConsensusVotes = count;
-            topConsensusTeam = team;
-          }
+        const teamUniqueVotes = {};
+
+        games.forEach(g => {
+          [g.teamA, g.teamB].forEach(team => {
+            let count = 0;
+            cousinRows.forEach(c => {
+              const picks = parseUserPicks(c.picks);
+              const userPick = getMatchedUserPick(picks, g);
+              if (userPick && normalizeTeam(userPick) === normalizeTeam(team)) {
+                count++;
+              }
+            });
+            teamUniqueVotes[team] = count;
+            if (count > maxConsensusVotes) {
+              maxConsensusVotes = count;
+              topConsensusTeam = team;
+            }
+          });
         });
-        const lockPct = Math.round((maxConsensusVotes / cousinRows.length) * 100) || 0;
+
+        const lockPct = Math.min(Math.round((maxConsensusVotes / cousinRows.length) * 100) || 0, 100);
+
         document.getElementById("statLock").textContent = topConsensusTeam;
         document.getElementById("statLockDesc").textContent = `${lockPct}% Consensus`;
 
