@@ -915,8 +915,11 @@
     function normalizeTeam(str) {
       if (!str) return "";
       const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned === "uapb") {
-        return "arkansaspeanutbutterpinebluff";
+      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned.includes("uapb")) {
+        return "uapb";
+      }
+      if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
+        return "arkansas";
       }
       return cleaned;
     }
@@ -1055,7 +1058,6 @@
       try { return JSON.parse(rawPicks); } catch (e) { return {}; }
     }
 
-    // Resilient lookup that matches stored picks against team names to eliminate index shift errors
     function getMatchedUserPick(picks, game) {
       if (!picks || !game) return null;
       const direct = picks[game.id] || picks[String(game.id)];
@@ -1063,7 +1065,7 @@
       const bNorm = normalizeTeam(game.teamB);
       const directNorm = normalizeTeam(direct);
 
-      if (directNorm && (directNorm === aNorm || directNorm === bNorm || aNorm.includes(directNorm) || directNorm.includes(aNorm) || bNorm.includes(directNorm) || directNorm.includes(bNorm))) {
+      if (directNorm && (directNorm === aNorm || directNorm === bNorm)) {
         return direct;
       }
 
@@ -1072,7 +1074,7 @@
         const val = picks[k];
         if (!val || typeof val !== 'string') return false;
         const valNorm = normalizeTeam(val);
-        return valNorm === aNorm || valNorm === bNorm || aNorm.includes(valNorm) || valNorm.includes(aNorm) || bNorm.includes(valNorm) || valNorm.includes(bNorm);
+        return valNorm === aNorm || valNorm === bNorm;
       });
 
       return matchKey ? picks[matchKey] : (direct || null);
