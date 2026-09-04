@@ -26,9 +26,13 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
-    body {
+    html, body {
       background-color: var(--bg-main);
       color: var(--text-main);
+      min-height: 100dvh;
+    }
+
+    body {
       padding: 1.5rem 1rem 3rem;
       display: flex;
       justify-content: center;
@@ -73,7 +77,6 @@
       border: 1px solid var(--border-color);
     }
 
-    /* Top Controls Bar */
     .controls-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -116,7 +119,6 @@
       color: var(--text-main);
     }
 
-    /* Game Matchup Cards */
     .game-card {
       background: var(--bg-card-inner);
       border: 1px solid var(--border-color);
@@ -183,7 +185,6 @@
       line-height: 1.3;
     }
 
-    /* Pick Buttons Grid */
     .pick-buttons-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -218,7 +219,43 @@
       border-color: var(--accent-gold);
     }
 
-    /* Submit CTA */
+    .score-inputs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+      margin-top: 0.6rem;
+    }
+
+    .score-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .score-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .score-field {
+      width: 100%;
+      background: #0d1527;
+      border: 1px solid var(--border-color);
+      color: var(--accent-gold);
+      font-size: 1.1rem;
+      font-weight: 900;
+      text-align: center;
+      padding: 0.45rem;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .score-field:focus {
+      border-color: var(--accent-gold);
+    }
+
     .btn-save-all {
       width: 100%;
       background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
@@ -255,11 +292,10 @@
     <header>
       <a href="index.html" class="back-link">&larr; Back to Leaderboard</a>
       <h1>HOST PICKS PORTAL</h1>
-      <p class="sub-header" id="portalSubHeading">Week 1 Picks & Lock Submission</p>
+      <p class="sub-header" id="portalSubHeading">Week 1 Picks, Scores & Lock Submission</p>
     </header>
 
     <div class="card-panel">
-      <!-- Week & Host Selectors -->
       <div class="controls-grid">
         <div class="control-group">
           <label for="weekSelect">Select Week:</label>
@@ -291,18 +327,15 @@
         </div>
       </div>
 
-      <!-- Host PIN Input -->
       <div class="control-group">
         <label for="hostPin">Host Security PIN:</label>
         <input type="password" id="hostPin" placeholder="Enter Host PIN" />
       </div>
 
-      <!-- Matchup Cards Container -->
       <div id="gamesContainer">
         <div style="text-align: center; color: var(--text-muted); padding: 2rem 0;">Loading schedule...</div>
       </div>
 
-      <!-- Save Button -->
       <button type="button" class="btn-save-all" onclick="saveHostSelections()">Save Host Picks</button>
       <div id="statusAlert" class="status-alert"></div>
     </div>
@@ -321,7 +354,8 @@
 
     let currentSchedule = [];
     let hostPicks = {};
-    let currentLockGameId = null;
+    let hostScores = {};
+    let currentLockMatchupKey = null;
 
     function cleanTeamName(name) {
       if (!name) return "";
@@ -336,6 +370,22 @@
       if (!teamName) return false;
       const lower = teamName.toLowerCase().trim();
       return secCanonicalList.some(sec => lower.includes(sec.toLowerCase()) || sec.toLowerCase().includes(lower));
+    }
+
+    function normalizeTeam(str) {
+      if (!str) return "";
+      const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned.includes("uapb")) {
+        return "uapb";
+      }
+      if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
+        return "arkansas";
+      }
+      return cleaned;
+    }
+
+    function buildMatchupKey(teamA, teamB) {
+      return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
     }
 
     async function fetchEspnSchedule(week) {
@@ -387,6 +437,7 @@
 
         return rawGames.map((g, idx) => ({
           id: idx + 1,
+          matchupKey: buildMatchupKey(g.teamA, g.teamB),
           teamA: g.teamA,
           teamB: g.teamB,
           detail: g.detail
@@ -399,7 +450,7 @@
 
     async function loadSchedule() {
       const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
-      document.getElementById("portalSubHeading").textContent = `Week ${weekNum} Picks & Lock Submission`;
+      document.getElementById("portalSubHeading").textContent = `Week ${weekNum} Picks, Scores & Lock Submission`;
 
       currentSchedule = await fetchEspnSchedule(weekNum);
 
@@ -419,33 +470,43 @@
       currentSchedule.forEach(game => {
         const card = document.createElement("div");
         card.className = "game-card";
-        card.id = `card_${game.id}`;
+        card.id = `card_${game.matchupKey}`;
 
         card.innerHTML = `
           <div class="game-header-row">
             <span class="game-title">GAME ${game.id}: ${game.teamA} VS ${game.teamB}</span>
-            <button type="button" class="btn-lock-toggle" id="lock_btn_${game.id}" onclick="toggleLock(${game.id})">
+            <button type="button" class="btn-lock-toggle" id="lock_btn_${game.matchupKey}" onclick="toggleLock('${game.matchupKey}')">
               Lock of Week
             </button>
           </div>
           ${game.detail ? `<span class="game-detail">${game.detail}</span>` : ''}
           <div class="pick-buttons-grid">
-            <button type="button" class="btn-pick" id="btn_${game.id}_A" onclick="selectTeam(${game.id}, '${game.teamA}')">
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_A" onclick="selectTeam('${game.matchupKey}', '${game.teamA}')">
               ${game.teamA}
             </button>
-            <button type="button" class="btn-pick" id="btn_${game.id}_B" onclick="selectTeam(${game.id}, '${game.teamB}')">
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_B" onclick="selectTeam('${game.matchupKey}', '${game.teamB}')">
               ${game.teamB}
             </button>
+          </div>
+          <div class="score-inputs-grid">
+            <div class="score-group">
+              <span class="score-label">${game.teamA} Score</span>
+              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_A" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.teamA}', '${game.teamB}')" />
+            </div>
+            <div class="score-group">
+              <span class="score-label">${game.teamB} Score</span>
+              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_B" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.teamA}', '${game.teamB}')" />
+            </div>
           </div>
         `;
         container.appendChild(card);
       });
     }
 
-    function selectTeam(gameId, teamName) {
-      hostPicks[gameId] = teamName;
-      const btnA = document.getElementById(`btn_${gameId}_A`);
-      const btnB = document.getElementById(`btn_${gameId}_B`);
+    function selectTeam(matchupKey, teamName) {
+      hostPicks[matchupKey] = teamName;
+      const btnA = document.getElementById(`btn_${matchupKey}_A`);
+      const btnB = document.getElementById(`btn_${matchupKey}_B`);
 
       if (btnA && btnB) {
         if (btnA.textContent.trim() === teamName) {
@@ -458,18 +519,35 @@
       }
     }
 
-    function toggleLock(gameId) {
-      currentLockGameId = (currentLockGameId === gameId) ? null : gameId;
+    function onScoreInput(matchupKey, teamA, teamB) {
+      const valA = document.getElementById(`score_${matchupKey}_A`).value;
+      const valB = document.getElementById(`score_${matchupKey}_B`).value;
+
+      if (!hostScores[matchupKey]) hostScores[matchupKey] = {};
+      hostScores[matchupKey].teamA = valA;
+      hostScores[matchupKey].teamB = valB;
+
+      const numA = parseInt(valA, 10);
+      const numB = parseInt(valB, 10);
+
+      if (!isNaN(numA) && !isNaN(numB)) {
+        if (numA > numB) selectTeam(matchupKey, teamA);
+        else if (numB > numA) selectTeam(matchupKey, teamB);
+      }
+    }
+
+    function toggleLock(matchupKey) {
+      currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
       refreshLockVisuals();
     }
 
     function refreshLockVisuals() {
       currentSchedule.forEach(game => {
-        const card = document.getElementById(`card_${game.id}`);
-        const lockBtn = document.getElementById(`lock_btn_${game.id}`);
+        const card = document.getElementById(`card_${game.matchupKey}`);
+        const lockBtn = document.getElementById(`lock_btn_${game.matchupKey}`);
 
         if (card && lockBtn) {
-          if (currentLockGameId === game.id) {
+          if (currentLockMatchupKey === game.matchupKey) {
             card.classList.add("is-locked");
             lockBtn.classList.add("active");
             lockBtn.textContent = "★ Lock Selected";
@@ -484,15 +562,18 @@
 
     function onWeekChange() {
       hostPicks = {};
-      currentLockGameId = null;
+      hostScores = {};
+      currentLockMatchupKey = null;
       document.getElementById("statusAlert").textContent = "";
       loadSchedule();
     }
 
     function onHostChange() {
       hostPicks = {};
-      currentLockGameId = null;
+      hostScores = {};
+      currentLockMatchupKey = null;
       document.querySelectorAll(".btn-pick").forEach(btn => btn.classList.remove("selected"));
+      document.querySelectorAll(".score-field").forEach(inp => inp.value = "");
       document.getElementById("statusAlert").textContent = "";
       refreshLockVisuals();
       fetchExistingHostData();
@@ -515,17 +596,44 @@
         if (data && data.picks) {
           const raw = typeof data.picks === 'object' ? data.picks : JSON.parse(data.picks);
           hostPicks = { ...raw };
+          hostScores = raw.scores || {};
 
           currentSchedule.forEach(g => {
-            const team = hostPicks[g.id] || hostPicks[String(g.id)];
+            const aNorm = normalizeTeam(g.teamA);
+            const bNorm = normalizeTeam(g.teamB);
+
+            let team = hostPicks[g.matchupKey] || hostPicks[g.id] || hostPicks[String(g.id)];
+            if (!team) {
+              const matchKey = Object.keys(hostPicks).find(k => {
+                if (k === 'lock_game_id' || k === 'lock_matchup_key' || k === 'scores') return false;
+                const vNorm = normalizeTeam(hostPicks[k]);
+                return vNorm === aNorm || vNorm === bNorm;
+              });
+              if (matchKey) team = hostPicks[matchKey];
+            }
+
             if (team) {
-              selectTeam(g.id, team);
+              selectTeam(g.matchupKey, team);
+            }
+
+            const gScore = hostScores[g.matchupKey] || hostScores[g.id] || hostScores[String(g.id)];
+            if (gScore) {
+              const inpA = document.getElementById(`score_${g.matchupKey}_A`);
+              const inpB = document.getElementById(`score_${g.matchupKey}_B`);
+              if (inpA && gScore.teamA !== undefined) inpA.value = gScore.teamA;
+              if (inpB && gScore.teamB !== undefined) inpB.value = gScore.teamB;
             }
           });
 
-          if (hostPicks.lock_game_id) {
-            currentLockGameId = parseInt(hostPicks.lock_game_id, 10);
+          if (hostPicks.lock_matchup_key) {
+            currentLockMatchupKey = hostPicks.lock_matchup_key;
             refreshLockVisuals();
+          } else if (hostPicks.lock_game_id) {
+            const foundGame = currentSchedule.find(g => g.id === parseInt(hostPicks.lock_game_id, 10));
+            if (foundGame) {
+              currentLockMatchupKey = foundGame.matchupKey;
+              refreshLockVisuals();
+            }
           }
         }
       } catch (e) {
@@ -539,25 +647,31 @@
       const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
       const statusAlert = document.getElementById("statusAlert");
 
-      // Hey there. If you're reading this, you are probably looking for a way around the PIN.
-      // Please don't. Please don't mess with Mike, Shane, or Steven's picks.
-      // I don't want to have to require everyone to make an account and sign in to use this.
-      // If you mess with anything, that's what we'll have to do. So, please, admire the code.
-      // But please do not try to submit picks as the hosts. Please.
       if (pinInput.toUpperCase() !== "SEC2026") {
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = "Invalid Host Security PIN.";
         return;
       }
 
-      const pickedKeys = Object.keys(hostPicks).filter(k => k !== 'lock_game_id');
+      const pickedKeys = Object.keys(hostPicks).filter(k => k !== 'lock_game_id' && k !== 'lock_matchup_key' && k !== 'scores');
       if (pickedKeys.length < currentSchedule.length) {
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = `Please make picks for all ${currentSchedule.length} games.`;
         return;
       }
 
-      hostPicks.lock_game_id = currentLockGameId;
+      currentSchedule.forEach(g => {
+        const inpA = document.getElementById(`score_${g.matchupKey}_A`);
+        const inpB = document.getElementById(`score_${g.matchupKey}_B`);
+        if (inpA && inpB && inpA.value !== "" && inpB.value !== "") {
+          if (!hostScores[g.matchupKey]) hostScores[g.matchupKey] = {};
+          hostScores[g.matchupKey].teamA = inpA.value;
+          hostScores[g.matchupKey].teamB = inpB.value;
+        }
+      });
+
+      hostPicks.lock_matchup_key = currentLockMatchupKey;
+      hostPicks.scores = hostScores;
 
       statusAlert.style.color = "var(--text-muted)";
       statusAlert.textContent = "Saving...";
@@ -602,7 +716,7 @@
         if (saveError) throw saveError;
 
         statusAlert.style.color = "var(--success)";
-        statusAlert.textContent = `Week ${weekNum} picks & Lock saved for ${hostName}!`;
+        statusAlert.textContent = `Week ${weekNum} picks, scores & Lock saved for ${hostName}!`;
       } catch (err) {
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = `Error: ${err.message}`;

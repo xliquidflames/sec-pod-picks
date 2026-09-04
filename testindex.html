@@ -75,7 +75,7 @@
     }
 
     .btn-cta {
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: center;
       gap: 0.6rem;
@@ -97,6 +97,19 @@
 
     .btn-cta:hover {
       background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
+    }
+
+    .locked-notice-banner {
+      display: none;
+      background: var(--bg-card);
+      border: 1px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
     }
 
     .card {
@@ -772,6 +785,11 @@
       <span>Submit Week 1 Picks &rarr;</span>
     </a>
 
+    <!-- Picks Locked Notice Banner -->
+    <div id="lockedNoticeBanner" class="locked-notice-banner">
+      The first game of the week has kicked off so this week's picks are locked. <span style="color: var(--accent-gold); font-weight: 700; display: block; margin-top: 0.25rem;">Come back Sunday to pick games for next week!</span>
+    </div>
+
     <div id="weekContent">
       <div class="card">
         <div class="host-header-toggle" onclick="toggleHostGrid()">
@@ -924,6 +942,10 @@
       return cleaned;
     }
 
+    function buildMatchupKey(teamA, teamB) {
+      return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
+    }
+
     function toggleTieBreakers() {
       const infoBox = document.getElementById("tiebreakersInfo");
       const arrow = document.getElementById("tiebreakerArrow");
@@ -954,6 +976,15 @@
 
         const data = await res.json();
         if (!data.events || data.events.length === 0) return false;
+
+        const anyStartedOrCompleted = data.events.some(ev => {
+          const comp = ev.competitions && ev.competitions[0];
+          const isComp = comp && comp.status && comp.status.type && comp.status.type.completed;
+          const state = comp && comp.status && comp.status.type && comp.status.type.state;
+          return isComp || state === "in" || state === "post";
+        });
+
+        if (anyStartedOrCompleted) return true;
 
         const kickoffTimes = data.events
           .map(ev => new Date(ev.competitions[0]?.date || ev.date))
@@ -1032,11 +1063,14 @@
 
         const mappedGames = rawGames.map((g, idx) => {
           const gameId = idx + 1;
+          const mKey = buildMatchupKey(g.teamA, g.teamB);
           if (g.winner) {
             window.gameWinners[week][gameId] = g.winner;
+            window.gameWinners[week][mKey] = g.winner;
           }
           return {
             id: gameId,
+            matchupKey: mKey,
             teamA: g.teamA,
             teamB: g.teamB,
             rawOdds: g.rawOdds,
@@ -1060,24 +1094,35 @@
 
     function getMatchedUserPick(picks, game) {
       if (!picks || !game) return null;
-      const direct = picks[game.id] || picks[String(game.id)];
+
+      if (picks[game.matchupKey]) {
+        return picks[game.matchupKey];
+      }
+
       const aNorm = normalizeTeam(game.teamA);
       const bNorm = normalizeTeam(game.teamB);
-      const directNorm = normalizeTeam(direct);
 
-      if (directNorm && (directNorm === aNorm || directNorm === bNorm)) {
-        return direct;
+      const direct = picks[game.id] || picks[String(game.id)];
+      if (direct && typeof direct === 'string') {
+        const directNorm = normalizeTeam(direct);
+        if (directNorm === aNorm || directNorm === bNorm) {
+          return direct;
+        }
       }
 
       const matchKey = Object.keys(picks).find(k => {
-        if (k === 'lock_game_id' || k === 'scores') return false;
+        if (k === 'lock_game_id' || k === 'lock_matchup_key' || k === 'scores') return false;
         const val = picks[k];
         if (!val || typeof val !== 'string') return false;
         const valNorm = normalizeTeam(val);
         return valNorm === aNorm || valNorm === bNorm;
       });
 
-      return matchKey ? picks[matchKey] : (direct || null);
+      if (matchKey) {
+        return picks[matchKey];
+      }
+
+      return direct || null;
     }
 
     function gradePicks(rawPicks, week) {
@@ -1088,10 +1133,13 @@
       let lockCorrect = 0, lockIncorrect = 0;
 
       const userLockId = (week !== 1 && picks.lock_game_id) ? parseInt(picks.lock_game_id, 10) : null;
+      const userLockKey = (week !== 1 && picks.lock_matchup_key) ? picks.lock_matchup_key : null;
 
       sched.forEach(game => {
-        const winner = winners[game.id];
+        const winner = winners[game.matchupKey] || winners[game.id];
         const userPick = getMatchedUserPick(picks, game);
+
+        const isLockGame = (userLockKey && userLockKey === game.matchupKey) || (userLockId && userLockId === game.id);
 
         if (!winner) {
           pending++;
@@ -1102,10 +1150,10 @@
 
           if (isHit) {
             correct++;
-            if (userLockId === game.id) lockCorrect++;
+            if (isLockGame) lockCorrect++;
           } else {
             incorrect++;
-            if (userLockId === game.id) lockIncorrect++;
+            if (isLockGame) lockIncorrect++;
           }
         }
       });
@@ -1113,8 +1161,8 @@
       return { correct, incorrect, pending, lockCorrect, lockIncorrect };
     }
 
-    function getPickClass(userPick, gameId, week) {
-      const winner = (window.gameWinners[week] || {})[gameId];
+    function getPickClass(userPick, game, week) {
+      const winner = (window.gameWinners[week] || {})[game.matchupKey] || (window.gameWinners[week] || {})[game.id];
       if (!winner || !userPick || userPick === "-") return "pick-pending";
       const uNorm = normalizeTeam(userPick);
       const wNorm = normalizeTeam(winner);
@@ -1205,7 +1253,7 @@
         await Promise.all(uniqueWeeks.map(w => fetchEspnSchedule(w)));
 
         computeSeasonTotals();
-        renderActiveWeek();
+        await switchWeek(activeWeek);
       } catch (err) {
         console.error("Season load error:", err);
       }
@@ -1230,10 +1278,10 @@
         sched.forEach(game => {
           const p = getMatchedUserPick(picks, game);
           if (!p) return;
-          if (!weekGameDistributions[w][game.id]) weekGameDistributions[w][game.id] = { total: 0, counts: {} };
+          if (!weekGameDistributions[w][game.matchupKey]) weekGameDistributions[w][game.matchupKey] = { total: 0, counts: {} };
           const pNorm = normalizeTeam(p);
-          weekGameDistributions[w][game.id].total += 1;
-          weekGameDistributions[w][game.id].counts[pNorm] = (weekGameDistributions[w][game.id].counts[pNorm] || 0) + 1;
+          weekGameDistributions[w][game.matchupKey].total += 1;
+          weekGameDistributions[w][game.matchupKey].counts[pNorm] = (weekGameDistributions[w][game.matchupKey].counts[pNorm] || 0) + 1;
         });
       });
 
@@ -1273,7 +1321,7 @@
           const sched = window.weekSchedules[row.week_number] || [];
 
           sched.forEach(gameObj => {
-            const winner = winners[gameObj.id];
+            const winner = winners[gameObj.matchupKey] || winners[gameObj.id];
             const userPick = getMatchedUserPick(picks, gameObj);
             if (!winner || !userPick) return;
 
@@ -1282,7 +1330,7 @@
             const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
 
             if (isHit) {
-              const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.id];
+              const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
               if (gameDist && gameDist.total > 0) {
                 const pickCount = gameDist.counts[uNorm] || 0;
                 const pickRatio = pickCount / gameDist.total;
@@ -1319,7 +1367,47 @@
         return;
       }
 
-      const sortedCousins = Object.values(cousinAgg).sort((a, b) => {
+      const allCousins = Object.values(cousinAgg);
+      if (allCousins.length === 0) {
+        top5Container.innerHTML = `<div class="top3-pending">No Picks Submitted Yet</div>`;
+        if (decisionLog) decisionLog.style.display = "none";
+        return;
+      }
+
+      const candidateKey = (c) => `${c.correct}|${c.lockCorrect}|${c.incorrect}|${c.consensusDivergenceWins}|${c.underdogUpsetWins}`;
+
+      const sortedByStats = [...allCousins].sort((a, b) => {
+        if (b.correct !== a.correct) return b.correct - a.correct;
+        if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
+        if (a.incorrect !== b.incorrect) return a.incorrect - b.incorrect;
+        if (b.consensusDivergenceWins !== a.consensusDivergenceWins) {
+          return b.consensusDivergenceWins - a.consensusDivergenceWins;
+        }
+        return b.underdogUpsetWins - a.underdogUpsetWins;
+      });
+
+      const topStatsKey = candidateKey(sortedByStats[0]);
+      const tiedForTopCount = sortedByStats.filter(c => candidateKey(c) === topStatsKey).length;
+      
+      const thirdPlaceCandidate = sortedByStats[2] || sortedByStats[0];
+      const thirdPlaceKey = candidateKey(thirdPlaceCandidate);
+      const tiedWithPodiumCount = sortedByStats.filter(c => candidateKey(c) === thirdPlaceKey).length;
+
+      if (tiedForTopCount > 3 || tiedWithPodiumCount > 3) {
+        top5Container.innerHTML = `<div class="top3-pending" style="color: var(--accent-gold); font-size: 0.9rem; padding: 0.85rem 0;">Everyone is tied!</div>`;
+        if (decisionLog) {
+          decisionLog.innerHTML = `
+            <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Live Podium Decision Logic:</div>
+            <div class="tiebreaker-decision-item">
+              <strong>Complete Deadlock:</strong> ${tiedForTopCount} Cousins are currently tied across every performance tiebreaker. The Top 3 podium will emerge as weekend games conclude.
+            </div>
+          `;
+          decisionLog.style.display = "block";
+        }
+        return;
+      }
+
+      const sortedCousins = allCousins.sort((a, b) => {
         if (b.correct !== a.correct) return b.correct - a.correct;
         if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
         if (a.incorrect !== b.incorrect) return a.incorrect - b.incorrect;
@@ -1331,12 +1419,6 @@
         }
         return a.user_name.localeCompare(b.user_name);
       });
-
-      if (sortedCousins.length === 0) {
-        top5Container.innerHTML = `<div class="top3-pending">No Picks Submitted Yet</div>`;
-        if (decisionLog) decisionLog.style.display = "none";
-        return;
-      }
 
       const top3Podium = sortedCousins.slice(0, 3);
       const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
@@ -1439,17 +1521,22 @@
       }
 
       const ctaBtn = document.getElementById("ctaBtn");
+      const lockedBanner = document.getElementById("lockedNoticeBanner");
+
       if (weekNum === CURRENT_OPEN_WEEK) {
         const isLocked = await isWeekLocked(weekNum);
         if (!isLocked) {
           ctaBtn.style.display = "flex";
           ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
           ctaBtn.href = `makepicks.html?week=${weekNum}`;
+          if (lockedBanner) lockedBanner.style.display = "none";
         } else {
           ctaBtn.style.display = "none";
+          if (lockedBanner) lockedBanner.style.display = "block";
         }
       } else {
         ctaBtn.style.display = "none";
+        if (lockedBanner) lockedBanner.style.display = "none";
       }
 
       await renderActiveWeek();
@@ -1495,9 +1582,9 @@
         const pS = getMatchedUserPick(shanePicks, g) || "-";
         const pSt = getMatchedUserPick(stevenPicks, g) || "-";
 
-        const sM = mikeScores[g.id] || mikeScores[String(g.id)];
-        const sS = shaneScores[g.id] || shaneScores[String(g.id)];
-        const sSt = stevenScores[g.id] || stevenScores[String(g.id)];
+        const sM = mikeScores[g.matchupKey] || mikeScores[g.id] || mikeScores[String(g.id)];
+        const sS = shaneScores[g.matchupKey] || shaneScores[g.id] || shaneScores[String(g.id)];
+        const sSt = stevenScores[g.matchupKey] || stevenScores[g.id] || stevenScores[String(g.id)];
 
         const scoreTextM = (sM && sM.teamA !== undefined && sM.teamB !== undefined && sM.teamA !== "") ? `${sM.teamA}-${sM.teamB}` : "";
         const scoreTextS = (sS && sS.teamA !== undefined && sS.teamB !== undefined && sS.teamA !== "") ? `${sS.teamA}-${sS.teamB}` : "";
@@ -1507,13 +1594,13 @@
         const atsBadgeS = computeAtsBadge(pS, sS, g);
         const atsBadgeSt = computeAtsBadge(pSt, sSt, g);
 
-        const isLockM = isLockActiveThisWeek && (mikePicks.lock_game_id === g.id);
-        const isLockS = isLockActiveThisWeek && (shanePicks.lock_game_id === g.id);
-        const isLockSt = isLockActiveThisWeek && (stevenPicks.lock_game_id === g.id);
+        const isLockM = isLockActiveThisWeek && ((mikePicks.lock_matchup_key === g.matchupKey) || (mikePicks.lock_game_id === g.id));
+        const isLockS = isLockActiveThisWeek && ((shanePicks.lock_matchup_key === g.matchupKey) || (shanePicks.lock_game_id === g.id));
+        const isLockSt = isLockActiveThisWeek && ((stevenPicks.lock_matchup_key === g.matchupKey) || (stevenPicks.lock_game_id === g.id));
 
-        const classM = getPickClass(pM, g.id, activeWeek);
-        const classS = getPickClass(pS, g.id, activeWeek);
-        const classSt = getPickClass(pSt, g.id, activeWeek);
+        const classM = getPickClass(pM, g, activeWeek);
+        const classS = getPickClass(pS, g, activeWeek);
+        const classSt = getPickClass(pSt, g, activeWeek);
 
         tr.innerHTML = `
           <td class="matchup-cell">
@@ -1585,6 +1672,7 @@
         const item = document.createElement("div");
         item.className = "cousin-item";
         const picks = parseUserPicks(c.picks);
+        const cousinLockKey = isLockActiveThisWeek ? (picks.lock_matchup_key || null) : null;
         const cousinLockId = isLockActiveThisWeek && picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
         const hitLotw = isLockActiveThisWeek && (c.score.lockCorrect > 0);
 
@@ -1601,8 +1689,8 @@
           <div class="cousin-picks-body">
             ${games.map(g => {
               const uPick = getMatchedUserPick(picks, g) || "No Pick";
-              const pClass = getPickClass(uPick, g.id, activeWeek);
-              const isCousinLock = cousinLockId === g.id;
+              const pClass = getPickClass(uPick, g, activeWeek);
+              const isCousinLock = (cousinLockKey && cousinLockKey === g.matchupKey) || (cousinLockId && cousinLockId === g.id);
               return `
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
                   <span style="color: var(--text-muted);">${g.teamA} vs ${g.teamB}</span>
@@ -1633,6 +1721,7 @@
           const picks = parseUserPicks(c.picks);
           let pickedNonSec = false;
           let answeredCount = 0;
+          const userLockKey = isLockActiveThisWeek ? (picks.lock_matchup_key || null) : null;
           const userLockId = isLockActiveThisWeek && picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
 
           games.forEach(g => {
@@ -1663,11 +1752,12 @@
               }
             }
 
-            if (userLockId === g.id) {
+            const isUserLock = (userLockKey && userLockKey === g.matchupKey) || (userLockId && userLockId === g.id);
+            if (isUserLock) {
               totalLocksPlaced++;
               lockCounts[pick] = (lockCounts[pick] || 0) + 1;
 
-              const winner = (window.gameWinners[activeWeek] || {})[g.id];
+              const winner = (window.gameWinners[activeWeek] || {})[g.matchupKey] || (window.gameWinners[activeWeek] || {})[g.id];
               if (!winner) {
                 cousinLocksPending++;
               } else {
@@ -1757,12 +1847,15 @@
           [hostMike, hostShane, hostSteven].forEach(h => {
             if (!h) return;
             const hPicks = parseUserPicks(h.picks);
-            if (hPicks.lock_game_id) {
-              const lGameId = parseInt(hPicks.lock_game_id, 10);
-              const winner = (window.gameWinners[activeWeek] || {})[lGameId];
+            const lKey = hPicks.lock_matchup_key || null;
+            const lGameId = hPicks.lock_game_id ? parseInt(hPicks.lock_game_id, 10) : null;
+
+            if (lKey || lGameId) {
+              const winner = (window.gameWinners[activeWeek] || {})[lKey] || (window.gameWinners[activeWeek] || {})[lGameId];
               if (winner) {
                 hostLocksDecided++;
-                const uNorm = normalizeTeam(hPicks[lGameId] || hPicks[String(lGameId)]);
+                const uPick = lKey ? hPicks[lKey] : (hPicks[lGameId] || hPicks[String(lGameId)]);
+                const uNorm = normalizeTeam(uPick);
                 const wNorm = normalizeTeam(winner);
                 if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
                   hostLocksWon++;

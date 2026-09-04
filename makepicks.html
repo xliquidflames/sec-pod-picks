@@ -26,13 +26,16 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
-    body {
+    html, body {
       background-color: var(--bg-main);
       color: var(--text-main);
+      min-height: 100dvh;
+    }
+
+    body {
       padding: 1.5rem 1rem 3rem;
       display: flex;
       justify-content: center;
-      min-height: 100dvh;
     }
 
     .container {
@@ -67,7 +70,6 @@
       font-size: 0.9rem;
     }
 
-    /* Clarification Notice Banner */
     .pick-format-banner {
       background: #19263e;
       border: 1.5px solid var(--accent-gold);
@@ -272,7 +274,6 @@
       <p class="sub-header" id="pageSubHeading">Make your selections</p>
     </header>
 
-    <!-- Straight-Up Clarification Notice -->
     <div class="pick-format-banner">
       <div class="pick-format-text">
         <span class="pick-format-highlight">Straight-Up Picks Only:</span> Select the outright winner for each game (not against the spread). Betting lines are shown for reference only.
@@ -303,7 +304,6 @@
     const targetWeek = parseInt(urlParams.get("week"), 10) || 1;
     const isLockAllowed = (targetWeek !== 1);
 
-    // Safeguard 1: Immediate local device submission lock check
     const submittedStorageKey = `sec_picks_submitted_w${targetWeek}`;
     if (localStorage.getItem(submittedStorageKey)) {
       alert(`You have already submitted an entry for Week ${targetWeek}. Redirecting to the leaderboard...`);
@@ -318,7 +318,7 @@
 
     let currentSchedule = [];
     let userSelections = {};
-    let currentLockGameId = null;
+    let currentLockMatchupKey = null;
 
     function cleanTeamName(name) {
       if (!name) return "";
@@ -335,7 +335,22 @@
       return secCanonicalList.some(sec => lower.includes(sec.toLowerCase()) || sec.toLowerCase().includes(lower));
     }
 
-    // Safeguard 2: Automated kickoff verification using ESPN's server time
+    function normalizeTeam(str) {
+      if (!str) return "";
+      const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned.includes("uapb")) {
+        return "uapb";
+      }
+      if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
+        return "arkansas";
+      }
+      return cleaned;
+    }
+
+    function buildMatchupKey(teamA, teamB) {
+      return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
+    }
+
     async function checkKickoffLockout(weekNum) {
       try {
         const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${weekNum}&limit=100`;
@@ -414,6 +429,7 @@
 
         return rawGames.map((g, idx) => ({
           id: idx + 1,
+          matchupKey: buildMatchupKey(g.teamA, g.teamB),
           teamA: g.teamA,
           teamB: g.teamB,
           detail: g.detail
@@ -446,54 +462,56 @@
       currentSchedule.forEach(g => {
         const card = document.createElement("div");
         card.className = "game-card";
-        card.id = `card_${g.id}`;
+        card.id = `card_${g.matchupKey}`;
         card.innerHTML = `
           <div class="game-header-row">
             <span class="game-title">Game ${g.id}: ${g.teamA} vs ${g.teamB}</span>
             ${isLockAllowed ? `
-              <button type="button" class="btn-lock-toggle" id="lock_btn_${g.id}" onclick="toggleUserLock(${g.id})">
+              <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">
                 Lock of the Week
               </button>
             ` : ""}
           </div>
           ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           <div class="pick-grid">
-            <button type="button" class="btn-pick" id="btn_${g.id}_A" onclick="chooseTeam(${g.id}, '${g.teamA}')">${g.teamA}</button>
-            <button type="button" class="btn-pick" id="btn_${g.id}_B" onclick="chooseTeam(${g.id}, '${g.teamB}')">${g.teamB}</button>
+            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${g.teamA}</button>
+            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${g.teamB}</button>
           </div>
         `;
         container.appendChild(card);
       });
     }
 
-    function chooseTeam(gameId, team) {
-      userSelections[gameId] = team;
-      const btnA = document.getElementById(`btn_${gameId}_A`);
-      const btnB = document.getElementById(`btn_${gameId}_B`);
+    function chooseTeam(matchupKey, team) {
+      userSelections[matchupKey] = team;
+      const btnA = document.getElementById(`btn_${matchupKey}_A`);
+      const btnB = document.getElementById(`btn_${matchupKey}_B`);
 
-      if (btnA.textContent.trim() === team) {
-        btnA.classList.add("selected");
-        btnB.classList.remove("selected");
-      } else {
-        btnB.classList.add("selected");
-        btnA.classList.remove("selected");
+      if (btnA && btnB) {
+        if (btnA.textContent.trim() === team) {
+          btnA.classList.add("selected");
+          btnB.classList.remove("selected");
+        } else {
+          btnB.classList.add("selected");
+          btnA.classList.remove("selected");
+        }
       }
     }
 
-    function toggleUserLock(gameId) {
+    function toggleUserLock(matchupKey) {
       if (!isLockAllowed) return;
-      currentLockGameId = (currentLockGameId === gameId) ? null : gameId;
+      currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
       refreshLockVisuals();
     }
 
     function refreshLockVisuals() {
       if (!isLockAllowed) return;
       currentSchedule.forEach(g => {
-        const card = document.getElementById(`card_${g.id}`);
-        const lockBtn = document.getElementById(`lock_btn_${g.id}`);
+        const card = document.getElementById(`card_${g.matchupKey}`);
+        const lockBtn = document.getElementById(`lock_btn_${g.matchupKey}`);
 
         if (card && lockBtn) {
-          if (currentLockGameId === g.id) {
+          if (currentLockMatchupKey === g.matchupKey) {
             card.classList.add("is-locked");
             lockBtn.classList.add("active");
             lockBtn.textContent = "★ Lock Selected";
@@ -517,21 +535,19 @@
         return;
       }
 
-      const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_game_id").length;
+      const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_game_id" && k !== "lock_matchup_key").length;
       if (pickedGameCount < currentSchedule.length) {
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = `Please make selections for all ${currentSchedule.length} games.`;
         return;
       }
 
-      // Attach chosen lock only if Lock of the Week is active
-      if (isLockAllowed && currentLockGameId) {
-        userSelections.lock_game_id = currentLockGameId;
+      if (isLockAllowed && currentLockMatchupKey) {
+        userSelections.lock_matchup_key = currentLockMatchupKey;
       } else {
-        delete userSelections.lock_game_id;
+        delete userSelections.lock_matchup_key;
       }
 
-      // Disable button immediately to prevent double-tap/spamming
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.textContent = "Submitting picks...";
@@ -541,7 +557,6 @@
       statusAlert.textContent = "Submitting your picks...";
 
       try {
-        // Pre-check for duplicate username
         const { data: existing, error: checkErr } = await supabaseClient
           .from("picks")
           .select("id")
@@ -583,7 +598,6 @@
           return;
         }
 
-        // Lock device storage after successful submission
         localStorage.setItem(submittedStorageKey, "true");
 
         statusAlert.style.color = "var(--success)";

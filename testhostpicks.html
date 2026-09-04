@@ -355,7 +355,7 @@
     let currentSchedule = [];
     let hostPicks = {};
     let hostScores = {};
-    let currentLockGameId = null;
+    let currentLockMatchupKey = null;
 
     function cleanTeamName(name) {
       if (!name) return "";
@@ -375,10 +375,17 @@
     function normalizeTeam(str) {
       if (!str) return "";
       const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned === "uapb") {
-        return "arkansaspeanutbutterpinebluff";
+      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned.includes("uapb")) {
+        return "uapb";
+      }
+      if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
+        return "arkansas";
       }
       return cleaned;
+    }
+
+    function buildMatchupKey(teamA, teamB) {
+      return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
     }
 
     async function fetchEspnSchedule(week) {
@@ -430,6 +437,7 @@
 
         return rawGames.map((g, idx) => ({
           id: idx + 1,
+          matchupKey: buildMatchupKey(g.teamA, g.teamB),
           teamA: g.teamA,
           teamB: g.teamB,
           detail: g.detail
@@ -462,32 +470,32 @@
       currentSchedule.forEach(game => {
         const card = document.createElement("div");
         card.className = "game-card";
-        card.id = `card_${game.id}`;
+        card.id = `card_${game.matchupKey}`;
 
         card.innerHTML = `
           <div class="game-header-row">
             <span class="game-title">GAME ${game.id}: ${game.teamA} VS ${game.teamB}</span>
-            <button type="button" class="btn-lock-toggle" id="lock_btn_${game.id}" onclick="toggleLock(${game.id})">
+            <button type="button" class="btn-lock-toggle" id="lock_btn_${game.matchupKey}" onclick="toggleLock('${game.matchupKey}')">
               Lock of Week
             </button>
           </div>
           ${game.detail ? `<span class="game-detail">${game.detail}</span>` : ''}
           <div class="pick-buttons-grid">
-            <button type="button" class="btn-pick" id="btn_${game.id}_A" onclick="selectTeam(${game.id}, '${game.teamA}')">
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_A" onclick="selectTeam('${game.matchupKey}', '${game.teamA}')">
               ${game.teamA}
             </button>
-            <button type="button" class="btn-pick" id="btn_${game.id}_B" onclick="selectTeam(${game.id}, '${game.teamB}')">
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_B" onclick="selectTeam('${game.matchupKey}', '${game.teamB}')">
               ${game.teamB}
             </button>
           </div>
           <div class="score-inputs-grid">
             <div class="score-group">
               <span class="score-label">${game.teamA} Score</span>
-              <input type="number" min="0" max="99" class="score-field" id="score_${game.id}_A" placeholder="--" oninput="onScoreInput(${game.id}, '${game.teamA}', '${game.teamB}')" />
+              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_A" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.teamA}', '${game.teamB}')" />
             </div>
             <div class="score-group">
               <span class="score-label">${game.teamB} Score</span>
-              <input type="number" min="0" max="99" class="score-field" id="score_${game.id}_B" placeholder="--" oninput="onScoreInput(${game.id}, '${game.teamA}', '${game.teamB}')" />
+              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_B" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.teamA}', '${game.teamB}')" />
             </div>
           </div>
         `;
@@ -495,10 +503,10 @@
       });
     }
 
-    function selectTeam(gameId, teamName) {
-      hostPicks[gameId] = teamName;
-      const btnA = document.getElementById(`btn_${gameId}_A`);
-      const btnB = document.getElementById(`btn_${gameId}_B`);
+    function selectTeam(matchupKey, teamName) {
+      hostPicks[matchupKey] = teamName;
+      const btnA = document.getElementById(`btn_${matchupKey}_A`);
+      const btnB = document.getElementById(`btn_${matchupKey}_B`);
 
       if (btnA && btnB) {
         if (btnA.textContent.trim() === teamName) {
@@ -511,35 +519,35 @@
       }
     }
 
-    function onScoreInput(gameId, teamA, teamB) {
-      const valA = document.getElementById(`score_${gameId}_A`).value;
-      const valB = document.getElementById(`score_${gameId}_B`).value;
+    function onScoreInput(matchupKey, teamA, teamB) {
+      const valA = document.getElementById(`score_${matchupKey}_A`).value;
+      const valB = document.getElementById(`score_${matchupKey}_B`).value;
 
-      if (!hostScores[gameId]) hostScores[gameId] = {};
-      hostScores[gameId].teamA = valA;
-      hostScores[gameId].teamB = valB;
+      if (!hostScores[matchupKey]) hostScores[matchupKey] = {};
+      hostScores[matchupKey].teamA = valA;
+      hostScores[matchupKey].teamB = valB;
 
       const numA = parseInt(valA, 10);
       const numB = parseInt(valB, 10);
 
       if (!isNaN(numA) && !isNaN(numB)) {
-        if (numA > numB) selectTeam(gameId, teamA);
-        else if (numB > numA) selectTeam(gameId, teamB);
+        if (numA > numB) selectTeam(matchupKey, teamA);
+        else if (numB > numA) selectTeam(matchupKey, teamB);
       }
     }
 
-    function toggleLock(gameId) {
-      currentLockGameId = (currentLockGameId === gameId) ? null : gameId;
+    function toggleLock(matchupKey) {
+      currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
       refreshLockVisuals();
     }
 
     function refreshLockVisuals() {
       currentSchedule.forEach(game => {
-        const card = document.getElementById(`card_${game.id}`);
-        const lockBtn = document.getElementById(`lock_btn_${game.id}`);
+        const card = document.getElementById(`card_${game.matchupKey}`);
+        const lockBtn = document.getElementById(`lock_btn_${game.matchupKey}`);
 
         if (card && lockBtn) {
-          if (currentLockGameId === game.id) {
+          if (currentLockMatchupKey === game.matchupKey) {
             card.classList.add("is-locked");
             lockBtn.classList.add("active");
             lockBtn.textContent = "★ Lock Selected";
@@ -555,7 +563,7 @@
     function onWeekChange() {
       hostPicks = {};
       hostScores = {};
-      currentLockGameId = null;
+      currentLockMatchupKey = null;
       document.getElementById("statusAlert").textContent = "";
       loadSchedule();
     }
@@ -563,7 +571,7 @@
     function onHostChange() {
       hostPicks = {};
       hostScores = {};
-      currentLockGameId = null;
+      currentLockMatchupKey = null;
       document.querySelectorAll(".btn-pick").forEach(btn => btn.classList.remove("selected"));
       document.querySelectorAll(".score-field").forEach(inp => inp.value = "");
       document.getElementById("statusAlert").textContent = "";
@@ -594,10 +602,10 @@
             const aNorm = normalizeTeam(g.teamA);
             const bNorm = normalizeTeam(g.teamB);
 
-            let team = hostPicks[g.id] || hostPicks[String(g.id)];
+            let team = hostPicks[g.matchupKey] || hostPicks[g.id] || hostPicks[String(g.id)];
             if (!team) {
               const matchKey = Object.keys(hostPicks).find(k => {
-                if (k === 'lock_game_id' || k === 'scores') return false;
+                if (k === 'lock_game_id' || k === 'lock_matchup_key' || k === 'scores') return false;
                 const vNorm = normalizeTeam(hostPicks[k]);
                 return vNorm === aNorm || vNorm === bNorm;
               });
@@ -605,21 +613,27 @@
             }
 
             if (team) {
-              selectTeam(g.id, team);
+              selectTeam(g.matchupKey, team);
             }
 
-            const gScore = hostScores[g.id] || hostScores[String(g.id)];
+            const gScore = hostScores[g.matchupKey] || hostScores[g.id] || hostScores[String(g.id)];
             if (gScore) {
-              const inpA = document.getElementById(`score_${g.id}_A`);
-              const inpB = document.getElementById(`score_${g.id}_B`);
+              const inpA = document.getElementById(`score_${g.matchupKey}_A`);
+              const inpB = document.getElementById(`score_${g.matchupKey}_B`);
               if (inpA && gScore.teamA !== undefined) inpA.value = gScore.teamA;
               if (inpB && gScore.teamB !== undefined) inpB.value = gScore.teamB;
             }
           });
 
-          if (hostPicks.lock_game_id) {
-            currentLockGameId = parseInt(hostPicks.lock_game_id, 10);
+          if (hostPicks.lock_matchup_key) {
+            currentLockMatchupKey = hostPicks.lock_matchup_key;
             refreshLockVisuals();
+          } else if (hostPicks.lock_game_id) {
+            const foundGame = currentSchedule.find(g => g.id === parseInt(hostPicks.lock_game_id, 10));
+            if (foundGame) {
+              currentLockMatchupKey = foundGame.matchupKey;
+              refreshLockVisuals();
+            }
           }
         }
       } catch (e) {
@@ -639,7 +653,7 @@
         return;
       }
 
-      const pickedKeys = Object.keys(hostPicks).filter(k => k !== 'lock_game_id' && k !== 'scores');
+      const pickedKeys = Object.keys(hostPicks).filter(k => k !== 'lock_game_id' && k !== 'lock_matchup_key' && k !== 'scores');
       if (pickedKeys.length < currentSchedule.length) {
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = `Please make picks for all ${currentSchedule.length} games.`;
@@ -647,16 +661,16 @@
       }
 
       currentSchedule.forEach(g => {
-        const inpA = document.getElementById(`score_${g.id}_A`);
-        const inpB = document.getElementById(`score_${g.id}_B`);
+        const inpA = document.getElementById(`score_${g.matchupKey}_A`);
+        const inpB = document.getElementById(`score_${g.matchupKey}_B`);
         if (inpA && inpB && inpA.value !== "" && inpB.value !== "") {
-          if (!hostScores[g.id]) hostScores[g.id] = {};
-          hostScores[g.id].teamA = inpA.value;
-          hostScores[g.id].teamB = inpB.value;
+          if (!hostScores[g.matchupKey]) hostScores[g.matchupKey] = {};
+          hostScores[g.matchupKey].teamA = inpA.value;
+          hostScores[g.matchupKey].teamB = inpB.value;
         }
       });
 
-      hostPicks.lock_game_id = currentLockGameId;
+      hostPicks.lock_matchup_key = currentLockMatchupKey;
       hostPicks.scores = hostScores;
 
       statusAlert.style.color = "var(--text-muted)";
