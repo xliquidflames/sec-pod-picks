@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Make NFL Picks - That SEC Podcast</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-main: #162032;
+      --bg-card: #0f172a;
+      --bg-card-inner: #1e293b;
+      --accent-gold: #fbbf24;
+      --accent-gold-hover: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --success: #4ade80;
+      --danger: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    html, body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100dvh;
+    }
+
+    body {
+      padding: 1.5rem 1rem 3rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 550px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      color: var(--accent-gold);
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: var(--accent-gold);
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin-bottom: 0.25rem;
+    }
+
+    .sub-header {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .pick-format-banner {
+      background: #1e293b;
+      border: 1.5px solid var(--accent-gold);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.25rem;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .pick-format-text {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: 0.3px;
+      line-height: 1.4;
+    }
+
+    .pick-format-highlight {
+      color: var(--accent-gold);
+      text-transform: uppercase;
+    }
+
+    .card-panel {
+      background: var(--bg-card);
+      padding: 1.25rem;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+    }
+
+    .user-input-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      background: #162032;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent-gold);
+    }
+
+    .game-card {
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .game-card.is-locked {
+      border: 1.5px solid var(--accent-gold);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
+    }
+
+    .game-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.4rem;
+    }
+
+    .game-title {
+      color: var(--accent-gold);
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-lock-toggle {
+      background: #162032;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .btn-lock-toggle:hover {
+      border-color: var(--accent-gold);
+      color: var(--text-main);
+    }
+
+    .btn-lock-toggle.active {
+      background: var(--accent-gold);
+      color: #162032;
+      border-color: var(--accent-gold);
+      font-weight: 900;
+    }
+
+    .game-detail {
+      font-size: 0.78rem;
+      color: var(--text-main);
+      display: block;
+      margin-bottom: 0.75rem;
+      line-height: 1.3;
+    }
+
+    .pick-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+
+    .btn-pick {
+      background: #162032;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-muted);
+      padding: 0.85rem 0.4rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-pick:hover {
+      border-color: #3b4d71;
+      color: var(--text-main);
+    }
+
+    .btn-pick.selected {
+      background: var(--accent-gold);
+      color: #162032;
+      font-weight: 900;
+      border-color: var(--accent-gold);
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #162032;
+      font-size: 1.1rem;
+      font-weight: 900;
+      padding: 1.1rem;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      margin-top: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 0 #b45309;
+      transition: transform 0.1s ease;
+    }
+
+    .btn-submit:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #b45309;
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .status-alert {
+      margin-top: 1rem;
+      text-align: center;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <a href="nflindex.html" class="back-link">&larr; Back to Leaderboard</a>
+      <h1 id="pageHeading">SUBMIT NFL PICKS</h1>
+      <p class="sub-header" id="pageSubHeading">Make your selections</p>
+    </header>
+
+    <div class="pick-format-banner">
+      <div class="pick-format-text">
+        <span class="pick-format-highlight">Straight-Up Picks Only:</span> Select the outright winner for each game (not against the spread). Betting lines are shown for reference only.
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div class="user-input-group">
+        <label for="userNameInput">Your Handle / Name:</label>
+        <input type="text" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" required />
+      </div>
+
+      <div id="gamesList">
+        <div style="text-align: center; color: var(--text-muted); padding: 2rem 0;">Loading schedule...</div>
+      </div>
+
+      <button type="button" class="btn-submit" id="submitBtn" onclick="submitBallot()">Submit Ballot</button>
+      <div id="statusAlert" class="status-alert"></div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetWeek = parseInt(urlParams.get("week"), 10) || 1;
+    const isLockAllowed = (targetWeek !== 1);
+
+    const submittedStorageKey = `nfl_picks_submitted_w${targetWeek}`;
+    if (localStorage.getItem(submittedStorageKey)) {
+      alert(`You have already submitted an entry for Week ${targetWeek}. Redirecting to the leaderboard...`);
+      window.location.href = "nflindex.html";
+    }
+
+    let currentSchedule = [];
+    let userSelections = {};
+    let currentLockMatchupKey = null;
+
+    function cleanTeamName(name) {
+      if (!name) return "";
+      return name;
+    }
+
+    function normalizeTeam(str) {
+      if (!str) return "";
+      return cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+
+    function buildMatchupKey(teamA, teamB) {
+      return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
+    }
+
+    async function checkKickoffLockout(weekNum) {
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&dates=2026&week=${weekNum}&limit=100`;
+        const res = await fetch(url);
+        
+        const serverDateHeader = res.headers.get("date");
+        const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+
+        const data = await res.json();
+        if (!data.events || data.events.length === 0) return;
+
+        const kickoffTimes = data.events
+          .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+          .filter(d => !isNaN(d.getTime()))
+          .sort((a, b) => a - b);
+
+        if (kickoffTimes.length === 0) return;
+
+        const earliestKickoff = kickoffTimes[0];
+
+        if (currentTime >= earliestKickoff) {
+          const timeStr = earliestKickoff.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+          alert(`Picks for Week ${weekNum} are now locked! The earliest game kicked off at ${timeStr}. Redirecting to the leaderboard...`);
+          window.location.href = "nflindex.html";
+        }
+      } catch (err) {
+        console.error("Lockout verification error:", err);
+      }
+    }
+
+    async function fetchEspnSchedule(week) {
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&dates=2026&week=${week}&limit=100`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.events || data.events.length === 0) {
+          return [];
+        }
+
+        const rawGames = [];
+
+        data.events.forEach(ev => {
+          const comp = ev.competitions[0];
+          const home = comp.competitors.find(c => c.homeAway === "home");
+          const away = comp.competitors.find(c => c.homeAway === "away");
+
+          const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
+          const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
+
+          let teamA = awayName;
+          let teamB = homeName;
+
+          const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "Line: TBD";
+          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : "";
+          
+          let time = "TBD";
+          if (comp.date) {
+            time = new Date(comp.date).toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " + 
+                   new Date(comp.date).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          }
+
+          rawGames.push({
+            teamA: teamA,
+            teamB: teamB,
+            detail: `${time} | ${odds} | ${venue}`
+          });
+        });
+
+        rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
+
+        return rawGames.map((g, idx) => ({
+          id: idx + 1,
+          matchupKey: buildMatchupKey(g.teamA, g.teamB),
+          teamA: g.teamA,
+          teamB: g.teamB,
+          detail: g.detail
+        }));
+
+      } catch (e) {
+        console.error("ESPN auto-fetch error:", e);
+        return [];
+      }
+    }
+
+    async function initForm() {
+      await checkKickoffLockout(targetWeek);
+
+      document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
+      document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
+
+      currentSchedule = await fetchEspnSchedule(targetWeek);
+      renderForm();
+    }
+
+    function renderForm() {
+      const container = document.getElementById("gamesList");
+      if (currentSchedule.length === 0) {
+        container.innerHTML = `<div style="text-align:center; color: var(--danger); padding: 1.5rem 0;">No scheduled games found for Week ${targetWeek} yet.</div>`;
+        return;
+      }
+
+      container.innerHTML = "";
+      currentSchedule.forEach(g => {
+        const card = document.createElement("div");
+        card.className = "game-card";
+        card.id = `card_${g.matchupKey}`;
+        card.innerHTML = `
+          <div class="game-header-row">
+            <span class="game-title">Game ${g.id}: ${g.teamA} vs ${g.teamB}</span>
+            ${isLockAllowed ? `
+              <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">
+                Lock of the Week
+              </button>
+            ` : ""}
+          </div>
+          ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
+          <div class="pick-grid">
+            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${g.teamA}</button>
+            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${g.teamB}</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function chooseTeam(matchupKey, team) {
+      userSelections[matchupKey] = team;
+      const btnA = document.getElementById(`btn_${matchupKey}_A`);
+      const btnB = document.getElementById(`btn_${matchupKey}_B`);
+
+      if (btnA && btnB) {
+        if (btnA.textContent.trim() === team) {
+          btnA.classList.add("selected");
+          btnB.classList.remove("selected");
+        } else {
+          btnB.classList.add("selected");
+          btnA.classList.remove("selected");
+        }
+      }
+    }
+
+    function toggleUserLock(matchupKey) {
+      if (!isLockAllowed) return;
+      currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
+      refreshLockVisuals();
+    }
+
+    function refreshLockVisuals() {
+      if (!isLockAllowed) return;
+      currentSchedule.forEach(g => {
+        const card = document.getElementById(`card_${g.matchupKey}`);
+        const lockBtn = document.getElementById(`lock_btn_${g.matchupKey}`);
+
+        if (card && lockBtn) {
+          if (currentLockMatchupKey === g.matchupKey) {
+            card.classList.add("is-locked");
+            lockBtn.classList.add("active");
+            lockBtn.textContent = "★ Lock Selected";
+          } else {
+            card.classList.remove("is-locked");
+            lockBtn.classList.remove("active");
+            lockBtn.textContent = "Lock of the Week";
+          }
+        }
+      });
+    }
+
+    async function submitBallot() {
+      const submitBtn = document.getElementById("submitBtn");
+      const username = document.getElementById("userNameInput").value.trim();
+      const statusAlert = document.getElementById("statusAlert");
+
+      if (!username) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = "Please enter your handle or name.";
+        return;
+      }
+
+      const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_game_id" && k !== "lock_matchup_key").length;
+      if (pickedGameCount < currentSchedule.length) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = `Please make selections for all ${currentSchedule.length} games.`;
+        return;
+      }
+
+      if (isLockAllowed && currentLockMatchupKey) {
+        userSelections.lock_matchup_key = currentLockMatchupKey;
+      } else {
+        delete userSelections.lock_matchup_key;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting picks...";
+      }
+
+      statusAlert.style.color = "var(--text-muted)";
+      statusAlert.textContent = "Submitting your picks...";
+
+      try {
+        const { data: existing, error: checkErr } = await supabaseClient
+          .from("nfl_picks")
+          .select("id")
+          .ilike("user_name", username)
+          .eq("week_number", targetWeek)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          statusAlert.style.color = "var(--danger)";
+          statusAlert.textContent = `An entry under "${username}" has already been submitted for Week ${targetWeek}! Only one submission per Cousin is allowed.`;
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Submit Ballot";
+          }
+          return;
+        }
+
+        const { error } = await supabaseClient
+          .from("nfl_picks")
+          .insert({
+            user_name: username,
+            week_number: targetWeek,
+            is_host: false,
+            picks: userSelections,
+            created_at: new Date().toISOString()
+          });
+
+        if (error) {
+          if (error.code === "23505" || error.message?.includes("unique")) {
+            statusAlert.style.color = "var(--danger)";
+            statusAlert.textContent = `An entry under "${username}" was already submitted for Week ${targetWeek}!`;
+          } else {
+            throw error;
+          }
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Submit Ballot";
+          }
+          return;
+        }
+
+        localStorage.setItem(submittedStorageKey, "true");
+
+        statusAlert.style.color = "var(--success)";
+        statusAlert.innerHTML = `Week ${targetWeek} ballot submitted! Returning to Leaderboard...`;
+
+        setTimeout(() => {
+          window.location.href = "nflindex.html";
+        }, 1800);
+      } catch (err) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = `Error: ${err.message}`;
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit Ballot";
+        }
+      }
+    }
+
+    initForm();
+  </script>
+</body>
+</html>
