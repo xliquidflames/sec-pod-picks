@@ -406,7 +406,6 @@
       margin-top: 0.15rem;
     }
 
-
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
       width: 37%;
@@ -465,6 +464,11 @@
     .pick-correct { color: var(--success) !important; font-weight: 700; }
     .pick-incorrect { color: var(--danger) !important; text-decoration: line-through; opacity: 0.8; }
     .pick-pending { color: var(--text-main); }
+
+    .live-game-cell {
+      background: rgba(251, 191, 36, 0.15) !important;
+      border: 1px solid rgba(251, 191, 36, 0.4) !important;
+    }
 
     .host-lock-cell {
       background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(30, 41, 59, 0.95)) !important;
@@ -795,7 +799,7 @@
         <option value="2">Week 2</option>
         <option value="3">Week 3</option>
         <option value="4">Week 4</option>
-        <option value="1">Week 5</option>
+        <option value="5">Week 5</option>
         <option value="6">Week 6</option>
         <option value="7">Week 7</option>
         <option value="8">Week 8</option>
@@ -860,7 +864,7 @@
             <div class="pulse-desc" id="statTopUpsetDesc"></div>
           </div>
           <div class="pulse-card">
-            <div class="pulse-label">Pick Consensus, etc.</div>
+            <div class="pulse-label">Pick Consensus</div>
             <div class="pulse-stat" id="statLock">--</div>
             <div class="pulse-desc" id="statLockDesc">Highest Slate Agreement</div>
           </div>
@@ -870,7 +874,7 @@
           <div class="pulse-card">
             <div class="pulse-label">Consensus Lock</div>
             <div class="pulse-stat" id="statPeoplesLock">--</div>
-            <div class="pulse-desc" id="statPeoplesLockDesc">Most Locked Text</div>
+            <div class="pulse-desc" id="statPeoplesLockDesc">Most Locked Team</div>
           </div>
           <div class="pulse-card">
             <div class="pulse-label">Lock Accuracy</div>
@@ -896,3 +900,930 @@
           <a href="#pageBottom" class="btn-ctrl">&darr; To Bottom</a>
         </div>
 
+        <div id="cousinsList">
+          <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">Loading community picks...</div>
+        </div>
+      </div>
+    </div>
+
+    <a href="#pageTop" class="btn-float-top">&uarr; Top</a>
+
+    <footer class="site-footer" id="pageBottom">
+      <div class="footer-container">
+        <p class="disclaimer">
+          Data is sourced directly from ESPN. Any discrepancies, delays, or stat corrections reflect upstream data from ESPN and will update automatically once ESPN publishes their official updates.
+        </p>
+
+        <div class="footer-links">
+          <a href="https://www.thatsecpodcast.com" target="_blank" rel="noopener noreferrer">thatsecpodcast.com</a>
+          <span class="divider">|</span>
+          <a href="https://discord.gg/XsPnGkxFSM" target="_blank" rel="noopener noreferrer">Join Our Discord</a>
+        </div>
+
+        <p class="contact-note">
+          Issues, comments, or suggestions? Reach out to <strong>Liquid</strong> on Discord.
+        </p>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let activeWeek = 1;
+    let allWeekRows = [];
+    window.gameWinners = {};
+    window.weekSchedules = {};
+    window.liveGames = {};
+
+    const secPatterns = [
+      "alabama", "crimson tide", "arkansas", "razorbacks", "auburn", "tigers",
+      "florida", "gators", "georgia", "bulldogs", "kentucky", "wildcats",
+      "lsu", "ole miss", "rebels", "mississippi state", "miss state", "miss st",
+      "missouri", "mizzou", "oklahoma", "sooners", "south carolina", "gamecocks",
+      "tennessee", "volunteers", "vols", "texas", "longhorns", "texas a&m", "aggies",
+      "vanderbilt", "commodores", "vandy"
+    ];
+
+    function isSecTeam(teamName) {
+      if (!teamName) return false;
+      const t = teamName.toLowerCase().trim();
+      return secPatterns.some(p => t === p || t.includes(p) || p.includes(t));
+    }
+
+    function cleanTeamName(name) {
+      if (!name) return "";
+      const lower = name.toLowerCase().trim();
+      if (lower.includes("pine bluff") || lower === "uapb" || lower.includes("peanut")) {
+        return "Arkansas Peanut Butter (Pine Bluff)";
+      }
+      return name;
+    }
+
+    function normalizeTeam(str) {
+      if (!str) return "";
+      const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned.includes("uapb")) {
+        return "uapb";
+      }
+      if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
+        return "arkansas";
+      }
+      return cleaned;
+    }
+
+    function buildMatchupKey(teamA, teamB) {
+      return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
+    }
+
+    function toggleTieBreakers() {
+      const infoBox = document.getElementById("tiebreakersInfo");
+      const arrow = document.getElementById("tiebreakerArrow");
+      if (!infoBox) return;
+      const isOpen = infoBox.classList.toggle("open");
+      if (arrow) {
+        arrow.innerHTML = isOpen ? "&#9652;" : "&#9662;";
+      }
+    }
+
+    function toggleHostGrid() {
+      const wrapper = document.getElementById("hostGridWrapper");
+      const arrow = document.getElementById("hostGridArrow");
+      if (!wrapper) return;
+      const isCollapsed = wrapper.classList.toggle("collapsed");
+      if (arrow) {
+        arrow.innerHTML = isCollapsed ? "&#9656;" : "&#9662;";
+      }
+    }
+
+    async function isWeekLocked(weekNum) {
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${weekNum}&limit=100`;
+        const res = await fetch(url);
+        
+        const serverDateHeader = res.headers.get("date");
+        const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+
+        const data = await res.json();
+        if (!data.events || data.events.length === 0) return false;
+
+        const anyStartedOrCompleted = data.events.some(ev => {
+          const comp = ev.competitions && ev.competitions[0];
+          const isComp = comp && comp.status && comp.status.type && comp.status.type.completed;
+          const state = comp && comp.status && comp.status.type && comp.status.type.state;
+          return isComp || state === "in" || state === "post";
+        });
+
+        if (anyStartedOrCompleted) return true;
+
+        const kickoffTimes = data.events
+          .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+          .filter(d => !isNaN(d.getTime()))
+          .sort((a, b) => a - b);
+
+        if (kickoffTimes.length === 0) return false;
+
+        return currentTime >= kickoffTimes[0];
+      } catch (err) {
+        console.error("Lockout check error:", err);
+        return false;
+      }
+    }
+
+    async function fetchEspnSchedule(week) {
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.events || data.events.length === 0) return [];
+
+        if (!window.gameWinners[week]) window.gameWinners[week] = {};
+        if (!window.liveGames[week]) window.liveGames[week] = {};
+
+        const rawGames = [];
+
+        data.events.forEach(ev => {
+          const comp = ev.competitions[0];
+          const home = comp.competitors.find(c => c.homeAway === 'home');
+          const away = comp.competitors.find(c => c.homeAway === 'away');
+
+          const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
+          const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
+
+          let teamA = homeName;
+          let teamB = awayName;
+
+          if (!isSecTeam(homeName) && isSecTeam(awayName)) {
+            teamA = awayName;
+            teamB = homeName;
+          }
+
+          const isFinal = comp.status && comp.status.type && comp.status.type.completed;
+          const state = comp.status && comp.status.type && comp.status.type.state;
+          const isLive = (state === "in");
+
+          let winnerName = null;
+          if (isFinal) {
+            const winnerComp = comp.competitors.find(c => c.winner === true);
+            if (winnerComp) {
+              winnerName = cleanTeamName(winnerComp.team.shortDisplayName || winnerComp.team.name);
+            }
+          }
+
+          const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : '';
+          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
+          
+          let time = "TBD";
+          if (isFinal) {
+            time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+          } else if (isLive) {
+            const liveDetail = comp.status.type.detail || `Period ${comp.status.period}`;
+            time = `${liveDetail}: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+          } else if (comp.date) {
+            time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
+                   new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+          }
+
+          rawGames.push({
+            teamA: teamA,
+            teamB: teamB,
+            rawOdds: rawOdds,
+            detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
+            winner: winnerName,
+            isLive: isLive
+          });
+        });
+
+        rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
+
+        const mappedGames = rawGames.map((g, idx) => {
+          const gameId = idx + 1;
+          const mKey = buildMatchupKey(g.teamA, g.teamB);
+          if (g.winner) {
+            window.gameWinners[week][gameId] = g.winner;
+            window.gameWinners[week][mKey] = g.winner;
+          }
+          if (g.isLive) {
+            window.liveGames[week][mKey] = true;
+            window.liveGames[week][gameId] = true;
+          }
+          return {
+            id: gameId,
+            matchupKey: mKey,
+            teamA: g.teamA,
+            teamB: g.teamB,
+            rawOdds: g.rawOdds,
+            detail: g.detail,
+            isLive: g.isLive
+          };
+        });
+
+        window.weekSchedules[week] = mappedGames;
+        return mappedGames;
+      } catch (e) {
+        console.error("ESPN schedule error:", e);
+        return [];
+      }
+    }
+
+    function parseUserPicks(rawPicks) {
+      if (!rawPicks) return {};
+      if (typeof rawPicks === 'object') return rawPicks;
+      try { return JSON.parse(rawPicks); } catch (e) { return {}; }
+    }
+
+    function getMatchedUserPick(picks, game) {
+      if (!picks || !game) return null;
+
+      if (picks[game.matchupKey]) {
+        return picks[game.matchupKey];
+      }
+
+      const aNorm = normalizeTeam(game.teamA);
+      const bNorm = normalizeTeam(game.teamB);
+
+      const direct = picks[game.id] || picks[String(game.id)];
+      if (direct && typeof direct === 'string') {
+        const directNorm = normalizeTeam(direct);
+        if (directNorm === aNorm || directNorm === bNorm) {
+          return direct;
+        }
+      }
+
+      const matchKey = Object.keys(picks).find(k => {
+        if (k === 'lock_game_id' || k === 'lock_matchup_key' || k === 'scores') return false;
+        const val = picks[k];
+        if (!val || typeof val !== 'string') return false;
+        const valNorm = normalizeTeam(val);
+        return valNorm === aNorm || valNorm === bNorm;
+      });
+
+      if (matchKey) {
+        return picks[matchKey];
+      }
+
+      return direct || null;
+    }
+
+    function gradePicks(rawPicks, week) {
+      const picks = parseUserPicks(rawPicks);
+      const winners = window.gameWinners[week] || {};
+      const sched = window.weekSchedules[week] || [];
+      let correct = 0, incorrect = 0, pending = 0;
+      let lockCorrect = 0, lockIncorrect = 0;
+
+      const userLockId = (week !== 1 && picks.lock_game_id) ? parseInt(picks.lock_game_id, 10) : null;
+      const userLockKey = (week !== 1 && picks.lock_matchup_key) ? picks.lock_matchup_key : null;
+
+      sched.forEach(game => {
+        const winner = winners[game.matchupKey] || winners[game.id];
+        const userPick = getMatchedUserPick(picks, game);
+
+        const isLockGame = (userLockKey && userLockKey === game.matchupKey) || (userLockId && userLockId === game.id);
+
+        if (!winner) {
+          pending++;
+        } else {
+          const uNorm = normalizeTeam(userPick);
+          const wNorm = normalizeTeam(winner);
+          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)));
+
+          if (isHit) {
+            correct++;
+            if (isLockGame) lockCorrect++;
+          } else {
+            incorrect++;
+            if (isLockGame) lockIncorrect++;
+          }
+        }
+      });
+
+      return { correct, incorrect, pending, lockCorrect, lockIncorrect };
+    }
+
+    function getPickClass(userPick, game, week) {
+      const winner = (window.gameWinners[week] || {})[game.matchupKey] || (window.gameWinners[week] || {})[game.id];
+      if (!winner || !userPick || userPick === "-") return "pick-pending";
+      const uNorm = normalizeTeam(userPick);
+      const wNorm = normalizeTeam(winner);
+      return (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)) ? "pick-correct" : "pick-incorrect";
+    }
+
+    function computeAtsBadge(userPick, scoreObj, game) {
+      if (!userPick || userPick === "-" || !scoreObj || scoreObj.teamA === undefined || scoreObj.teamB === undefined) {
+        return "";
+      }
+
+      const numA = parseInt(scoreObj.teamA, 10);
+      const numB = parseInt(scoreObj.teamB, 10);
+      if (isNaN(numA) || isNaN(numB)) return "";
+
+      const rawOdds = game.rawOdds || "";
+      if (!rawOdds || rawOdds.toLowerCase().includes("even") || rawOdds.toLowerCase().includes("pk")) return "";
+
+      const match = rawOdds.match(/([A-Za-z\s]+)\s+([+-]?\d+(?:\.\d+)?)/);
+      if (!match) return "";
+
+      const favTeamRaw = match[1].trim();
+      const spreadNum = parseFloat(match[2]);
+      const favNorm = normalizeTeam(favTeamRaw);
+
+      const aNorm = normalizeTeam(game.teamA);
+      const bNorm = normalizeTeam(game.teamB);
+
+      let teamSpreadA = 0;
+      let teamSpreadB = 0;
+
+      if (aNorm.includes(favNorm) || favNorm.includes(aNorm)) {
+        teamSpreadA = spreadNum;
+        teamSpreadB = -spreadNum;
+      } else if (bNorm.includes(favNorm) || favNorm.includes(bNorm)) {
+        teamSpreadB = spreadNum;
+        teamSpreadA = -spreadNum;
+      } else {
+        return "";
+      }
+
+      const uNorm = normalizeTeam(userPick);
+      let pickedMargin = 0;
+      let requiredSpread = 0;
+
+      if (uNorm === aNorm || uNorm.includes(aNorm) || aNorm.includes(uNorm)) {
+        pickedMargin = numA - numB;
+        requiredSpread = teamSpreadA;
+      } else if (uNorm === bNorm || uNorm.includes(bNorm) || bNorm.includes(uNorm)) {
+        pickedMargin = numB - numA;
+        requiredSpread = teamSpreadB;
+      } else {
+        return "";
+      }
+
+      const spreadFormatted = requiredSpread > 0 ? `+${requiredSpread}` : `${requiredSpread}`;
+      if (pickedMargin + requiredSpread > 0) {
+        return `<span class="ats-badge ats-cover">Covers ${spreadFormatted}</span>`;
+      } else if (pickedMargin + requiredSpread < 0) {
+        return `<span class="ats-badge ats-no-cover">No Cover ${spreadFormatted}</span>`;
+      } else {
+        return `<span class="ats-badge ats-cover">Push ${spreadFormatted}</span>`;
+      }
+    }
+
+    async function loadAllSeasonData() {
+      try {
+        const { data: rows, error } = await supabaseClient
+          .from("picks")
+          .select("*")
+          .order("created_at", { ascending: true })
+          .limit(5000);
+
+        if (error) throw error;
+        
+        const seen = new Set();
+        allWeekRows = (rows || []).filter(r => {
+          const key = `${r.user_name?.toLowerCase().trim()}_w${r.week_number}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        const uniqueWeeks = Array.from(
+          new Set(allWeekRows.map(r => r.week_number).concat([1, activeWeek]))
+        ).filter(w => w >= 1 && w <= 14);
+
+        await Promise.all(uniqueWeeks.map(w => fetchEspnSchedule(w)));
+
+        computeSeasonTotals();
+        await switchWeek(activeWeek);
+      } catch (err) {
+        console.error("Season load error:", err);
+      }
+    }
+
+    function computeSeasonTotals() {
+      let mikeW = 0, mikeL = 0;
+      let shaneW = 0, shaneL = 0;
+      let stevenW = 0, stevenL = 0;
+
+      const cousinAgg = {};
+      let anyDecidedGames = false;
+
+      const weekGameDistributions = {};
+      allWeekRows.forEach(row => {
+        if (row.is_host) return;
+        const w = row.week_number;
+        if (!weekGameDistributions[w]) weekGameDistributions[w] = {};
+        const picks = parseUserPicks(row.picks);
+        const sched = window.weekSchedules[w] || [];
+
+        sched.forEach(game => {
+          const p = getMatchedUserPick(picks, game);
+          if (!p) return;
+          if (!weekGameDistributions[w][game.matchupKey]) weekGameDistributions[w][game.matchupKey] = { total: 0, counts: {} };
+          const pNorm = normalizeTeam(p);
+          weekGameDistributions[w][game.matchupKey].total += 1;
+          weekGameDistributions[w][game.matchupKey].counts[pNorm] = (weekGameDistributions[w][game.matchupKey].counts[pNorm] || 0) + 1;
+        });
+      });
+
+      allWeekRows.forEach(row => {
+        const score = gradePicks(row.picks, row.week_number);
+        const name = (row.user_name || "").toLowerCase();
+
+        if (score.correct > 0 || score.incorrect > 0) {
+          anyDecidedGames = true;
+        }
+
+        if (row.is_host) {
+          if (name === "mike") { mikeW += score.correct; mikeL += score.incorrect; }
+          if (name === "shane") { shaneW += score.correct; shaneL += score.incorrect; }
+          if (name === "steven") { stevenW += score.correct; stevenL += score.incorrect; }
+        } else {
+          if (!cousinAgg[row.user_name]) {
+            cousinAgg[row.user_name] = { 
+              user_name: row.user_name, 
+              correct: 0, 
+              incorrect: 0, 
+              lockCorrect: 0,
+              lockIncorrect: 0,
+              consensusDivergenceWins: 0,
+              divergencePickList: [],
+              underdogUpsetWins: 0,
+              underdogPickList: []
+            };
+          }
+          cousinAgg[row.user_name].correct += score.correct;
+          cousinAgg[row.user_name].incorrect += score.incorrect;
+          cousinAgg[row.user_name].lockCorrect += score.lockCorrect;
+          cousinAgg[row.user_name].lockIncorrect += score.lockIncorrect;
+
+          const picks = parseUserPicks(row.picks);
+          const winners = window.gameWinners[row.week_number] || {};
+          const sched = window.weekSchedules[row.week_number] || [];
+
+          sched.forEach(gameObj => {
+            const winner = winners[gameObj.matchupKey] || winners[gameObj.id];
+            const userPick = getMatchedUserPick(picks, gameObj);
+            if (!winner || !userPick) return;
+
+            const uNorm = normalizeTeam(userPick);
+            const wNorm = normalizeTeam(winner);
+            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
+
+            if (isHit) {
+              const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
+              if (gameDist && gameDist.total > 0) {
+                const pickCount = gameDist.counts[uNorm] || 0;
+                const pickRatio = pickCount / gameDist.total;
+                if (pickRatio <= 0.45) {
+                  cousinAgg[row.user_name].consensusDivergenceWins += 1;
+                  cousinAgg[row.user_name].divergencePickList.push(userPick);
+                }
+              }
+
+              const aIsSec = isSecTeam(gameObj.teamA);
+              const bIsSec = isSecTeam(gameObj.teamB);
+              if (aIsSec && !bIsSec && !isSecTeam(userPick)) {
+                cousinAgg[row.user_name].underdogUpsetWins += 1;
+                cousinAgg[row.user_name].underdogPickList.push(`${userPick} over ${gameObj.teamA}`);
+              } else if (!aIsSec && bIsSec && !isSecTeam(userPick)) {
+                cousinAgg[row.user_name].underdogUpsetWins += 1;
+                cousinAgg[row.user_name].underdogPickList.push(`${userPick} over ${gameObj.teamB}`);
+              }
+            }
+          });
+        }
+      });
+
+      document.getElementById("seasonMike").textContent = `${mikeW}-${mikeL}`;
+      document.getElementById("seasonShane").textContent = `${shaneW}-${shaneL}`;
+      document.getElementById("seasonSteven").textContent = `${stevenW}-${stevenL}`;
+
+      const top5Container = document.getElementById("top5CousinsList");
+      const decisionLog = document.getElementById("tiebreakerDecisionLog");
+
+      if (!anyDecidedGames) {
+        top5Container.innerHTML = `<div class="top3-pending">Pending Week 1 Results</div>`;
+        if (decisionLog) decisionLog.style.display = "none";
+        return;
+      }
+
+      const allCousins = Object.values(cousinAgg);
+      if (allCousins.length === 0) {
+        top5Container.innerHTML = `<div class="top3-pending">No Picks Submitted Yet</div>`;
+        if (decisionLog) decisionLog.style.display = "none";
+        return;
+      }
+
+      const candidateKey = (c) => `${c.correct}|${c.lockCorrect}|${c.incorrect}|${c.consensusDivergenceWins}|${c.underdogUpsetWins}`;
+
+      const sortedByStats = [...allCousins].sort((a, b) => {
+        if (b.correct !== a.correct) return b.correct - a.correct;
+        if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
+        if (a.incorrect !== b.incorrect) return a.incorrect - b.incorrect;
+        if (b.consensusDivergenceWins !== a.consensusDivergenceWins) {
+          return b.consensusDivergenceWins - a.consensusDivergenceWins;
+        }
+        return b.underdogUpsetWins - a.underdogUpsetWins;
+      });
+
+      const topStatsKey = candidateKey(sortedByStats[0]);
+      const tiedForTopCount = sortedByStats.filter(c => candidateKey(c) === topStatsKey).length;
+      
+      const thirdPlaceCandidate = sortedByStats[2] || sortedByStats[0];
+      const thirdPlaceKey = candidateKey(thirdPlaceCandidate);
+      const tiedWithPodiumCount = sortedByStats.filter(c => candidateKey(c) === thirdPlaceKey).length;
+
+      if (tiedForTopCount > 3 || tiedWithPodiumCount > 3) {
+        top5Container.innerHTML = `<div class="top3-pending" style="color: var(--accent-gold); font-size: 0.9rem; padding: 0.85rem 0;">Everyone is tied!</div>`;
+        if (decisionLog) {
+          decisionLog.innerHTML = `
+            <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Live Podium Decision Logic:</div>
+            <div class="tiebreaker-decision-item">
+              <strong>Complete Deadlock:</strong> ${tiedForTopCount} Cousins are currently tied across every performance tiebreaker. The Top 3 podium will emerge as weekend games conclude.
+            </div>
+          `;
+          decisionLog.style.display = "block";
+        }
+        return;
+      }
+
+      const sortedCousins = allCousins.sort((a, b) => {
+        if (b.correct !== a.correct) return b.correct - a.correct;
+        if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
+        if (a.incorrect !== b.incorrect) return a.incorrect - b.incorrect;
+        if (b.consensusDivergenceWins !== a.consensusDivergenceWins) {
+          return b.consensusDivergenceWins - a.consensusDivergenceWins;
+        }
+        if (b.underdogUpsetWins !== a.underdogUpsetWins) {
+          return b.underdogUpsetWins - a.underdogUpsetWins;
+        }
+        return a.user_name.localeCompare(b.user_name);
+      });
+
+      const top3Podium = sortedCousins.slice(0, 3);
+      const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
+
+      top5Container.innerHTML = top3Podium.map((c, idx) => `
+        <div class="top3-item">
+          <div style="display: flex; align-items: center;">
+            <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">#${idx + 1}</span>
+            <strong>${c.user_name}</strong>
+            ${c.lockCorrect > 0 ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
+          </div>
+          <div style="font-weight: 800; color: var(--accent-gold);">${c.correct}-${c.incorrect}</div>
+        </div>
+      `).join("");
+
+      if (decisionLog) {
+        const decisions = [];
+        const topWins = top3Podium[0]?.correct;
+        const contenders = sortedCousins.filter(c => c.correct === topWins);
+
+        if (contenders.length > 1) {
+          const lockHits = Array.from(new Set(contenders.map(c => c.lockCorrect))).sort((a, b) => b - a);
+          if (lockHits.length > 1 && lockHits[0] > 0) {
+            const topLockCousins = contenders.filter(c => c.lockCorrect === lockHits[0]);
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Lock of the Week:</strong> ${topLockCousins.map(c => c.user_name).join(", ")} hit their Lock of the Week (${lockHits[0]}), breaking the tie over contenders with fewer lock wins.
+              </div>
+            `);
+          }
+
+          const divergenceCounts = Array.from(new Set(contenders.map(c => c.consensusDivergenceWins))).sort((a, b) => b - a);
+          if (divergenceCounts.length > 1 && divergenceCounts[0] > 0) {
+            const topDiv = contenders.filter(c => c.consensusDivergenceWins === divergenceCounts[0]);
+            const divPicks = topDiv[0]?.divergencePickList.join(", ") || "contrarian picks";
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Consensus Divergence:</strong> ${topDiv.map(c => c.user_name).join(", ")} hit ${divergenceCounts[0]} against-the-grain pick(s) (${divPicks}) to earn tiebreaker advantage over other tied Cousins.
+              </div>
+            `);
+          }
+
+          const underdogCounts = Array.from(new Set(contenders.map(c => c.underdogUpsetWins))).sort((a, b) => b - a);
+          if (underdogCounts.length > 1 && underdogCounts[0] > 0) {
+            const topDog = contenders.filter(c => c.underdogUpsetWins === underdogCounts[0]);
+            const dogPicks = topDog[0]?.underdogPickList.join(", ") || "underdog picks";
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Underdog Upset Accuracy:</strong> ${topDog.map(c => c.user_name).join(", ")} correctly called ${dogPicks} to claim the higher podium seed.
+              </div>
+            `);
+          }
+
+          if (decisions.length === 0) {
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Alphabetical Seeding:</strong> Contenders are deadlocked across all performance metrics, so podium positions currently follow alphabetical ordering.
+              </div>
+            `);
+          }
+        } else {
+          decisions.push(`
+            <div class="tiebreaker-decision-item">
+              <strong>Outright Score:</strong> Season podium ranks are currently determined outright by total correct wins.
+            </div>
+          `);
+        }
+
+        decisionLog.innerHTML = `
+          <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Live Podium Decision Logic:</div>
+          ${decisions.join("")}
+        `;
+        decisionLog.style.display = "block";
+      }
+    }
+
+    function changeWeekOffset(delta) {
+      let target = activeWeek + delta;
+      if (target < 1) target = 1;
+      if (target > 14) target = 14;
+      switchWeek(target);
+    }
+
+    let CURRENT_OPEN_WEEK = 2;
+
+    async function determineDynamicWeeks() {
+      let openW = 1;
+      let activeW = 1;
+
+      for (let w = 1; w <= 14; w++) {
+        const locked = await isWeekLocked(w);
+        if (!locked) {
+          openW = w;
+          break;
+        }
+        if (w === 14) openW = 14;
+      }
+
+      for (let w = 1; w <= 14; w++) {
+        try {
+          const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${w}&limit=100`;
+          const res = await fetch(url);
+          const serverDateHeader = res.headers.get("date");
+          const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+          const data = await res.json();
+          if (!data.events || data.events.length === 0) continue;
+
+          const gameDates = data.events
+            .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+            .filter(d => !isNaN(d.getTime()))
+            .sort((a, b) => a - b);
+
+          if (gameDates.length === 0) continue;
+
+          const firstKickoff = gameDates[0];
+          const lastKickoff = gameDates[gameDates.length - 1];
+          const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
+
+          const sundayAfter = new Date(lastGameEnd);
+          sundayAfter.setDate(sundayAfter.getDate() + (7 - sundayAfter.getDay()) % 7);
+          sundayAfter.setHours(0, 0, 0, 0);
+
+          if (currentTime >= firstKickoff) {
+            activeW = w;
+            if (currentTime >= sundayAfter) {
+              activeW = Math.min(w + 1, openW);
+            }
+          }
+        } catch (e) {
+          console.error(`Error calculating active week for week ${w}:`, e);
+        }
+      }
+
+      return { openWeek: openW, activeWeek: activeW };
+    }
+
+    async function switchWeek(weekNum) {
+      activeWeek = weekNum;
+
+      const dropdown = document.getElementById("mainWeekSelect");
+      if (dropdown) dropdown.value = weekNum;
+
+      document.getElementById("weekHostTitle").textContent = `Hosts' Week ${weekNum} Picks`;
+      document.getElementById("weekCousinsTitle").textContent = `The Cousins' Week ${weekNum} Picks`;
+
+      const sortDesc = document.getElementById("leaderboardSortDesc");
+      if (sortDesc) {
+        sortDesc.textContent = weekNum === 1
+          ? "Ranked by correct picks then sorted alphabetically. Click any row to expand selections."
+          : "Ranked by correct picks then sorted by LOTW hits, then alphabetical. Click any row to expand selections.";
+      }
+
+      const ctaBtn = document.getElementById("ctaBtn");
+      const lockedBanner = document.getElementById("lockedNoticeBanner");
+
+      if (weekNum === CURRENT_OPEN_WEEK) {
+        const isLocked = await isWeekLocked(weekNum);
+        if (!isLocked) {
+          ctaBtn.style.display = "flex";
+          ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
+          ctaBtn.href = `makepicks.html?week=${weekNum}`;
+          if (lockedBanner) lockedBanner.style.display = "none";
+        } else {
+          ctaBtn.style.display = "none";
+          if (lockedBanner) lockedBanner.style.display = "block";
+        }
+      } else {
+        ctaBtn.style.display = "none";
+        if (lockedBanner) lockedBanner.style.display = "none";
+      }
+
+      await renderActiveWeek();
+    }
+
+    async function renderActiveWeek() {
+      const games = await fetchEspnSchedule(activeWeek);
+
+      const rows = allWeekRows.filter(r => r.week_number === activeWeek);
+      const hostRows = rows.filter(r => r.is_host === true);
+      const cousinRows = rows.filter(r => r.is_host === false);
+
+      document.getElementById("entryPill").textContent = `${cousinRows.length} Entries`;
+
+      const hostMike = hostRows.find(h => h.user_name?.toLowerCase() === "mike");
+      const hostShane = hostRows.find(h => h.user_name?.toLowerCase() === "shane");
+      const hostSteven = hostRows.find(h => h.user_name?.toLowerCase() === "steven");
+
+      const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
+      const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
+      const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
+
+      const mikeScores = mikePicks.scores || {};
+      const shaneScores = shanePicks.scores || {};
+      const stevenScores = stevenPicks.scores || {};
+
+      const mikeScore = gradePicks(mikePicks, activeWeek);
+      const shaneScore = gradePicks(shanePicks, activeWeek);
+      const stevenScore = gradePicks(stevenPicks, activeWeek);
+
+      document.getElementById("thMike").innerHTML = `Mike <span class="host-header-score">${mikeScore.correct}-${mikeScore.incorrect}</span>`;
+      document.getElementById("thShane").innerHTML = `Shane <span class="host-header-score">${shaneScore.correct}-${shaneScore.incorrect}</span>`;
+      document.getElementById("thSteven").innerHTML = `Steven <span class="host-header-score">${stevenScore.correct}-${stevenScore.incorrect}</span>`;
+
+      const hostBody = document.getElementById("hostGridBody");
+      hostBody.innerHTML = "";
+
+      const isLockActiveThisWeek = (activeWeek !== 1);
+      const liveMap = window.liveGames[activeWeek] || {};
+
+      games.forEach(g => {
+        const tr = document.createElement("tr");
+        const pM = getMatchedUserPick(mikePicks, g) || "-";
+        const pS = getMatchedUserPick(shanePicks, g) || "-";
+        const pSt = getMatchedUserPick(stevenPicks, g) || "-";
+
+        const sM = mikeScores[g.matchupKey] || mikeScores[g.id] || mikeScores[String(g.id)];
+        const sS = shaneScores[g.matchupKey] || shaneScores[g.id] || shaneScores[String(g.id)];
+        const sSt = stevenScores[g.matchupKey] || stevenScores[g.id] || stevenScores[String(g.id)];
+
+        const scoreTextM = (sM && sM.teamA !== undefined && sM.teamB !== undefined && sM.teamA !== "") ? `${sM.teamA}-${sM.teamB}` : "";
+        const scoreTextS = (sS && sS.teamA !== undefined && sS.teamB !== undefined && sS.teamA !== "") ? `${sS.teamA}-${sS.teamB}` : "";
+        const scoreTextSt = (sSt && sSt.teamA !== undefined && sSt.teamB !== undefined && sSt.teamA !== "") ? `${sSt.teamA}-${sSt.teamB}` : "";
+
+        const atsBadgeM = computeAtsBadge(pM, sM, g);
+        const atsBadgeS = computeAtsBadge(pS, sS, g);
+        const atsBadgeSt = computeAtsBadge(pSt, sSt, g);
+
+        const isLockM = isLockActiveThisWeek && ((mikePicks.lock_matchup_key === g.matchupKey) || (mikePicks.lock_game_id === g.id));
+        const isLockS = isLockActiveThisWeek && ((shanePicks.lock_matchup_key === g.matchupKey) || (shanePicks.lock_game_id === g.id));
+        const isLockSt = isLockActiveThisWeek && ((stevenPicks.lock_matchup_key === g.matchupKey) || (stevenPicks.lock_game_id === g.id));
+
+        const classM = getPickClass(pM, g, activeWeek);
+        const classS = getPickClass(pS, g, activeWeek);
+        const classSt = getPickClass(pSt, g, activeWeek);
+
+        const isLiveGame = liveMap[g.matchupKey] || liveMap[g.id];
+        const liveClass = isLiveGame ? 'live-game-cell' : '';
+
+        tr.innerHTML = `
+          <td class="matchup-cell ${liveClass}">
+            <strong>${g.teamA} vs ${g.teamB}</strong>
+            ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
+          </td>
+          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''} ${liveClass}">
+            ${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
+            ${atsBadgeM}
+          </td>
+          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''} ${liveClass}">
+            ${pS}${isLockS ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
+            ${atsBadgeS}
+          </td>
+          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''} ${liveClass}">
+            ${pSt}${isLockSt ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
+            ${atsBadgeSt}
+          </td>
+        `;
+        hostBody.appendChild(tr);
+      });
+
+      cousinRows.forEach(c => c.score = gradePicks(c.picks, activeWeek));
+
+      cousinRows.sort((a, b) => {
+        if (b.score.correct !== a.score.correct) return b.score.correct - a.score.correct;
+        if (isLockActiveThisWeek && (b.score.lockCorrect !== a.score.lockCorrect)) {
+          return b.score.lockCorrect - a.score.lockCorrect;
+        }
+        return a.user_name.localeCompare(b.user_name);
+      });
+
+      const uniqueWeeklyWins = Array.from(new Set(cousinRows.map(c => c.score.correct))).sort((a, b) => b - a);
+      const wTier1Wins = uniqueWeeklyWins[0];
+      const wTier2Wins = uniqueWeeklyWins[1];
+      const wTier3Wins = uniqueWeeklyWins[2];
+
+      const gamesHaveStarted = cousinRows.some(c => c.score.correct > 0 || c.score.incorrect > 0);
+
+      let seqWeeklyRank = 4;
+      cousinRows.forEach(c => {
+        if (!gamesHaveStarted) {
+          c.rank = "-";
+          c.rankClass = "";
+        } else if (c.score.correct === wTier1Wins) {
+          c.rank = 1;
+          c.rankClass = "rank-gold";
+        } else if (wTier2Wins !== undefined && c.score.correct === wTier2Wins) {
+          c.rank = 2;
+          c.rankClass = "rank-silver";
+        } else if (wTier3Wins !== undefined && c.score.correct === wTier3Wins) {
+          c.rank = 3;
+          c.rankClass = "rank-bronze";
+        } else {
+          c.rank = seqWeeklyRank++;
+          c.rankClass = "";
+        }
+      });
+
+      const listContainer = document.getElementById("cousinsList");
+      listContainer.innerHTML = cousinRows.length === 0 
+        ? `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No picks submitted for Week ${activeWeek} yet.</div>`
+        : "";
+
+      cousinRows.forEach(c => {
+        const item = document.createElement("div");
+        item.className = "cousin-item";
+        const picks = parseUserPicks(c.picks);
+        const cousinLockKey = isLockActiveThisWeek ? (picks.lock_matchup_key || null) : null;
+        const cousinLockId = isLockActiveThisWeek && picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
+        const hitLotw = isLockActiveThisWeek && (c.score.lockCorrect > 0);
+
+        item.innerHTML = `
+          <div class="cousin-header" onclick="this.nextElementSibling.classList.toggle('open')">
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+              <span class="rank-badge ${c.rankClass}">#${c.rank}</span>
+              <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
+              ${hitLotw ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
+              <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">${c.score.correct}-${c.score.incorrect}</span>
+            </div>
+            <span style="color: var(--accent-gold); font-weight: bold;">+</span>
+          </div>
+          <div class="cousin-picks-body">
+            ${games.map(g => {
+              const uPick = getMatchedUserPick(picks, g) || "No Pick";
+              const pClass = getPickClass(uPick, g, activeWeek);
+              const isCousinLock = (cousinLockKey && cousinLockKey === g.matchupKey) || (cousinLockId && cousinLockId === g.id);
+              return `
+                <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
+                  <span style="color: var(--text-muted);">${g.teamA} vs ${g.teamB}</span>
+                  <span class="${pClass}">
+                    ${uPick}
+                    ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
+                  </span>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+        listContainer.appendChild(item);
+      });
+
+      computeSeasonTotals();
+    }
+
+    async function initApp() {
+      const dynamic = await determineDynamicWeeks();
+      activeWeek = dynamic.activeWeek;
+      CURRENT_OPEN_WEEK = dynamic.openWeek;
+      
+      await loadAllSeasonData();
+      await switchWeek(activeWeek);
+
+      setInterval(async () => {
+        if (activeWeek) {
+          await renderActiveWeek();
+        }
+      }, 60000);
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
