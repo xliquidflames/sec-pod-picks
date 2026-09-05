@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/png" href="logo.png" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Make Picks - That SEC Podcast</title>
+  <title>That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --bg-main: #0a1120;
-      --bg-card: #131d31;
-      --bg-card-inner: #19263e;
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-alt: #162032;
       --accent-gold: #fbbf24;
       --accent-gold-hover: #f59e0b;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
-      --border-color: #22324f;
+      --border-color: #334155;
       --success: #4ade80;
       --danger: #f87171;
     }
@@ -36,263 +37,883 @@
       padding: 1.5rem 1rem 3rem;
       display: flex;
       justify-content: center;
+      scroll-behavior: smooth;
     }
 
     .container {
       width: 100%;
-      max-width: 550px;
+      max-width: 750px;
     }
 
     header {
       text-align: center;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
     }
 
-    .back-link {
-      display: inline-block;
-      color: var(--accent-gold);
-      font-size: 0.85rem;
-      font-weight: 700;
-      text-decoration: none;
+    .logo-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
       margin-bottom: 0.75rem;
     }
 
-    h1 {
-      font-size: 1.8rem;
+    .main-logo {
+      max-width: 190px;
+      width: 100%;
+      height: auto;
+      display: block;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+    }
+
+    .main-title-badge {
+      font-size: 1.35rem;
       color: var(--accent-gold);
       font-weight: 900;
-      letter-spacing: -0.5px;
-      margin-bottom: 0.25rem;
-    }
-
-    .sub-header {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-    }
-
-    .pick-format-banner {
-      background: #19263e;
-      border: 1.5px solid var(--accent-gold);
-      border-radius: 10px;
-      padding: 0.75rem 1rem;
-      margin-bottom: 1.25rem;
-      text-align: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    }
-
-    .pick-format-text {
-      font-size: 0.85rem;
-      font-weight: 800;
-      color: var(--text-main);
-      letter-spacing: 0.3px;
-      line-height: 1.4;
-    }
-
-    .pick-format-highlight {
-      color: var(--accent-gold);
+      letter-spacing: 0.5px;
       text-transform: uppercase;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     }
 
-    .card-panel {
+    .btn-cta {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #0f172a;
+      font-size: 1.05rem;
+      font-weight: 900;
+      text-align: center;
+      padding: 1rem 1.25rem;
+      border-radius: 12px;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid #fde68a;
+      box-shadow: 0 4px 0 #b45309, 0 8px 20px rgba(251, 191, 36, 0.3);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      margin-bottom: 1.5rem;
+    }
+
+    .btn-cta:hover {
+      background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
+    }
+
+    .locked-notice-banner {
+      display: none;
+      background: var(--bg-card);
+      border: 1px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .card {
       background: var(--bg-card);
       padding: 1.25rem;
-      border-radius: 14px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      margin-bottom: 1.5rem;
+    }
+
+    .section-title-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .section-title {
+      font-size: 1.15rem;
+      color: var(--accent-gold);
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .host-season-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .host-season-card {
+      background: var(--bg-card-alt);
       border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem 0.5rem;
+      text-align: center;
     }
 
-    .user-input-group {
-      margin-bottom: 1.25rem;
-    }
-
-    label {
-      display: block;
-      color: var(--text-main);
+    .host-season-name {
       font-size: 0.9rem;
       font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.2rem;
+    }
+
+    .host-season-record {
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: var(--accent-gold);
+    }
+
+    .top3-label-custom {
+      font-size: 0.82rem; 
+      font-weight: 800; 
+      color: var(--text-main); 
+      text-transform: uppercase; 
+      letter-spacing: 0.5px; 
+      display: block; 
       margin-bottom: 0.4rem;
     }
 
-    input[type="text"] {
-      width: 100%;
-      padding: 0.85rem 1rem;
-      border-radius: 8px;
-      background: #0d1527;
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      font-size: 1rem;
-      outline: none;
-      transition: border-color 0.15s ease;
-    }
-
-    input[type="text"]:focus {
-      border-color: var(--accent-gold);
-    }
-
-    .game-card {
-      background: var(--bg-card-inner);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .game-card.is-locked {
-      border: 1.5px solid var(--accent-gold);
-      box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
-    }
-
-    .game-header-row {
+    .top3-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding: 0.55rem 0.75rem;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
       margin-bottom: 0.4rem;
+      font-size: 0.85rem;
     }
 
-    .game-title {
-      color: var(--accent-gold);
-      font-size: 0.86rem;
+    .top3-pending {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 0.65rem 0;
+      font-weight: 700;
+      background: var(--bg-card-alt);
+      border: 1px dashed var(--border-color);
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .tiebreakers-toggle {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-    }
-
-    .btn-lock-toggle {
-      background: #0e1728;
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-      font-size: 0.7rem;
-      font-weight: 800;
-      padding: 0.25rem 0.6rem;
-      border-radius: 6px;
       cursor: pointer;
+      text-decoration: none;
       display: inline-flex;
       align-items: center;
       gap: 0.3rem;
-      transition: all 0.15s ease;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
+      margin-top: 0.5rem;
+      padding: 0;
+      transition: color 0.15s ease;
     }
 
-    .btn-lock-toggle:hover {
-      border-color: var(--accent-gold);
+    .tiebreakers-toggle:hover {
       color: var(--text-main);
     }
 
-    .btn-lock-toggle.active {
-      background: var(--accent-gold);
-      color: #0a1120;
-      border-color: var(--accent-gold);
-      font-weight: 900;
-    }
-
-    .game-detail {
-      font-size: 0.78rem;
-      color: var(--text-main);
-      display: block;
-      margin-bottom: 0.75rem;
-      line-height: 1.3;
-    }
-
-    .pick-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.6rem;
-    }
-
-    .btn-pick {
-      background: #0e1728;
+    .tiebreakers-box {
+      display: none;
+      background: var(--bg-card-alt);
       border: 1px solid var(--border-color);
       border-radius: 8px;
+      padding: 0.85rem;
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
       color: var(--text-muted);
-      padding: 0.85rem 0.4rem;
-      font-size: 0.9rem;
-      font-weight: 700;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.15s ease;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      line-height: 1.5;
     }
 
-    .btn-pick:hover {
-      border-color: #3b4d71;
+    .tiebreakers-box.open {
+      display: block;
+    }
+
+    .tiebreakers-box ol {
+      padding-left: 1.25rem;
+      margin-top: 0.35rem;
+    }
+
+    .tiebreakers-box li {
+      margin-bottom: 0.3rem;
+    }
+
+    .tiebreakers-box strong {
       color: var(--text-main);
     }
 
-    .btn-pick.selected {
-      background: var(--accent-gold);
-      color: #0a1120;
-      font-weight: 900;
-      border-color: var(--accent-gold);
+    .tiebreaker-decision-log {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border-color);
     }
 
-    .btn-submit {
-      width: 100%;
-      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
-      color: #0a1120;
-      font-size: 1.1rem;
-      font-weight: 900;
-      padding: 1.1rem;
-      border-radius: 10px;
-      border: none;
-      cursor: pointer;
-      margin-top: 1rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      box-shadow: 0 4px 0 #b45309;
-      transition: transform 0.1s ease;
+    .tiebreaker-decision-item {
+      background: #111a2c;
+      border-left: 3px solid var(--accent-gold);
+      padding: 0.4rem 0.6rem;
+      border-radius: 0 4px 4px 0;
+      margin-top: 0.4rem;
+      font-size: 0.73rem;
+      color: var(--text-main);
+      line-height: 1.4;
     }
 
-    .btn-submit:active {
-      transform: translateY(2px);
-      box-shadow: 0 2px 0 #b45309;
+    .section-divider {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+      margin: 2rem auto;
+      width: 85%;
+      opacity: 0.85;
+      border-radius: 999px;
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.45);
     }
 
-    .btn-submit:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      box-shadow: none;
-      transform: none;
+    .week-selector-bar {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 1rem;
     }
 
-    .status-alert {
-      margin-top: 1rem;
+    .week-dropdown {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      font-size: 1rem;
+      font-weight: 800;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
       text-align: center;
-      font-size: 0.95rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .btn-step {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
       font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-step:hover {
+      border-color: var(--accent-gold);
+      color: var(--accent-gold);
+    }
+
+    .host-header-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      padding: 0.25rem 0;
+      border-radius: 8px;
+      user-select: none;
+      transition: opacity 0.15s ease;
+    }
+
+    .host-header-toggle:hover {
+      opacity: 0.9;
+    }
+
+    .host-toggle-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      color: var(--accent-gold);
+      font-size: 0.85rem;
+      font-weight: 900;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      transition: all 0.15s ease;
+    }
+
+    .host-header-toggle:hover .host-toggle-badge {
+      border-color: var(--accent-gold);
+      background: #1e293b;
+    }
+
+    .grid-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card-alt);
+      width: 100%;
+      max-width: 100%;
+      display: block;
+    }
+
+    .grid-wrapper.collapsed {
+      display: none;
+    }
+
+    .host-grid-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      text-align: center;
+    }
+
+    .host-grid-table th,
+    .host-grid-table td {
+      border: 1px solid var(--border-color);
+      line-height: 1.25;
+    }
+
+    .host-grid-table thead th {
+      background: #1e293b;
+      color: var(--accent-gold);
+      font-weight: 700;
+      padding: 0.45rem 0.25rem;
+      font-size: 0.86rem;
+    }
+
+    .host-header-score {
+      display: block;
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      margin-top: 0.15rem;
+    }
+
+
+    .host-grid-table th.matchup-header,
+    .host-grid-table td.matchup-cell {
+      width: 37%;
+      text-align: center;
+      padding: 0.45rem 0.4rem;
+      font-size: 0.78rem;
+    }
+
+    .matchup-team-title {
+      display: block;
+      color: var(--accent-gold);
+      font-weight: 800;
+    }
+
+    .matchup-subdetail {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--text-main);
+      margin-top: 0.2rem;
+      font-weight: normal;
+    }
+
+    .host-grid-table th:not(.matchup-header),
+    .host-grid-table td.pick-cell {
+      width: 21%;
+      padding: 0.45rem 0.2rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .host-predicted-score {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--accent-gold);
+      margin-top: 0.15rem;
+    }
+
+    .ats-badge {
+      display: inline-block;
+      font-size: 0.58rem;
+      font-weight: 800;
+      padding: 0.05rem 0.2rem;
+      border-radius: 3px;
+      margin-top: 0.2rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .ats-cover {
+      background: rgba(74, 222, 128, 0.18);
+      color: var(--success);
+      border: 1px solid rgba(74, 222, 128, 0.4);
+    }
+
+    .ats-no-cover {
+      background: rgba(248, 113, 113, 0.18);
+      color: var(--danger);
+      border: 1px solid rgba(248, 113, 113, 0.4);
+    }
+
+    .pick-correct { color: var(--success) !important; font-weight: 700; }
+    .pick-incorrect { color: var(--danger) !important; text-decoration: line-through; opacity: 0.8; }
+    .pick-pending { color: var(--text-main); }
+
+    .host-lock-cell {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(30, 41, 59, 0.95)) !important;
+      box-shadow: inset 0 0 10px rgba(251, 191, 36, 0.25);
+    }
+
+    .lock-badge {
+      display: inline-block;
+      font-size: 0.6rem;
+      font-weight: 900;
+      color: #0f172a;
+      background: #fbbf24;
+      padding: 0.05rem 0.25rem;
+      border-radius: 3px;
+      margin-left: 0.2rem;
+      vertical-align: middle;
+    }
+
+    .lotw-hit-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.62rem;
+      font-weight: 900;
+      color: #0f172a;
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      margin-left: 0.45rem;
+      border: 1px solid #fde68a;
+      vertical-align: middle;
+      box-shadow: 0 1px 4px rgba(251, 191, 36, 0.3);
+    }
+
+    .lotw-check {
+      color: #15803d;
+      font-weight: 900;
+      font-size: 0.7rem;
+    }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: 800;
+      margin-right: 0.5rem;
+      background: var(--border-color);
+      color: var(--text-main);
+    }
+
+    .rank-gold {
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%) !important;
+      color: #0f172a !important;
+      font-weight: 900 !important;
+      box-shadow: 0 0 10px rgba(251, 191, 36, 0.55);
+      border: 1px solid #fde68a;
+    }
+
+    .rank-silver {
+      background: linear-gradient(180deg, #f1f5f9 0%, #cbd5e1 100%) !important;
+      color: #0f172a !important;
+      font-weight: 900 !important;
+      box-shadow: 0 0 10px rgba(203, 213, 225, 0.45);
+      border: 1px solid #ffffff;
+    }
+
+    .rank-bronze {
+      background: linear-gradient(180deg, #fdba74 0%, #c2410c 100%) !important;
+      color: #ffffff !important;
+      font-weight: 900 !important;
+      box-shadow: 0 0 10px rgba(194, 65, 12, 0.45);
+      border: 1px solid #fed7aa;
+    }
+
+    .pulse-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .pulse-card {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.65rem 0.4rem;
+      text-align: center;
+    }
+
+    .pulse-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .pulse-stat {
+      font-size: 0.85rem;
+      font-weight: 900;
+      color: var(--accent-gold);
+    }
+
+    .pulse-desc {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    .cousin-item {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      overflow: hidden;
+    }
+
+    .cousin-header {
+      padding: 0.8rem 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .cousin-picks-body {
+      padding: 0.65rem 0.9rem 0.85rem;
+      border-top: 1px solid var(--border-color);
+      display: none;
+    }
+
+    .cousin-picks-body.open {
+      display: block;
+    }
+
+    .pick-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      padding: 0.2rem 0;
+    }
+
+    .btn-ctrl {
+      background: var(--bg-card-alt);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.15s ease;
+    }
+
+    .btn-ctrl:hover {
+      border-color: var(--accent-gold);
+      color: var(--accent-gold);
+    }
+
+    .entry-pill {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      color: var(--accent-gold);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+    }
+
+    .btn-float-top {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 0.5rem 0.8rem;
+      border-radius: 999px;
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      z-index: 100;
+      transition: all 0.15s ease;
+    }
+
+    .btn-float-top:hover {
+      background: var(--accent-gold);
+      color: var(--bg-main);
+    }
+
+    .site-footer {
+      margin-top: 2.5rem;
+      padding: 1.5rem 1rem 0;
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .footer-container {
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .footer-container p {
+      margin: 0;
+    }
+
+    .disclaimer {
+      font-size: 0.75rem;
+      opacity: 0.85;
+      line-height: 1.4;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .footer-links a {
+      color: var(--accent-gold);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.15s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--accent-gold-hover);
+      text-decoration: underline;
+    }
+
+    .divider {
+      color: var(--border-color);
+    }
+
+    .contact-note {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .contact-note strong {
+      color: var(--text-main);
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
+  <div class="container" id="pageTop">
+
     <header>
-      <a href="index.html" class="back-link">&larr; Back to Leaderboard</a>
-      <h1 id="pageHeading">SUBMIT PICKS</h1>
-      <p class="sub-header" id="pageSubHeading">Make your selections</p>
+      <div class="logo-container">
+        <img src="logo.png" alt="That SEC Podcast" class="main-logo" />
+      </div>
+      <div class="main-title-badge">2026 Pick'em Headquarters</div>
     </header>
 
-    <div class="pick-format-banner">
-      <div class="pick-format-text">
-        <span class="pick-format-highlight">Straight-Up Picks Only:</span> Select the outright winner for each game (not against the spread). Betting lines are shown for reference only.
+    <div class="card">
+      <div class="section-title-bar">
+        <h2 class="section-title">Season Standings</h2>
+      </div>
+
+      <div class="host-season-strip">
+        <div class="host-season-card">
+          <div class="host-season-name">Mike</div>
+          <div class="host-season-record" id="seasonMike">0-0</div>
+        </div>
+        <div class="host-season-card">
+          <div class="host-season-name">Shane</div>
+          <div class="host-season-record" id="seasonShane">0-0</div>
+        </div>
+        <div class="host-season-card">
+          <div class="host-season-name">Steven</div>
+          <div class="host-season-record" id="seasonSteven">0-0</div>
+        </div>
+      </div>
+
+      <div id="top5Section" style="margin-top: 0.8rem;">
+        <span class="top3-label-custom">
+          Top 3 Cousins
+        </span>
+        <div id="top5CousinsList">
+          <div class="top3-pending">Pending Week 1 Results</div>
+        </div>
+
+        <button type="button" class="tiebreakers-toggle" onclick="toggleTieBreakers()">
+          <span>Tie Breakers</span>
+          <span id="tiebreakerArrow">&#9662;</span>
+        </button>
+        <div id="tiebreakersInfo" class="tiebreakers-box">
+          <div><strong>Season Top 3 Podium Tiebreaker Hierarchy:</strong></div>
+          <ol>
+            <li><strong>Total Correct Wins:</strong> Cumulative correct picks across the entire season.</li>
+            <li><strong>Lock of the Week Hits:</strong> Total correct Lock of the Week picks.</li>
+            <li><strong>Fewest Total Losses:</strong> Rewards higher overall win percentage.</li>
+            <li><strong>Consensus Divergence:</strong> Total winning picks that go against the grain of the Cousins.</li>
+            <li><strong>Underdog Upset Accuracy:</strong> Total winning picks made on underdog teams.</li>
+          </ol>
+
+          <div id="tiebreakerDecisionLog" class="tiebreaker-decision-log" style="display: none;"></div>
+        </div>
       </div>
     </div>
 
-    <div class="card-panel">
-      <div class="user-input-group">
-        <label for="userNameInput">Your Handle / Name:</label>
-        <input type="text" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" required />
-      </div>
+    <div class="section-divider"></div>
 
-      <div id="gamesList">
-        <div style="text-align: center; color: var(--text-muted); padding: 2rem 0;">Loading schedule...</div>
-      </div>
-
-      <button type="button" class="btn-submit" id="submitBtn" onclick="submitBallot()">Submit Ballot</button>
-      <div id="statusAlert" class="status-alert"></div>
+    <div class="week-selector-bar">
+      <button type="button" class="btn-step" onclick="changeWeekOffset(-1)">&larr; Prev</button>
+      <select id="mainWeekSelect" class="week-dropdown" onchange="switchWeek(parseInt(this.value, 10))">
+        <option value="1">Week 1</option>
+        <option value="2">Week 2</option>
+        <option value="3">Week 3</option>
+        <option value="4">Week 4</option>
+        <option value="5">Week 5</option>
+        <option value="6">Week 6</option>
+        <option value="7">Week 7</option>
+        <option value="8">Week 8</option>
+        <option value="9">Week 9</option>
+        <option value="10">Week 10</option>
+        <option value="11">Week 11</option>
+        <option value="12">Week 12</option>
+        <option value="13">Week 13</option>
+        <option value="14">Week 14</option>
+      </select>
+      <button type="button" class="btn-step" onclick="changeWeekOffset(1)">Next &rarr;</button>
     </div>
+
+    <a href="makepicks.html" class="btn-cta" id="ctaBtn">
+      <span>Submit Week 1 Picks &rarr;</span>
+    </a>
+
+    <!-- Picks Locked Notice Banner -->
+    <div id="lockedNoticeBanner" class="locked-notice-banner">
+      The first game of the week has kicked off so this week's picks are locked. <span style="color: var(--accent-gold); font-weight: 700; display: block; margin-top: 0.25rem;">Come back Sunday to pick games for next week!</span>
+    </div>
+
+    <div id="weekContent">
+      <div class="card">
+        <div class="host-header-toggle" onclick="toggleHostGrid()">
+          <h2 class="section-title" id="weekHostTitle">Hosts' Week 1 Picks</h2>
+          <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
+        </div>
+        <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.85rem;">
+          <table class="host-grid-table">
+            <thead>
+              <tr>
+                <th class="matchup-header">Matchup</th>
+                <th id="thMike">Mike</th>
+                <th id="thShane">Shane</th>
+                <th id="thSteven">Steven</th>
+              </tr>
+            </thead>
+            <tbody id="hostGridBody">
+              <tr><td colspan="4" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title-bar">
+          <h2 class="section-title" id="weekCousinsTitle">The Cousins' Week 1 Picks</h2>
+          <span class="entry-pill" id="entryPill">0 Entries</span>
+        </div>
+
+        <div class="pulse-grid">
+          <div class="pulse-card">
+            <div class="pulse-label">SEC Loyalty</div>
+            <div class="pulse-stat" id="statSecSweep">--</div>
+            <div class="pulse-desc" id="statSecSweepDesc">Clean Sweeps</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-label">Top Upset</div>
+            <div class="pulse-desc" id="statTopUpsetPre" style="margin-top: 0; margin-bottom: 0.15rem;">Popular Upset</div>
+            <div class="pulse-stat" id="statTopUpset">--</div>
+            <div class="pulse-desc" id="statTopUpsetDesc"></div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-label">Pick Consensus</div>
+            <div class="pulse-stat" id="statLock">--</div>
+            <div class="pulse-desc" id="statLockDesc">Highest Slate Agreement</div>
+          </div>
+        </div>
+
+        <div class="pulse-grid" id="lockShowcaseRow">
+          <div class="pulse-card">
+            <div class="pulse-label">Consensus Lock</div>
+            <div class="pulse-stat" id="statPeoplesLock">--</div>
+            <div class="pulse-desc" id="statPeoplesLockDesc">Most Locked Team</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-label">Lock Accuracy</div>
+            <div class="pulse-stat" id="statLockAccuracy">--</div>
+            <div class="pulse-desc" id="statLockAccuracyDesc">Cousin Locks Hit</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-label">Cousins vs Hosts Showdown</div>
+            <div class="pulse-stat" id="statLockBattle">--</div>
+            <div class="pulse-desc" id="statLockBattleDesc">Lock Win Rates</div>
+          </div>
+        </div>
+
+        <p id="leaderboardSortDesc" style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.8rem; line-height: 1.4;">
+          Ranked by correct picks then sorted alphabetically. Click any row to expand selections.
+        </p>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <div style="display: flex; gap: 0.4rem;">
+            <button type="button" class="btn-ctrl" onclick="toggleAllCards(true)">Expand All</button>
+            <button type="button" class="btn-ctrl" onclick="toggleAllCards(false)">Collapse All</button>
+          </div>
+          <a href="#pageBottom" class="btn-ctrl">&darr; To Bottom</a>
+        </div>
+
+        <div id="cousinsList">
+          <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">Loading community picks...</div>
+        </div>
+      </div>
+    </div>
+
+    <a href="#pageTop" class="btn-float-top">&uarr; Top</a>
+
+    <footer class="site-footer" id="pageBottom">
+      <div class="footer-container">
+        <p class="disclaimer">
+          Data is sourced directly from ESPN. Any discrepancies, delays, or stat corrections reflect upstream data from ESPN and will update automatically once ESPN publishes their official updates.
+        </p>
+
+        <div class="footer-links">
+          <a href="https://www.thatsecpodcast.com" target="_blank" rel="noopener noreferrer">thatsecpodcast.com</a>
+          <span class="divider">|</span>
+          <a href="https://discord.gg/XsPnGkxFSM" target="_blank" rel="noopener noreferrer">Join Our Discord</a>
+        </div>
+
+        <p class="contact-note">
+          Issues, comments, or suggestions? Reach out to <strong>Liquid</strong> on Discord.
+        </p>
+      </div>
+    </footer>
+
   </div>
 
   <script>
@@ -300,25 +921,36 @@
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetWeek = parseInt(urlParams.get("week"), 10) || 1;
-    const isLockAllowed = (targetWeek !== 1);
+//////////////////////////////
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//////////////////////////////
 
-    const submittedStorageKey = `sec_picks_submitted_w${targetWeek}`;
-    if (localStorage.getItem(submittedStorageKey)) {
-      alert(`You have already submitted an entry for Week ${targetWeek}. Redirecting to the leaderboard...`);
-      window.location.href = "index.html";
-    }
+    let activeWeek = 1;
+    let allWeekRows = [];
+    window.gameWinners = {};
+    window.weekSchedules = {};
 
-    const secCanonicalList = [
-      "Alabama", "Arkansas", "Auburn", "Florida", "Georgia", "Kentucky",
-      "LSU", "Ole Miss", "Mississippi State", "Miss State", "Missouri",
-      "Oklahoma", "South Carolina", "Tennessee", "Texas", "Texas A&M", "Vanderbilt"
+    const secPatterns = [
+      "alabama", "crimson tide", "arkansas", "razorbacks", "auburn", "tigers",
+      "florida", "gators", "georgia", "bulldogs", "kentucky", "wildcats",
+      "lsu", "ole miss", "rebels", "mississippi state", "miss state", "miss st",
+      "missouri", "mizzou", "oklahoma", "sooners", "south carolina", "gamecocks",
+      "tennessee", "volunteers", "vols", "texas", "longhorns", "texas a&m", "aggies",
+      "vanderbilt", "commodores", "vandy"
     ];
 
-    let currentSchedule = [];
-    let userSelections = {};
-    let currentLockMatchupKey = null;
+    function isSecTeam(teamName) {
+      if (!teamName) return false;
+      const t = teamName.toLowerCase().trim();
+      return secPatterns.some(p => t === p || t.includes(p) || p.includes(t));
+    }
 
     function cleanTeamName(name) {
       if (!name) return "";
@@ -327,12 +959,6 @@
         return "Arkansas Peanut Butter (Pine Bluff)";
       }
       return name;
-    }
-
-    function isSecTeam(teamName) {
-      if (!teamName) return false;
-      const lower = teamName.toLowerCase().trim();
-      return secCanonicalList.some(sec => lower.includes(sec.toLowerCase()) || sec.toLowerCase().includes(lower));
     }
 
     function normalizeTeam(str) {
@@ -351,7 +977,27 @@
       return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
     }
 
-    async function checkKickoffLockout(weekNum) {
+    function toggleTieBreakers() {
+      const infoBox = document.getElementById("tiebreakersInfo");
+      const arrow = document.getElementById("tiebreakerArrow");
+      if (!infoBox) return;
+      const isOpen = infoBox.classList.toggle("open");
+      if (arrow) {
+        arrow.innerHTML = isOpen ? "&#9652;" : "&#9662;";
+      }
+    }
+
+    function toggleHostGrid() {
+      const wrapper = document.getElementById("hostGridWrapper");
+      const arrow = document.getElementById("hostGridArrow");
+      if (!wrapper) return;
+      const isCollapsed = wrapper.classList.toggle("collapsed");
+      if (arrow) {
+        arrow.innerHTML = isCollapsed ? "&#9656;" : "&#9662;";
+      }
+    }
+
+    async function isWeekLocked(weekNum) {
       try {
         const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${weekNum}&limit=100`;
         const res = await fetch(url);
@@ -360,24 +1006,28 @@
         const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
 
         const data = await res.json();
-        if (!data.events || data.events.length === 0) return;
+        if (!data.events || data.events.length === 0) return false;
+
+        const anyStartedOrCompleted = data.events.some(ev => {
+          const comp = ev.competitions && ev.competitions[0];
+          const isComp = comp && comp.status && comp.status.type && comp.status.type.completed;
+          const state = comp && comp.status && comp.status.type && comp.status.type.state;
+          return isComp || state === "in" || state === "post";
+        });
+
+        if (anyStartedOrCompleted) return true;
 
         const kickoffTimes = data.events
           .map(ev => new Date(ev.competitions[0]?.date || ev.date))
           .filter(d => !isNaN(d.getTime()))
           .sort((a, b) => a - b);
 
-        if (kickoffTimes.length === 0) return;
+        if (kickoffTimes.length === 0) return false;
 
-        const earliestKickoff = kickoffTimes[0];
-
-        if (currentTime >= earliestKickoff) {
-          const timeStr = earliestKickoff.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZoneName: "short" });
-          alert(`Picks for Week ${weekNum} are now locked! The earliest game kicked off at ${timeStr}. Redirecting to the leaderboard...`);
-          window.location.href = "index.html";
-        }
+        return currentTime >= kickoffTimes[0];
       } catch (err) {
-        console.error("Lockout verification error:", err);
+        console.error("Lockout check error:", err);
+        return false;
       }
     }
 
@@ -387,16 +1037,16 @@
         const res = await fetch(url);
         const data = await res.json();
 
-        if (!data.events || data.events.length === 0) {
-          return [];
-        }
+        if (!data.events || data.events.length === 0) return [];
+
+        if (!window.gameWinners[week]) window.gameWinners[week] = {};
 
         const rawGames = [];
 
         data.events.forEach(ev => {
           const comp = ev.competitions[0];
-          const home = comp.competitors.find(c => c.homeAway === "home");
-          const away = comp.competitors.find(c => c.homeAway === "away");
+          const home = comp.competitors.find(c => c.homeAway === 'home');
+          const away = comp.competitors.find(c => c.homeAway === 'away');
 
           const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
           const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
@@ -409,214 +1059,969 @@
             teamB = homeName;
           }
 
-          const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "Line: TBD";
-          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : "";
+          const isFinal = comp.status && comp.status.type && comp.status.type.completed;
+          const state = comp.status && comp.status.type && comp.status.type.state;
+          const isLive = (state === "in");
+          let winnerName = null;
+
+          if (isFinal) {
+            const winnerComp = comp.competitors.find(c => c.winner === true);
+            if (winnerComp) {
+              winnerName = cleanTeamName(winnerComp.team.shortDisplayName || winnerComp.team.name);
+            }
+          }
+
+          const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : '';
+          const oddsDisplay = rawOdds ? rawOdds : 'Line: TBD';
+          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
           
           let time = "TBD";
-          if (comp.date) {
-            time = new Date(comp.date).toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " + 
-                   new Date(comp.date).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          if (isFinal) {
+            time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+          } else if (isLive) {
+            const liveDetail = comp.status.type.detail || `Period ${comp.status.period}`;
+            time = `${liveDetail}: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+          } else if (comp.date) {
+            time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
+                   new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
 
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
-            detail: `${time} | ${odds} | ${venue}`
+            rawOdds: rawOdds,
+            detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${oddsDisplay} | ${venue}`,
+            winner: winnerName
           });
         });
 
         rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
 
-        return rawGames.map((g, idx) => ({
-          id: idx + 1,
-          matchupKey: buildMatchupKey(g.teamA, g.teamB),
-          teamA: g.teamA,
-          teamB: g.teamB,
-          detail: g.detail
-        }));
+        const mappedGames = rawGames.map((g, idx) => {
+          const gameId = idx + 1;
+          const mKey = buildMatchupKey(g.teamA, g.teamB);
+          if (g.winner) {
+            window.gameWinners[week][gameId] = g.winner;
+            window.gameWinners[week][mKey] = g.winner;
+          }
+          return {
+            id: gameId,
+            matchupKey: mKey,
+            teamA: g.teamA,
+            teamB: g.teamB,
+            rawOdds: g.rawOdds,
+            detail: g.detail
+          };
+        });
 
+        window.weekSchedules[week] = mappedGames;
+        return mappedGames;
       } catch (e) {
-        console.error("ESPN auto-fetch error:", e);
+        console.error("ESPN schedule error:", e);
         return [];
       }
     }
 
-    async function initForm() {
-      await checkKickoffLockout(targetWeek);
-
-      document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
-      document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
-
-      currentSchedule = await fetchEspnSchedule(targetWeek);
-      renderForm();
+    function parseUserPicks(rawPicks) {
+      if (!rawPicks) return {};
+      if (typeof rawPicks === 'object') return rawPicks;
+      try { return JSON.parse(rawPicks); } catch (e) { return {}; }
     }
 
-    function renderForm() {
-      const container = document.getElementById("gamesList");
-      if (currentSchedule.length === 0) {
-        container.innerHTML = `<div style="text-align:center; color: var(--danger); padding: 1.5rem 0;">No scheduled games found for Week ${targetWeek} yet.</div>`;
+    function getMatchedUserPick(picks, game) {
+      if (!picks || !game) return null;
+
+      if (picks[game.matchupKey]) {
+        return picks[game.matchupKey];
+      }
+
+      const aNorm = normalizeTeam(game.teamA);
+      const bNorm = normalizeTeam(game.teamB);
+
+      const direct = picks[game.id] || picks[String(game.id)];
+      if (direct && typeof direct === 'string') {
+        const directNorm = normalizeTeam(direct);
+        if (directNorm === aNorm || directNorm === bNorm) {
+          return direct;
+        }
+      }
+
+      const matchKey = Object.keys(picks).find(k => {
+        if (k === 'lock_game_id' || k === 'lock_matchup_key' || k === 'scores') return false;
+        const val = picks[k];
+        if (!val || typeof val !== 'string') return false;
+        const valNorm = normalizeTeam(val);
+        return valNorm === aNorm || valNorm === bNorm;
+      });
+
+      if (matchKey) {
+        return picks[matchKey];
+      }
+
+      return direct || null;
+    }
+
+    function gradePicks(rawPicks, week) {
+      const picks = parseUserPicks(rawPicks);
+      const winners = window.gameWinners[week] || {};
+      const sched = window.weekSchedules[week] || [];
+      let correct = 0, incorrect = 0, pending = 0;
+      let lockCorrect = 0, lockIncorrect = 0;
+
+      const userLockId = (week !== 1 && picks.lock_game_id) ? parseInt(picks.lock_game_id, 10) : null;
+      const userLockKey = (week !== 1 && picks.lock_matchup_key) ? picks.lock_matchup_key : null;
+
+      sched.forEach(game => {
+        const winner = winners[game.matchupKey] || winners[game.id];
+        const userPick = getMatchedUserPick(picks, game);
+
+        const isLockGame = (userLockKey && userLockKey === game.matchupKey) || (userLockId && userLockId === game.id);
+
+        if (!winner) {
+          pending++;
+        } else {
+          const uNorm = normalizeTeam(userPick);
+          const wNorm = normalizeTeam(winner);
+          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)));
+
+          if (isHit) {
+            correct++;
+            if (isLockGame) lockCorrect++;
+          } else {
+            incorrect++;
+            if (isLockGame) lockIncorrect++;
+          }
+        }
+      });
+
+      return { correct, incorrect, pending, lockCorrect, lockIncorrect };
+    }
+
+    function getPickClass(userPick, game, week) {
+      const winner = (window.gameWinners[week] || {})[game.matchupKey] || (window.gameWinners[week] || {})[game.id];
+      if (!winner || !userPick || userPick === "-") return "pick-pending";
+      const uNorm = normalizeTeam(userPick);
+      const wNorm = normalizeTeam(winner);
+      return (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) ? "pick-correct" : "pick-incorrect";
+    }
+
+    function computeAtsBadge(userPick, scoreObj, game) {
+      if (!userPick || userPick === "-" || !scoreObj || scoreObj.teamA === undefined || scoreObj.teamB === undefined) {
+        return "";
+      }
+
+      const numA = parseInt(scoreObj.teamA, 10);
+      const numB = parseInt(scoreObj.teamB, 10);
+      if (isNaN(numA) || isNaN(numB)) return "";
+
+      const rawOdds = game.rawOdds || "";
+      if (!rawOdds || rawOdds.toLowerCase().includes("even") || rawOdds.toLowerCase().includes("pk")) return "";
+
+      const match = rawOdds.match(/([A-Za-z\s]+)\s+([+-]?\d+(?:\.\d+)?)/);
+      if (!match) return "";
+
+      const favTeamRaw = match[1].trim();
+      const spreadNum = parseFloat(match[2]);
+      const favNorm = normalizeTeam(favTeamRaw);
+
+      const aNorm = normalizeTeam(game.teamA);
+      const bNorm = normalizeTeam(game.teamB);
+
+      let teamSpreadA = 0;
+      let teamSpreadB = 0;
+
+      if (aNorm.includes(favNorm) || favNorm.includes(aNorm)) {
+        teamSpreadA = spreadNum;
+        teamSpreadB = -spreadNum;
+      } else if (bNorm.includes(favNorm) || favNorm.includes(bNorm)) {
+        teamSpreadB = spreadNum;
+        teamSpreadA = -spreadNum;
+      } else {
+        return "";
+      }
+
+      const uNorm = normalizeTeam(userPick);
+      let pickedMargin = 0;
+      let requiredSpread = 0;
+
+      if (uNorm === aNorm || uNorm.includes(aNorm) || aNorm.includes(uNorm)) {
+        pickedMargin = numA - numB;
+        requiredSpread = teamSpreadA;
+      } else if (uNorm === bNorm || uNorm.includes(bNorm) || bNorm.includes(uNorm)) {
+        pickedMargin = numB - numA;
+        requiredSpread = teamSpreadB;
+      } else {
+        return "";
+      }
+
+      const spreadFormatted = requiredSpread > 0 ? `+${requiredSpread}` : `${requiredSpread}`;
+      if (pickedMargin + requiredSpread > 0) {
+        return `<span class="ats-badge ats-cover">Covers ${spreadFormatted}</span>`;
+      } else if (pickedMargin + requiredSpread < 0) {
+        return `<span class="ats-badge ats-no-cover">No Cover ${spreadFormatted}</span>`;
+      } else {
+        return `<span class="ats-badge ats-cover">Push ${spreadFormatted}</span>`;
+      }
+    }
+
+    async function loadAllSeasonData() {
+      try {
+        const { data: rows, error } = await supabaseClient
+          .from("picks")
+          .select("*")
+          .order("created_at", { ascending: true })
+          .limit(5000);
+
+        if (error) throw error;
+        
+        const seen = new Set();
+        allWeekRows = (rows || []).filter(r => {
+          const key = `${r.user_name?.toLowerCase().trim()}_w${r.week_number}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        const uniqueWeeks = Array.from(
+          new Set(allWeekRows.map(r => r.week_number).concat([1, activeWeek]))
+        ).filter(w => w >= 1 && w <= 14);
+
+        await Promise.all(uniqueWeeks.map(w => fetchEspnSchedule(w)));
+
+        computeSeasonTotals();
+        await switchWeek(activeWeek);
+      } catch (err) {
+        console.error("Season load error:", err);
+      }
+    }
+
+    function computeSeasonTotals() {
+      let mikeW = 0, mikeL = 0;
+      let shaneW = 0, shaneL = 0;
+      let stevenW = 0, stevenL = 0;
+
+      const cousinAgg = {};
+      let anyDecidedGames = false;
+
+      const weekGameDistributions = {};
+      allWeekRows.forEach(row => {
+        if (row.is_host) return;
+        const w = row.week_number;
+        if (!weekGameDistributions[w]) weekGameDistributions[w] = {};
+        const picks = parseUserPicks(row.picks);
+        const sched = window.weekSchedules[w] || [];
+
+        sched.forEach(game => {
+          const p = getMatchedUserPick(picks, game);
+          if (!p) return;
+          if (!weekGameDistributions[w][game.matchupKey]) weekGameDistributions[w][game.matchupKey] = { total: 0, counts: {} };
+          const pNorm = normalizeTeam(p);
+          weekGameDistributions[w][game.matchupKey].total += 1;
+          weekGameDistributions[w][game.matchupKey].counts[pNorm] = (weekGameDistributions[w][game.matchupKey].counts[pNorm] || 0) + 1;
+        });
+      });
+
+      allWeekRows.forEach(row => {
+        const score = gradePicks(row.picks, row.week_number);
+        const name = (row.user_name || "").toLowerCase();
+
+        if (score.correct > 0 || score.incorrect > 0) {
+          anyDecidedGames = true;
+        }
+
+        if (row.is_host) {
+          if (name === "mike") { mikeW += score.correct; mikeL += score.incorrect; }
+          if (name === "shane") { shaneW += score.correct; shaneL += score.incorrect; }
+          if (name === "steven") { stevenW += score.correct; stevenL += score.incorrect; }
+        } else {
+          if (!cousinAgg[row.user_name]) {
+            cousinAgg[row.user_name] = { 
+              user_name: row.user_name, 
+              correct: 0, 
+              incorrect: 0, 
+              lockCorrect: 0,
+              lockIncorrect: 0,
+              consensusDivergenceWins: 0,
+              divergencePickList: [],
+              underdogUpsetWins: 0,
+              underdogPickList: []
+            };
+          }
+          cousinAgg[row.user_name].correct += score.correct;
+          cousinAgg[row.user_name].incorrect += score.incorrect;
+          cousinAgg[row.user_name].lockCorrect += score.lockCorrect;
+          cousinAgg[row.user_name].lockIncorrect += score.lockIncorrect;
+
+          const picks = parseUserPicks(row.picks);
+          const winners = window.gameWinners[row.week_number] || {};
+          const sched = window.weekSchedules[row.week_number] || [];
+
+          sched.forEach(gameObj => {
+            const winner = winners[gameObj.matchupKey] || winners[gameObj.id];
+            const userPick = getMatchedUserPick(picks, gameObj);
+            if (!winner || !userPick) return;
+
+            const uNorm = normalizeTeam(userPick);
+            const wNorm = normalizeTeam(winner);
+            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
+
+            if (isHit) {
+              const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
+              if (gameDist && gameDist.total > 0) {
+                const pickCount = gameDist.counts[uNorm] || 0;
+                const pickRatio = pickCount / gameDist.total;
+                if (pickRatio <= 0.45) {
+                  cousinAgg[row.user_name].consensusDivergenceWins += 1;
+                  cousinAgg[row.user_name].divergencePickList.push(userPick);
+                }
+              }
+
+              const aIsSec = isSecTeam(gameObj.teamA);
+              const bIsSec = isSecTeam(gameObj.teamB);
+              if (aIsSec && !bIsSec && !isSecTeam(userPick)) {
+                cousinAgg[row.user_name].underdogUpsetWins += 1;
+                cousinAgg[row.user_name].underdogPickList.push(`${userPick} over ${gameObj.teamA}`);
+              } else if (!aIsSec && bIsSec && !isSecTeam(userPick)) {
+                cousinAgg[row.user_name].underdogUpsetWins += 1;
+                cousinAgg[row.user_name].underdogPickList.push(`${userPick} over ${gameObj.teamB}`);
+              }
+            }
+          });
+        }
+      });
+
+      document.getElementById("seasonMike").textContent = `${mikeW}-${mikeL}`;
+      document.getElementById("seasonShane").textContent = `${shaneW}-${shaneL}`;
+      document.getElementById("seasonSteven").textContent = `${stevenW}-${stevenL}`;
+
+      const top5Container = document.getElementById("top5CousinsList");
+      const decisionLog = document.getElementById("tiebreakerDecisionLog");
+
+      if (!anyDecidedGames) {
+        top5Container.innerHTML = `<div class="top3-pending">Pending Week 1 Results</div>`;
+        if (decisionLog) decisionLog.style.display = "none";
         return;
       }
 
-      container.innerHTML = "";
-      currentSchedule.forEach(g => {
-        const card = document.createElement("div");
-        card.className = "game-card";
-        card.id = `card_${g.matchupKey}`;
-        card.innerHTML = `
-          <div class="game-header-row">
-            <span class="game-title">Game ${g.id}: ${g.teamA} vs ${g.teamB}</span>
-            ${isLockAllowed ? `
-              <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">
-                Lock of the Week
-              </button>
-            ` : ""}
+      const allCousins = Object.values(cousinAgg);
+      if (allCousins.length === 0) {
+        top5Container.innerHTML = `<div class="top3-pending">No Picks Submitted Yet</div>`;
+        if (decisionLog) decisionLog.style.display = "none";
+        return;
+      }
+
+      const candidateKey = (c) => `${c.correct}|${c.lockCorrect}|${c.incorrect}|${c.consensusDivergenceWins}|${c.underdogUpsetWins}`;
+
+      const sortedByStats = [...allCousins].sort((a, b) => {
+        if (b.correct !== a.correct) return b.correct - a.correct;
+        if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
+        if (a.incorrect !== b.incorrect) return a.incorrect - b.incorrect;
+        if (b.consensusDivergenceWins !== a.consensusDivergenceWins) {
+          return b.consensusDivergenceWins - a.consensusDivergenceWins;
+        }
+        return b.underdogUpsetWins - a.underdogUpsetWins;
+      });
+
+      const topStatsKey = candidateKey(sortedByStats[0]);
+      const tiedForTopCount = sortedByStats.filter(c => candidateKey(c) === topStatsKey).length;
+      
+      const thirdPlaceCandidate = sortedByStats[2] || sortedByStats[0];
+      const thirdPlaceKey = candidateKey(thirdPlaceCandidate);
+      const tiedWithPodiumCount = sortedByStats.filter(c => candidateKey(c) === thirdPlaceKey).length;
+
+      if (tiedForTopCount > 3 || tiedWithPodiumCount > 3) {
+        top5Container.innerHTML = `<div class="top3-pending" style="color: var(--accent-gold); font-size: 0.9rem; padding: 0.85rem 0;">Everyone is tied!</div>`;
+        if (decisionLog) {
+          decisionLog.innerHTML = `
+            <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Live Podium Decision Logic:</div>
+            <div class="tiebreaker-decision-item">
+              <strong>Complete Deadlock:</strong> ${tiedForTopCount} Cousins are currently tied across every performance tiebreaker. The Top 3 podium will emerge as weekend games conclude.
+            </div>
+          `;
+          decisionLog.style.display = "block";
+        }
+        return;
+      }
+
+      const sortedCousins = allCousins.sort((a, b) => {
+        if (b.correct !== a.correct) return b.correct - a.correct;
+        if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
+        if (a.incorrect !== b.incorrect) return a.incorrect - b.incorrect;
+        if (b.consensusDivergenceWins !== a.consensusDivergenceWins) {
+          return b.consensusDivergenceWins - a.consensusDivergenceWins;
+        }
+        if (b.underdogUpsetWins !== a.underdogUpsetWins) {
+          return b.underdogUpsetWins - a.underdogUpsetWins;
+        }
+        return a.user_name.localeCompare(b.user_name);
+      });
+
+      const top3Podium = sortedCousins.slice(0, 3);
+      const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
+
+      top5Container.innerHTML = top3Podium.map((c, idx) => `
+        <div class="top3-item">
+          <div style="display: flex; align-items: center;">
+            <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">#${idx + 1}</span>
+            <strong>${c.user_name}</strong>
+            ${c.lockCorrect > 0 ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
           </div>
-          ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
-          <div class="pick-grid">
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${g.teamA}</button>
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${g.teamB}</button>
+          <div style="font-weight: 800; color: var(--accent-gold);">${c.correct}-${c.incorrect}</div>
+        </div>
+      `).join("");
+
+      if (decisionLog) {
+        const decisions = [];
+        const topWins = top3Podium[0]?.correct;
+        const contenders = sortedCousins.filter(c => c.correct === topWins);
+
+        if (contenders.length > 1) {
+          const lockHits = Array.from(new Set(contenders.map(c => c.lockCorrect))).sort((a, b) => b - a);
+          if (lockHits.length > 1 && lockHits[0] > 0) {
+            const topLockCousins = contenders.filter(c => c.lockCorrect === lockHits[0]);
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Lock of the Week:</strong> ${topLockCousins.map(c => c.user_name).join(", ")} hit their Lock of the Week (${lockHits[0]}), breaking the tie over contenders with fewer lock wins.
+              </div>
+            `);
+          }
+
+          const divergenceCounts = Array.from(new Set(contenders.map(c => c.consensusDivergenceWins))).sort((a, b) => b - a);
+          if (divergenceCounts.length > 1 && divergenceCounts[0] > 0) {
+            const topDiv = contenders.filter(c => c.consensusDivergenceWins === divergenceCounts[0]);
+            const divPicks = topDiv[0]?.divergencePickList.join(", ") || "contrarian picks";
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Consensus Divergence:</strong> ${topDiv.map(c => c.user_name).join(", ")} hit ${divergenceCounts[0]} against-the-grain pick(s) (${divPicks}) to earn tiebreaker advantage over other tied Cousins.
+              </div>
+            `);
+          }
+
+          const underdogCounts = Array.from(new Set(contenders.map(c => c.underdogUpsetWins))).sort((a, b) => b - a);
+          if (underdogCounts.length > 1 && underdogCounts[0] > 0) {
+            const topDog = contenders.filter(c => c.underdogUpsetWins === underdogCounts[0]);
+            const dogPicks = topDog[0]?.underdogPickList.join(", ") || "underdog picks";
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Underdog Upset Accuracy:</strong> ${topDog.map(c => c.user_name).join(", ")} correctly called ${dogPicks} to claim the higher podium seed.
+              </div>
+            `);
+          }
+
+          if (decisions.length === 0) {
+            decisions.push(`
+              <div class="tiebreaker-decision-item">
+                <strong>Alphabetical Seeding:</strong> Contenders are deadlocked across all performance metrics, so podium positions currently follow alphabetical ordering.
+              </div>
+            `);
+          }
+        } else {
+          decisions.push(`
+            <div class="tiebreaker-decision-item">
+              <strong>Outright Score:</strong> Season podium ranks are currently determined outright by total correct wins.
+            </div>
+          `);
+        }
+
+        decisionLog.innerHTML = `
+          <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Live Podium Decision Logic:</div>
+          ${decisions.join("")}
+        `;
+        decisionLog.style.display = "block";
+      }
+    }
+
+    function changeWeekOffset(delta) {
+      let target = activeWeek + delta;
+      if (target < 1) target = 1;
+      if (target > 14) target = 14;
+      switchWeek(target);
+    }
+
+//////////////////////////////
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//////////////////////////////
+
+    let CURRENT_OPEN_WEEK = 2;
+
+    async function determineDynamicWeeks() {
+      let openW = 1;
+      let activeW = 1;
+
+      for (let w = 1; w <= 14; w++) {
+        const locked = await isWeekLocked(w);
+        if (!locked) {
+          openW = w;
+          break;
+        }
+        if (w === 14) openW = 14;
+      }
+
+      for (let w = 1; w <= 14; w++) {
+        try {
+          const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${w}&limit=100`;
+          const res = await fetch(url);
+          const serverDateHeader = res.headers.get("date");
+          const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+          const data = await res.json();
+          if (!data.events || data.events.length === 0) continue;
+
+          const gameDates = data.events
+            .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+            .filter(d => !isNaN(d.getTime()))
+            .sort((a, b) => a - b);
+
+          if (gameDates.length === 0) continue;
+
+          const firstKickoff = gameDates[0];
+          const lastKickoff = gameDates[gameDates.length - 1];
+          const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
+
+          const sundayAfter = new Date(lastGameEnd);
+          sundayAfter.setDate(sundayAfter.getDate() + (7 - sundayAfter.getDay()) % 7);
+          sundayAfter.setHours(0, 0, 0, 0);
+
+          if (currentTime >= firstKickoff) {
+            activeW = w;
+            if (currentTime >= sundayAfter) {
+              activeW = Math.min(w + 1, openW);
+            }
+          }
+        } catch (e) {
+          console.error(`Error calculating active week for week ${w}:`, e);
+        }
+      }
+
+      return { openWeek: openW, activeWeek: activeW };
+    }
+
+    async function switchWeek(weekNum) {
+      activeWeek = weekNum;
+
+      const dropdown = document.getElementById("mainWeekSelect");
+      if (dropdown) dropdown.value = weekNum;
+
+      document.getElementById("weekHostTitle").textContent = `Hosts' Week ${weekNum} Picks`;
+      document.getElementById("weekCousinsTitle").textContent = `The Cousins' Week ${weekNum} Picks`;
+
+      const sortDesc = document.getElementById("leaderboardSortDesc");
+      if (sortDesc) {
+        sortDesc.textContent = weekNum === 1
+          ? "Ranked by correct picks then sorted alphabetically. Click any row to expand selections."
+          : "Ranked by correct picks then sorted by LOTW hits, then alphabetical. Click any row to expand selections.";
+      }
+
+      const ctaBtn = document.getElementById("ctaBtn");
+      const lockedBanner = document.getElementById("lockedNoticeBanner");
+
+      if (weekNum === CURRENT_OPEN_WEEK) {
+        const isLocked = await isWeekLocked(weekNum);
+        if (!isLocked) {
+          ctaBtn.style.display = "flex";
+          ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
+          ctaBtn.href = `makepicks.html?week=${weekNum}`;
+          if (lockedBanner) lockedBanner.style.display = "none";
+        } else {
+          ctaBtn.style.display = "none";
+          if (lockedBanner) lockedBanner.style.display = "block";
+        }
+      } else {
+        ctaBtn.style.display = "none";
+        if (lockedBanner) lockedBanner.style.display = "none";
+      }
+
+      await renderActiveWeek();
+    }
+
+    async function renderActiveWeek() {
+      const games = await fetchEspnSchedule(activeWeek);
+
+      const rows = allWeekRows.filter(r => r.week_number === activeWeek);
+      const hostRows = rows.filter(r => r.is_host === true);
+      const cousinRows = rows.filter(r => r.is_host === false);
+
+      document.getElementById("entryPill").textContent = `${cousinRows.length} Entries`;
+
+      const hostMike = hostRows.find(h => h.user_name?.toLowerCase() === "mike");
+      const hostShane = hostRows.find(h => h.user_name?.toLowerCase() === "shane");
+      const hostSteven = hostRows.find(h => h.user_name?.toLowerCase() === "steven");
+
+      const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
+      const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
+      const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
+
+      const mikeScores = mikePicks.scores || {};
+      const shaneScores = shanePicks.scores || {};
+      const stevenScores = stevenPicks.scores || {};
+
+      const mikeScore = gradePicks(mikePicks, activeWeek);
+      const shaneScore = gradePicks(shanePicks, activeWeek);
+      const stevenScore = gradePicks(stevenPicks, activeWeek);
+
+      document.getElementById("thMike").innerHTML = `Mike <span class="host-header-score">${mikeScore.correct}-${mikeScore.incorrect}</span>`;
+      document.getElementById("thShane").innerHTML = `Shane <span class="host-header-score">${shaneScore.correct}-${shaneScore.incorrect}</span>`;
+      document.getElementById("thSteven").innerHTML = `Steven <span class="host-header-score">${stevenScore.correct}-${stevenScore.incorrect}</span>`;
+
+      const hostBody = document.getElementById("hostGridBody");
+      hostBody.innerHTML = "";
+
+      const isLockActiveThisWeek = (activeWeek !== 1);
+
+      games.forEach(g => {
+        const tr = document.createElement("tr");
+        const pM = getMatchedUserPick(mikePicks, g) || "-";
+        const pS = getMatchedUserPick(shanePicks, g) || "-";
+        const pSt = getMatchedUserPick(stevenPicks, g) || "-";
+
+        const sM = mikeScores[g.matchupKey] || mikeScores[g.id] || mikeScores[String(g.id)];
+        const sS = shaneScores[g.matchupKey] || shaneScores[g.id] || shaneScores[String(g.id)];
+        const sSt = stevenScores[g.matchupKey] || stevenScores[g.id] || stevenScores[String(g.id)];
+
+        const scoreTextM = (sM && sM.teamA !== undefined && sM.teamB !== undefined && sM.teamA !== "") ? `${sM.teamA}-${sM.teamB}` : "";
+        const scoreTextS = (sS && sS.teamA !== undefined && sS.teamB !== undefined && sS.teamA !== "") ? `${sS.teamA}-${sS.teamB}` : "";
+        const scoreTextSt = (sSt && sSt.teamA !== undefined && sSt.teamB !== undefined && sSt.teamA !== "") ? `${sSt.teamA}-${sSt.teamB}` : "";
+
+        const atsBadgeM = computeAtsBadge(pM, sM, g);
+        const atsBadgeS = computeAtsBadge(pS, sS, g);
+        const atsBadgeSt = computeAtsBadge(pSt, sSt, g);
+
+        const isLockM = isLockActiveThisWeek && ((mikePicks.lock_matchup_key === g.matchupKey) || (mikePicks.lock_game_id === g.id));
+        const isLockS = isLockActiveThisWeek && ((shanePicks.lock_matchup_key === g.matchupKey) || (shanePicks.lock_game_id === g.id));
+        const isLockSt = isLockActiveThisWeek && ((stevenPicks.lock_matchup_key === g.matchupKey) || (stevenPicks.lock_game_id === g.id));
+
+        const classM = getPickClass(pM, g, activeWeek);
+        const classS = getPickClass(pS, g, activeWeek);
+        const classSt = getPickClass(pSt, g, activeWeek);
+
+        tr.innerHTML = `
+          <td class="matchup-cell">
+            <strong class="matchup-team-title">${g.teamA} vs ${g.teamB}</strong>
+            ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
+          </td>
+          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
+            ${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
+            ${atsBadgeM}
+          </td>
+          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
+            ${pS}${isLockS ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
+            ${atsBadgeS}
+          </td>
+          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
+            ${pSt}${isLockSt ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
+            ${atsBadgeSt}
+          </td>
+        `;
+        hostBody.appendChild(tr);
+      });
+
+      cousinRows.forEach(c => c.score = gradePicks(c.picks, activeWeek));
+
+      cousinRows.sort((a, b) => {
+        if (b.score.correct !== a.score.correct) return b.score.correct - a.score.correct;
+        if (isLockActiveThisWeek && (b.score.lockCorrect !== a.score.lockCorrect)) {
+          return b.score.lockCorrect - a.score.lockCorrect;
+        }
+        return a.user_name.localeCompare(b.user_name);
+      });
+
+      const uniqueWeeklyWins = Array.from(new Set(cousinRows.map(c => c.score.correct))).sort((a, b) => b - a);
+      const wTier1Wins = uniqueWeeklyWins[0];
+      const wTier2Wins = uniqueWeeklyWins[1];
+      const wTier3Wins = uniqueWeeklyWins[2];
+
+      const gamesHaveStarted = cousinRows.some(c => c.score.correct > 0 || c.score.incorrect > 0);
+
+      let seqWeeklyRank = 4;
+      cousinRows.forEach(c => {
+        if (!gamesHaveStarted) {
+          c.rank = "-";
+          c.rankClass = "";
+        } else if (c.score.correct === wTier1Wins) {
+          c.rank = 1;
+          c.rankClass = "rank-gold";
+        } else if (wTier2Wins !== undefined && c.score.correct === wTier2Wins) {
+          c.rank = 2;
+          c.rankClass = "rank-silver";
+        } else if (wTier3Wins !== undefined && c.score.correct === wTier3Wins) {
+          c.rank = 3;
+          c.rankClass = "rank-bronze";
+        } else {
+          c.rank = seqWeeklyRank++;
+          c.rankClass = "";
+        }
+      });
+
+      const listContainer = document.getElementById("cousinsList");
+      listContainer.innerHTML = cousinRows.length === 0 
+        ? `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No picks submitted for Week ${activeWeek} yet.</div>`
+        : "";
+
+      cousinRows.forEach(c => {
+        const item = document.createElement("div");
+        item.className = "cousin-item";
+        const picks = parseUserPicks(c.picks);
+        const cousinLockKey = isLockActiveThisWeek ? (picks.lock_matchup_key || null) : null;
+        const cousinLockId = isLockActiveThisWeek && picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
+        const hitLotw = isLockActiveThisWeek && (c.score.lockCorrect > 0);
+
+        item.innerHTML = `
+          <div class="cousin-header" onclick="this.nextElementSibling.classList.toggle('open')">
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+              <span class="rank-badge ${c.rankClass}">#${c.rank}</span>
+              <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
+              ${hitLotw ? `<span class="lotw-hit-badge">LOTW <span class="lotw-check">✓</span></span>` : ''}
+              <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">${c.score.correct}-${c.score.incorrect}</span>
+            </div>
+            <span style="color: var(--accent-gold); font-weight: bold;">+</span>
+          </div>
+          <div class="cousin-picks-body">
+            ${games.map(g => {
+              const uPick = getMatchedUserPick(picks, g) || "No Pick";
+              const pClass = getPickClass(uPick, g, activeWeek);
+              const isCousinLock = (cousinLockKey && cousinLockKey === g.matchupKey) || (cousinLockId && cousinLockId === g.id);
+              return `
+                <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
+                  <span style="color: var(--text-muted);">${g.teamA} vs ${g.teamB}</span>
+                  <span class="${pClass}">
+                    ${uPick}
+                    ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
+                  </span>
+                </div>
+              `;
+            }).join("")}
           </div>
         `;
-        container.appendChild(card);
+        listContainer.appendChild(item);
       });
-    }
 
-    function chooseTeam(matchupKey, team) {
-      userSelections[matchupKey] = team;
-      const btnA = document.getElementById(`btn_${matchupKey}_A`);
-      const btnB = document.getElementById(`btn_${matchupKey}_B`);
+      if (cousinRows.length > 0 && games.length > 0) {
+        let secSweepCount = 0;
+        const upsetTracker = {};
+        const teamPickCounts = {};
 
-      if (btnA && btnB) {
-        if (btnA.textContent.trim() === team) {
-          btnA.classList.add("selected");
-          btnB.classList.remove("selected");
-        } else {
-          btnB.classList.add("selected");
-          btnA.classList.remove("selected");
-        }
-      }
-    }
+        const lockCounts = {};
+        let totalLocksPlaced = 0;
+        let cousinLocksWon = 0;
+        let cousinLocksLost = 0;
+        let cousinLocksPending = 0;
 
-    function toggleUserLock(matchupKey) {
-      if (!isLockAllowed) return;
-      currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
-      refreshLockVisuals();
-    }
+        cousinRows.forEach(c => {
+          const picks = parseUserPicks(c.picks);
+          let pickedNonSec = false;
+          let answeredCount = 0;
+          const userLockKey = isLockActiveThisWeek ? (picks.lock_matchup_key || null) : null;
+          const userLockId = isLockActiveThisWeek && picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
 
-    function refreshLockVisuals() {
-      if (!isLockAllowed) return;
-      currentSchedule.forEach(g => {
-        const card = document.getElementById(`card_${g.matchupKey}`);
-        const lockBtn = document.getElementById(`lock_btn_${g.matchupKey}`);
+          games.forEach(g => {
+            const pick = getMatchedUserPick(picks, g);
+            if (!pick) return;
 
-        if (card && lockBtn) {
-          if (currentLockMatchupKey === g.matchupKey) {
-            card.classList.add("is-locked");
-            lockBtn.classList.add("active");
-            lockBtn.textContent = "★ Lock Selected";
-          } else {
-            card.classList.remove("is-locked");
-            lockBtn.classList.remove("active");
-            lockBtn.textContent = "Lock of the Week";
-          }
-        }
-      });
-    }
+            answeredCount++;
+            teamPickCounts[pick] = (teamPickCounts[pick] || 0) + 1;
 
-    async function submitBallot() {
-      const submitBtn = document.getElementById("submitBtn");
-      const username = document.getElementById("userNameInput").value.trim();
-      const statusAlert = document.getElementById("statusAlert");
+            const aIsSec = isSecTeam(g.teamA);
+            const bIsSec = isSecTeam(g.teamB);
 
-      if (!username) {
-        statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = "Please enter your handle or name.";
-        return;
-      }
+            if (aIsSec && !bIsSec) {
+              if (normalizeTeam(pick) === normalizeTeam(g.teamB) || !isSecTeam(pick)) {
+                pickedNonSec = true;
+                if (!upsetTracker[g.teamB]) {
+                  upsetTracker[g.teamB] = { count: 0, opponent: g.teamA };
+                }
+                upsetTracker[g.teamB].count += 1;
+              }
+            } else if (!aIsSec && bIsSec) {
+              if (normalizeTeam(pick) === normalizeTeam(g.teamA) || !isSecTeam(pick)) {
+                pickedNonSec = true;
+                if (!upsetTracker[g.teamA]) {
+                  upsetTracker[g.teamA] = { count: 0, opponent: g.teamB };
+                }
+                upsetTracker[g.teamA].count += 1;
+              }
+            }
 
-      const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_game_id" && k !== "lock_matchup_key").length;
-      if (pickedGameCount < currentSchedule.length) {
-        statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = `Please make selections for all ${currentSchedule.length} games.`;
-        return;
-      }
+            const isUserLock = (userLockKey && userLockKey === g.matchupKey) || (userLockId && userLockId === g.id);
+            if (isUserLock) {
+              totalLocksPlaced++;
+              lockCounts[pick] = (lockCounts[pick] || 0) + 1;
 
-      if (isLockAllowed && currentLockMatchupKey) {
-        userSelections.lock_matchup_key = currentLockMatchupKey;
-      } else {
-        delete userSelections.lock_matchup_key;
-      }
-
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Submitting picks...";
-      }
-
-      statusAlert.style.color = "var(--text-muted)";
-      statusAlert.textContent = "Submitting your picks...";
-
-      try {
-        const { data: existing, error: checkErr } = await supabaseClient
-          .from("picks")
-          .select("id")
-          .ilike("user_name", username)
-          .eq("week_number", targetWeek)
-          .limit(1);
-
-        if (existing && existing.length > 0) {
-          statusAlert.style.color = "var(--danger)";
-          statusAlert.textContent = `An entry under "${username}" has already been submitted for Week ${targetWeek}! Only one submission per Cousin is allowed.`;
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Submit Ballot";
-          }
-          return;
-        }
-
-        const { error } = await supabaseClient
-          .from("picks")
-          .insert({
-            user_name: username,
-            week_number: targetWeek,
-            is_host: false,
-            picks: userSelections,
-            created_at: new Date().toISOString()
+              const winner = (window.gameWinners[activeWeek] || {})[g.matchupKey] || (window.gameWinners[activeWeek] || {})[g.id];
+              if (!winner) {
+                cousinLocksPending++;
+              } else {
+                const uNorm = normalizeTeam(pick);
+                const wNorm = normalizeTeam(winner);
+                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
+                  cousinLocksWon++;
+                } else {
+                  cousinLocksLost++;
+                }
+              }
+            }
           });
 
-        if (error) {
-          if (error.code === "23505" || error.message?.includes("unique")) {
-            statusAlert.style.color = "var(--danger)";
-            statusAlert.textContent = `An entry under "${username}" was already submitted for Week ${targetWeek}!`;
+          if (!pickedNonSec && answeredCount === games.length) {
+            secSweepCount++;
+          }
+        });
+
+        document.getElementById("statSecSweep").textContent = `${secSweepCount} / ${cousinRows.length}`;
+        const sweepPct = Math.round((secSweepCount / cousinRows.length) * 100) || 0;
+        document.getElementById("statSecSweepDesc").textContent = `${sweepPct}% Clean SEC Sweeps`;
+
+        let topUpsetTeam = "--";
+        let maxUpsetVotes = 0;
+        let topUpsetOpponent = "";
+        Object.entries(upsetTracker).forEach(([team, data]) => {
+          if (data.count > maxUpsetVotes) {
+            maxUpsetVotes = data.count;
+            topUpsetTeam = team;
+            topUpsetOpponent = data.opponent;
+          }
+        });
+
+        if (maxUpsetVotes > 0) {
+          document.getElementById("statTopUpsetPre").textContent = `${maxUpsetVotes} Cousins Picked`;
+          document.getElementById("statTopUpset").textContent = topUpsetTeam;
+          document.getElementById("statTopUpsetDesc").textContent = `to upset ${topUpsetOpponent}`;
+        } else {
+          document.getElementById("statTopUpsetPre").textContent = "Popular Upset";
+          document.getElementById("statTopUpset").textContent = "--";
+          document.getElementById("statTopUpsetDesc").textContent = "No Upsets Picked";
+        }
+
+        let topConsensusTeam = "--";
+        let maxConsensusVotes = 0;
+        const teamUniqueVotes = {};
+
+        games.forEach(g => {
+          [g.teamA, g.teamB].forEach(team => {
+            let count = 0;
+            cousinRows.forEach(c => {
+              const picks = parseUserPicks(c.picks);
+              const userPick = getMatchedUserPick(picks, g);
+              if (userPick && normalizeTeam(userPick) === normalizeTeam(team)) {
+                count++;
+              }
+            });
+            teamUniqueVotes[team] = count;
+            if (count > maxConsensusVotes) {
+              maxConsensusVotes = count;
+              topConsensusTeam = team;
+            }
+          });
+        });
+
+        const lockPct = Math.min(Math.round((maxConsensusVotes / cousinRows.length) * 100) || 0, 100);
+
+        document.getElementById("statLock").textContent = topConsensusTeam;
+        document.getElementById("statLockDesc").textContent = `${lockPct}% Consensus`;
+
+        const lockRow = document.getElementById("lockShowcaseRow");
+        if (!isLockActiveThisWeek) {
+          if (lockRow) lockRow.style.display = "none";
+        } else {
+          if (lockRow) lockRow.style.display = "grid";
+
+          let topLockedTeam = "--";
+          let maxLocks = 0;
+          Object.entries(lockCounts).forEach(([team, count]) => {
+            if (count > maxLocks) {
+              maxLocks = count;
+              topLockedTeam = team;
+            }
+          });
+          document.getElementById("statPeoplesLock").textContent = topLockedTeam;
+          const consensusLockPct = totalLocksPlaced > 0 ? Math.round((maxLocks / totalLocksPlaced) * 100) : 0;
+          document.getElementById("statPeoplesLockDesc").textContent = totalLocksPlaced > 0 ? `${maxLocks} Locks (${consensusLockPct}%)` : "No Locks Placed";
+
+          const decidedLocks = cousinLocksWon + cousinLocksLost;
+          if (decidedLocks > 0) {
+            const lockHitPct = Math.round((cousinLocksWon / decidedLocks) * 100);
+            document.getElementById("statLockAccuracy").textContent = `${lockHitPct}%`;
+            document.getElementById("statLockAccuracyDesc").textContent = `${cousinLocksWon}-${cousinLocksLost}, ${cousinLocksPending} pending`;
           } else {
-            throw error;
+            document.getElementById("statLockAccuracy").textContent = totalLocksPlaced > 0 ? `${totalLocksPlaced} Locked` : "--";
+            document.getElementById("statLockAccuracyDesc").textContent = totalLocksPlaced > 0 ? "Awaiting Results" : "No Locks Placed";
           }
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Submit Ballot";
+
+          let hostLocksWon = 0;
+          let hostLocksDecided = 0;
+          [hostMike, hostShane, hostSteven].forEach(h => {
+            if (!h) return;
+            const hPicks = parseUserPicks(h.picks);
+            const lKey = hPicks.lock_matchup_key || null;
+            const lGameId = hPicks.lock_game_id ? parseInt(hPicks.lock_game_id, 10) : null;
+
+            if (lKey || lGameId) {
+              const winner = (window.gameWinners[activeWeek] || {})[lKey] || (window.gameWinners[activeWeek] || {})[lGameId];
+              if (winner) {
+                hostLocksDecided++;
+                const uPick = lKey ? hPicks[lKey] : (hPicks[lGameId] || hPicks[String(lGameId)]);
+                const uNorm = normalizeTeam(uPick);
+                const wNorm = normalizeTeam(winner);
+                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
+                  hostLocksWon++;
+                }
+              }
+            }
+          });
+
+          if (hostLocksDecided > 0 || decidedLocks > 0) {
+            document.getElementById("statLockBattle").textContent = `C: ${cousinLocksWon}/${decidedLocks} | H: ${hostLocksWon}/${hostLocksDecided}`;
+            document.getElementById("statLockBattleDesc").textContent = "Lock Win Rates";
+          } else {
+            document.getElementById("statLockBattle").textContent = "Pending";
+            document.getElementById("statLockBattleDesc").textContent = "Awaiting Kickoffs";
           }
-          return;
         }
 
-        localStorage.setItem(submittedStorageKey, "true");
-
-        statusAlert.style.color = "var(--success)";
-        statusAlert.innerHTML = `Week ${targetWeek} ballot submitted! Returning to Leaderboard...`;
-
-        setTimeout(() => {
-          window.location.href = "index.html";
-        }, 1800);
-      } catch (err) {
-        statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = `Error: ${err.message}`;
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Submit Ballot";
-        }
+      } else {
+        document.getElementById("statSecSweep").textContent = "--";
+        document.getElementById("statSecSweepDesc").textContent = "Clean Sweeps";
+        document.getElementById("statTopUpsetPre").textContent = "Popular Upset";
+        document.getElementById("statTopUpset").textContent = "--";
+        document.getElementById("statTopUpsetDesc").textContent = "No Upsets Picked";
+        document.getElementById("statLock").textContent = "--";
+        document.getElementById("statLockDesc").textContent = "100% Consensus";
       }
+
+      computeSeasonTotals();
     }
 
-    initForm();
+    function toggleAllCards(expand) {
+      document.querySelectorAll(".cousin-picks-body").forEach(b => b.classList.toggle("open", expand));
+    }
+
+    async function initApp() {
+      const dynamic = await determineDynamicWeeks();
+      activeWeek = dynamic.activeWeek;
+      CURRENT_OPEN_WEEK = dynamic.openWeek;
+      await loadAllSeasonData();
+
+      // Background polling every 60 seconds (fetches ESPN live scores only, zero Supabase queries)
+      setInterval(async () => {
+        if (activeWeek) {
+          await renderActiveWeek();
+        }
+      }, 60000);
+    }
+
+    initApp();
   </script>
 </body>
 </html>
