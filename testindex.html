@@ -357,14 +357,20 @@
     .host-grid-table {
       width: 100%;
       table-layout: fixed;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       text-align: center;
     }
 
     .host-grid-table th,
     .host-grid-table td {
-      border: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
       line-height: 1.25;
+    }
+    
+    .host-grid-table td:first-child {
+      border-left: none;
     }
 
     .host-grid-table thead th {
@@ -373,6 +379,7 @@
       font-weight: 700;
       padding: 0.45rem 0.25rem;
       font-size: 0.8rem;
+      border-top: none;
     }
 
     .host-header-score {
@@ -442,12 +449,6 @@
     .pick-incorrect { color: var(--danger) !important; text-decoration: line-through; opacity: 0.8; }
     .pick-pending { color: var(--text-main); }
 
-    .live-game-cell {
-      background: rgba(251, 191, 36, 0.15) !important;
-      border-top: 1px solid rgba(251, 191, 36, 0.4) !important;
-      border-bottom: 1px solid rgba(251, 191, 36, 0.4) !important;
-    }
-    
     .host-grid-table tr.live-game-row td {
       background: rgba(251, 191, 36, 0.15) !important;
       border-top: 1px solid rgba(251, 191, 36, 0.4) !important;
@@ -1356,7 +1357,7 @@
 
             const uNorm = normalizeTeam(userPick);
             const wNorm = normalizeTeam(winner);
-            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
+            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm));
 
             if (isHit) {
               const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
@@ -1636,7 +1637,7 @@
       const hostSteven = hostRows.find(h => h.user_name?.toLowerCase() === "steven");
 
       const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
-      const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
+      const shanePicks = hostShane ? parseUserPicks(shanePicks.picks) : {};
       const stevenPicks = hostSteven ? parseUserPicks(stevenPicks.picks) : {};
 
       const mikeScores = mikePicks.scores || {};
@@ -1687,24 +1688,23 @@
         if (isLiveGame) {
           tr.classList.add('live-game-row');
         }
-        const liveClass = isLiveGame ? 'live-game-cell' : '';
 
         tr.innerHTML = `
-          <td class="matchup-cell ${liveClass}">
+          <td class="matchup-cell">
             <strong>${g.teamA} vs ${g.teamB}</strong>
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
-          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''} ${liveClass}">
+          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
             ${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
             ${atsBadgeM}
           </td>
-          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''} ${liveClass}">
+          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
             ${pS}${isLockS ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
             ${atsBadgeS}
           </td>
-          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''} ${liveClass}">
+          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
             ${pSt}${isLockSt ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
             ${atsBadgeSt}
@@ -1932,7 +1932,7 @@
           });
           document.getElementById("statPeoplesLock").textContent = topLockedTeam;
           const consensusLockPct = totalLocksPlaced > 0 ? Math.round((maxLocks / totalLocksPlaced) * 100) : 0;
-          document.getElementById("statPeoplesLockDesc").textContent = totalLocksPlaced > 0 ? `${maxLocks} Locks (${consensusLockPct}%)` : "No Locks Plages";
+          document.getElementById("statPeoplesLockDesc").textContent = totalLocksPlaced > 0 ? `${maxLocks} Locks (${consensusLockPct}%)` : "No Locks Placed";
 
           const decidedLocks = cousinLocksWon + cousinLocksLost;
           if (decidedLocks > 0) {
