@@ -339,11 +339,13 @@
     }
 
     .grid-wrapper {
-      overflow-x: hidden;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       border-radius: 8px;
       border: 1px solid var(--border-color);
       background: var(--bg-card-alt);
       width: 100%;
+      max-width: 100%;
       display: block;
     }
 
@@ -379,6 +381,7 @@
       color: var(--accent-gold);
       margin-top: 0.15rem;
     }
+
 
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
@@ -900,6 +903,19 @@
     const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+
+
+//////////////////////////////
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//CURRENT ACTIVE WEEK.........
+//////////////////////////////
 
     let activeWeek = 1;
     let allWeekRows = [];
@@ -1502,7 +1518,75 @@
       switchWeek(target);
     }
 
-    const CURRENT_OPEN_WEEK = 1;
+
+
+//////////////////////////////
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//CURRENT OPEN WEEK.........
+//////////////////////////////
+
+    let CURRENT_OPEN_WEEK = 2;
+
+    async function determineDynamicWeeks() {
+      let openW = 1;
+      let activeW = 1;
+
+      for (let w = 1; w <= 14; w++) {
+        const locked = await isWeekLocked(w);
+        if (!locked) {
+          openW = w;
+          break;
+        }
+        if (w === 14) openW = 14;
+      }
+
+      for (let w = 1; w <= 14; w++) {
+        try {
+          const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${w}&limit=100`;
+          const res = await fetch(url);
+          const serverDateHeader = res.headers.get("date");
+          const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+          const data = await res.json();
+          if (!data.events || data.events.length === 0) continue;
+
+          const gameDates = data.events
+            .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+            .filter(d => !isNaN(d.getTime()))
+            .sort((a, b) => a - b);
+
+          if (gameDates.length === 0) continue;
+
+          const firstKickoff = gameDates[0];
+          const lastKickoff = gameDates[gameDates.length - 1];
+          const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
+
+          const sundayAfter = new Date(lastGameEnd);
+          sundayAfter.setDate(sundayAfter.getDate() + (7 - sundayAfter.getDay()) % 7);
+          sundayAfter.setHours(0, 0, 0, 0);
+
+          if (currentTime >= firstKickoff) {
+            activeW = w;
+            if (currentTime >= sundayAfter) {
+              activeW = Math.min(w + 1, openW);
+            }
+          }
+        } catch (e) {
+          console.error(`Error calculating active week for week ${w}:`, e);
+        }
+      }
+
+      return { openWeek: openW, activeWeek: activeW };
+    }
 
     async function switchWeek(weekNum) {
       activeWeek = weekNum;
@@ -1905,7 +1989,14 @@
       document.querySelectorAll(".cousin-picks-body").forEach(b => b.classList.toggle("open", expand));
     }
 
-    loadAllSeasonData();
+    async function initApp() {
+      const dynamic = await determineDynamicWeeks();
+      activeWeek = dynamic.activeWeek;
+      CURRENT_OPEN_WEEK = dynamic.openWeek;
+      await loadAllSeasonData();
+    }
+
+    initApp();
   </script>
 </body>
 </html>
