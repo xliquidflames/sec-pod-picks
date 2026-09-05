@@ -444,7 +444,14 @@
 
     .live-game-cell {
       background: rgba(251, 191, 36, 0.15) !important;
-      border: 1px solid rgba(251, 191, 36, 0.4) !important;
+      border-top: 1px solid rgba(251, 191, 36, 0.4) !important;
+      border-bottom: 1px solid rgba(251, 191, 36, 0.4) !important;
+    }
+    
+    .host-grid-table tr.live-game-row td {
+      background: rgba(251, 191, 36, 0.15) !important;
+      border-top: 1px solid rgba(251, 191, 36, 0.4) !important;
+      border-bottom: 1px solid rgba(251, 191, 36, 0.4) !important;
     }
 
     .host-lock-cell {
@@ -1349,7 +1356,7 @@
 
             const uNorm = normalizeTeam(userPick);
             const wNorm = normalizeTeam(winner);
-            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm));
+            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
 
             if (isHit) {
               const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
@@ -1630,7 +1637,7 @@
 
       const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
       const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
-      const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
+      const stevenPicks = hostSteven ? parseUserPicks(stevenPicks.picks) : {};
 
       const mikeScores = mikePicks.scores || {};
       const shaneScores = shanePicks.scores || {};
@@ -1677,6 +1684,9 @@
         const classSt = getPickClass(pSt, g, activeWeek);
 
         const isLiveGame = liveMap[g.matchupKey] || liveMap[g.id];
+        if (isLiveGame) {
+          tr.classList.add('live-game-row');
+        }
         const liveClass = isLiveGame ? 'live-game-cell' : '';
 
         tr.innerHTML = `
@@ -1840,7 +1850,7 @@
               } else {
                 const uNorm = normalizeTeam(pick);
                 const wNorm = normalizeTeam(winner);
-                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)) {
+                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
                   cousinLocksWon++;
                 } else {
                   cousinLocksLost++;
@@ -1922,7 +1932,7 @@
           });
           document.getElementById("statPeoplesLock").textContent = topLockedTeam;
           const consensusLockPct = totalLocksPlaced > 0 ? Math.round((maxLocks / totalLocksPlaced) * 100) : 0;
-          document.getElementById("statPeoplesLockDesc").textContent = totalLocksPlaced > 0 ? `${maxLocks} Locks (${consensusLockPct}%)` : "No Locks Placed";
+          document.getElementById("statPeoplesLockDesc").textContent = totalLocksPlaced > 0 ? `${maxLocks} Locks (${consensusLockPct}%)` : "No Locks Plages";
 
           const decidedLocks = cousinLocksWon + cousinLocksLost;
           if (decidedLocks > 0) {
