@@ -134,6 +134,17 @@
       text-align: center;
     }
 
+    .host-section-header {
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: var(--text-main);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      text-align: center;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+
     .host-season-strip {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -168,6 +179,7 @@
       color: var(--text-main); 
       text-transform: uppercase; 
       letter-spacing: 0.5px; 
+      text-align: center;
       display: block; 
       margin-bottom: 0.4rem;
     }
@@ -736,6 +748,8 @@
         <h2 class="section-title">Season Standings</h2>
       </div>
 
+      <span class="host-section-header">Hosts</span>
+
       <div class="host-season-strip">
         <div class="host-season-card">
           <div class="host-season-name">Mike</div>
@@ -1182,7 +1196,7 @@
         } else {
           const uNorm = normalizeTeam(userPick);
           const wNorm = normalizeTeam(winner);
-          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)));
+          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)));
 
           if (isHit) {
             correct++;
