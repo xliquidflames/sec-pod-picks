@@ -1349,7 +1349,7 @@
 
             const uNorm = normalizeTeam(userPick);
             const wNorm = normalizeTeam(winner);
-            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
+            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm));
 
             if (isHit) {
               const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
@@ -1629,8 +1629,8 @@
       const hostSteven = hostRows.find(h => h.user_name?.toLowerCase() === "steven");
 
       const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
-      const shanePicks = hostShane ? parseUserPicks(shanePicks.picks) : {};
-      const stevenPicks = hostSteven ? parseUserPicks(stevenPicks.picks) : {};
+      const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
+      const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
 
       const mikeScores = mikePicks.scores || {};
       const shaneScores = shanePicks.scores || {};
@@ -1840,7 +1840,7 @@
               } else {
                 const uNorm = normalizeTeam(pick);
                 const wNorm = normalizeTeam(winner);
-                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
+                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)) {
                   cousinLocksWon++;
                 } else {
                   cousinLocksLost++;
@@ -1987,6 +1987,9 @@
       activeWeek = dynamic.activeWeek;
       CURRENT_OPEN_WEEK = dynamic.openWeek;
       
+      const weekNums = Array.from({length: 14}, (_, i) => i + 1);
+      await Promise.all(weekNums.map(w => fetchEspnSchedule(w)));
+
       await loadAllSeasonData();
       await switchWeek(activeWeek);
 
