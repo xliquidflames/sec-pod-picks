@@ -122,7 +122,7 @@
 
     .section-title-bar {
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
       margin-bottom: 0.75rem;
     }
@@ -131,6 +131,7 @@
       font-size: 1.15rem;
       color: var(--accent-gold);
       font-weight: 800;
+      text-align: center;
     }
 
     .host-season-strip {
@@ -149,9 +150,9 @@
     }
 
     .host-season-name {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       font-weight: 700;
-      color: var(--text-muted);
+      color: var(--text-main);
       margin-bottom: 0.2rem;
     }
 
@@ -159,6 +160,16 @@
       font-size: 1.1rem;
       font-weight: 900;
       color: var(--accent-gold);
+    }
+
+    .top3-label-custom {
+      font-size: 0.82rem; 
+      font-weight: 800; 
+      color: var(--text-main); 
+      text-transform: uppercase; 
+      letter-spacing: 0.5px; 
+      display: block; 
+      margin-bottom: 0.4rem;
     }
 
     .top3-item {
@@ -722,7 +733,7 @@
 
     <div class="card">
       <div class="section-title-bar">
-        <h2 class="section-title">Season Standings Overview</h2>
+        <h2 class="section-title">Season Standings</h2>
       </div>
 
       <div class="host-season-strip">
@@ -741,7 +752,7 @@
       </div>
 
       <div id="top5Section" style="margin-top: 0.8rem;">
-        <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
+        <span class="top3-label-custom">
           Top 3 Cousins
         </span>
         <div id="top5CousinsList">
