@@ -51,28 +51,7 @@
       position: relative;
     }
 
-    .nav-pill {
-      position: absolute;
-      top: 0;
-      right: 0;
-      background: var(--bg-card-alt);
-      border: 1.5px solid var(--accent-gold);
-      color: var(--accent-gold);
-      font-size: 0.75rem;
-      font-weight: 800;
-      padding: 0.4rem 0.8rem;
-      border-radius: 999px;
-      text-decoration: none;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-      transition: all 0.15s ease;
-    }
-
-    .nav-pill:hover {
-      background: var(--accent-gold);
-      color: var(--bg-main);
-    }
+    /* .nav-pill commented out for now as requested */
 
     .logo-container {
       display: flex;
@@ -740,8 +719,7 @@
       <div class="logo-container">
         <img src="logo.png" alt="That SEC Podcast" class="main-logo" />
       </div>
-      <div class="main-title-badge" id="weekInfoHubTitle">Week 1 Info Hub</div>
-      <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.4;">This week's schedule, lines, scores, Mike, Shane, and Steven's picks. Highlighted rows are games currently in progress.</p>
+      <div class="main-title-badge">2026 Pick'em Headquarters</div>
     </header>
 
     <div class="card">
@@ -826,10 +804,11 @@
     <div id="weekContent">
       <div class="card">
         <div class="host-header-toggle" onclick="toggleHostGrid()">
-          <h2 class="section-title" id="weekHostTitle">Hosts' Week 1 Picks</h2>
+          <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
-        <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.85rem;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">This week's schedule, lines, scores, Mike, Shane, and Steven's picks. Highlighted rows are games currently in progress.</p>
+        <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.4rem;">
           <table class="host-grid-table">
             <thead>
               <tr>
@@ -1606,8 +1585,7 @@
       const dropdown = document.getElementById("mainWeekSelect");
       if (dropdown) dropdown.value = weekNum;
 
-      document.getElementById("weekInfoHubTitle").textContent = `Week ${weekNum} Info Hub`;
-      document.getElementById("weekHostTitle").textContent = `Hosts' Week ${weekNum} Picks`;
+      document.getElementById("weekHostTitle").textContent = `Week ${weekNum} Info Hub`;
       document.getElementById("weekCousinsTitle").textContent = `The Cousins' Week ${weekNum} Picks`;
 
       const sortDesc = document.getElementById("leaderboardSortDesc");
@@ -1970,7 +1948,7 @@
               const winner = (window.gameWinners[activeWeek] || {})[lKey] || (window.gameWinners[activeWeek] || {})[lGameId];
               if (winner) {
                 hostLocksDecided++;
-                const uPick = lKey ? hPicks[lKey] : (hPicks[lGameId] || hPichtung = hPicks[String(lGameId)]);
+                const uPick = lKey ? hPicks[lKey] : (hPicks[lGameId] || hPicks[String(lGameId)]);
                 const uNorm = normalizeTeam(uPick);
                 const wNorm = normalizeTeam(winner);
                 if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
@@ -1980,11 +1958,10 @@
             }
           });
 
-          if (hostLocksDecided > 0 || decidedLocks > 0) {
+          if (hostLocksDecided > 0 || decidedLocks >0) {
             document.getElementById("statLockBattle").textContent = `C: ${cousinLocksWon}/${decidedLocks} | H: ${hostLocksWon}/${hostLocksDecided}`;
             document.getElementById("statLockBattleDesc").textContent = "Lock Win Rates";
           } else {
-            document.getElementById("statLockBattle5") // fallback
             document.getElementById("statLockBattle").textContent = "Pending";
             document.getElementById("statLockBattleDesc").textContent = "Awaiting Kickoffs";
           }
