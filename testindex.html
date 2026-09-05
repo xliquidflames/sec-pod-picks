@@ -736,11 +736,12 @@
   <div class="container" id="pageTop">
 
     <header>
-      <a href="https://xliquidflames.github.io/sec-pod-picks/nflindex.html" class="nav-pill">NFL</a>
+      <!-- <a href="https://xliquidflames.github.io/sec-pod-picks/nflindex.html" class="nav-pill">NFL</a> -->
       <div class="logo-container">
         <img src="logo.png" alt="That SEC Podcast" class="main-logo" />
       </div>
-      <div class="main-title-badge">2026 Pick'em Headquarters</div>
+      <div class="main-title-badge" id="weekInfoHubTitle">Week 1 Info Hub</div>
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.4;">This week's schedule, lines, scores, Mike, Shane, and Steven's picks. Highlighted rows are games currently in progress.</p>
     </header>
 
     <div class="card">
@@ -1190,7 +1191,7 @@
         } else {
           const uNorm = normalizeTeam(userPick);
           const wNorm = normalizeTeam(winner);
-          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)));
+          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)));
 
           if (isHit) {
             correct++;
@@ -1371,7 +1372,7 @@
 
             const uNorm = normalizeTeam(userPick);
             const wNorm = normalizeTeam(winner);
-            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
+            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm));
 
             if (isHit) {
               const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
@@ -1605,6 +1606,7 @@
       const dropdown = document.getElementById("mainWeekSelect");
       if (dropdown) dropdown.value = weekNum;
 
+      document.getElementById("weekInfoHubTitle").textContent = `Week ${weekNum} Info Hub`;
       document.getElementById("weekHostTitle").textContent = `Hosts' Week ${weekNum} Picks`;
       document.getElementById("weekCousinsTitle").textContent = `The Cousins' Week ${weekNum} Picks`;
 
@@ -1805,7 +1807,204 @@
         listContainer.appendChild(item);
       });
 
+      if (cousinRows.length > 0 && games.length > 0) {
+        let secSweepCount = 0;
+        const upsetTracker = {};
+        const teamPickCounts = {};
+
+        const lockCounts = {};
+        let totalLocksPlaced = 0;
+        let cousinLocksWon = 0;
+        let cousinLocksLost = 0;
+        let cousinLocksPending = 0;
+
+        cousinRows.forEach(c => {
+          const picks = parseUserPicks(c.picks);
+          let pickedNonSec = false;
+          let answeredCount = 0;
+          const userLockKey = isLockActiveThisWeek ? (picks.lock_matchup_key || null) : null;
+          const userLockId = isLockActiveThisWeek && picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
+
+          games.forEach(g => {
+            const pick = getMatchedUserPick(picks, g);
+            if (!pick) return;
+
+            answeredCount++;
+            teamPickCounts[pick] = (teamPickCounts[pick] || 0) + 1;
+
+            const aIsSec = isSecTeam(g.teamA);
+            const bIsSec = isSecTeam(g.teamB);
+
+            if (aIsSec && !bIsSec) {
+              if (normalizeTeam(pick) === normalizeTeam(g.teamB) || !isSecTeam(pick)) {
+                pickedNonSec = true;
+                if (!upsetTracker[g.teamB]) {
+                  upsetTracker[g.teamB] = { count: 0, opponent: g.teamA };
+                }
+                upsetTracker[g.teamB].count += 1;
+              }
+            } else if (!aIsSec && bIsSec) {
+              if (normalizeTeam(pick) === normalizeTeam(g.teamA) || !isSecTeam(pick)) {
+                pickedNonSec = true;
+                if (!upsetTracker[g.teamA]) {
+                  upsetTracker[g.teamA] = { count: 0, opponent: g.teamB };
+                }
+                upsetTracker[g.teamA].count += 1;
+              }
+            }
+
+            const isUserLock = (userLockKey && userLockKey === g.matchupKey) || (userLockId && userLockId === g.id);
+            if (isUserLock) {
+              totalLocksPlaced++;
+              lockCounts[pick] = (lockCounts[pick] || 0) + 1;
+
+              const winner = (window.gameWinners[activeWeek] || {})[g.matchupKey] || (window.gameWinners[activeWeek] || {})[g.id];
+              if (!winner) {
+                cousinLocksPending++;
+              } else {
+                const uNorm = normalizeTeam(pick);
+                const wNorm = normalizeTeam(winner);
+                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
+                  cousinLocksWon++;
+                } else {
+                  cousinLocksLost++;
+                }
+              }
+            }
+          });
+
+          if (!pickedNonSec && answeredCount === games.length) {
+            secSweepCount++;
+          }
+        });
+
+        document.getElementById("statSecSweep").textContent = `${secSweepCount} / ${cousinRows.length}`;
+        const sweepPct = Math.round((secSweepCount / cousinRows.length) * 100) || 0;
+        document.getElementById("statSecSweepDesc").textContent = `${sweepPct}% Clean SEC Sweeps`;
+
+        let topUpsetTeam = "--";
+        let maxUpsetVotes = 0;
+        let topUpsetOpponent = "";
+        Object.entries(upsetTracker).forEach(([team, data]) => {
+          if (data.count > maxUpsetVotes) {
+            maxUpsetVotes = data.count;
+            topUpsetTeam = team;
+            topUpsetOpponent = data.opponent;
+          }
+        });
+
+        if (maxUpsetVotes > 0) {
+          document.getElementById("statTopUpsetPre").textContent = `${maxUpsetVotes} Cousins Picked`;
+          document.getElementById("statTopUpset").textContent = topUpsetTeam;
+          document.getElementById("statTopUpsetDesc").textContent = `to upset ${topUpsetOpponent}`;
+        } else {
+          document.getElementById("statTopUpsetPre").textContent = "Popular Upset";
+          document.getElementById("statTopUpset").textContent = "--";
+          document.getElementById("statTopUpsetDesc").textContent = "No Upsets Picked";
+        }
+
+        let topConsensusTeam = "--";
+        let maxConsensusVotes = 0;
+        const teamUniqueVotes = {};
+
+        games.forEach(g => {
+          [g.teamA, g.teamB].forEach(team => {
+            let count = 0;
+            cousinRows.forEach(c => {
+              const picks = parseUserPicks(c.picks);
+              const userPick = getMatchedUserPick(picks, g);
+              if (userPick && normalizeTeam(userPick) === normalizeTeam(team)) {
+                count++;
+              }
+            });
+            teamUniqueVotes[team] = count;
+            if (count > maxConsensusVotes) {
+              maxConsensusVotes = count;
+              topConsensusTeam = team;
+            }
+          });
+        });
+
+        const lockPct = Math.min(Math.round((maxConsensusVotes / cousinRows.length) * 100) || 0, 100);
+
+        document.getElementById("statLock").textContent = topConsensusTeam;
+        document.getElementById("statLockDesc").textContent = `${lockPct}% Consensus`;
+
+        const lockRow = document.getElementById("lockShowcaseRow");
+        if (!isLockActiveThisWeek) {
+          if (lockRow) lockRow.style.display = "none";
+        } else {
+          if (lockRow) lockRow.style.display = "grid";
+
+          let topLockedTeam = "--";
+          let maxLocks = 0;
+          Object.entries(lockCounts).forEach(([team, count]) => {
+            if (count > maxLocks) {
+              maxLocks = count;
+              topLockedTeam = team;
+            }
+          });
+          document.getElementById("statPeoplesLock").textContent = topLockedTeam;
+          const consensusLockPct = totalLocksPlaced > 0 ? Math.round((maxLocks / totalLocksPlaced) * 100) : 0;
+          document.getElementById("statPeoplesLockDesc").textContent = totalLocksPlaced > 0 ? `${maxLocks} Locks (${consensusLockPct}%)` : "No Locks Placed";
+
+          const decidedLocks = cousinLocksWon + cousinLocksLost;
+          if (decidedLocks > 0) {
+            const lockHitPct = Math.round((cousinLocksWon / decidedLocks) * 100);
+            document.getElementById("statLockAccuracy").textContent = `${lockHitPct}%`;
+            document.getElementById("statLockAccuracyDesc").textContent = `${cousinLocksWon}-${cousinLocksLost}, ${cousinLocksPending} pending`;
+          } else {
+            document.getElementById("statLockAccuracy").textContent = totalLocksPlaced > 0 ? `${totalLocksPlaced} Locked` : "--";
+            document.getElementById("statLockAccuracyDesc").textContent = totalLocksPlaced > 0 ? "Awaiting Results" : "No Locks Placed";
+          }
+
+          let hostLocksWon = 0;
+          let hostLocksDecided = 0;
+          [hostMike, hostShane, hostSteven].forEach(h => {
+            if (!h) return;
+            const hPicks = parseUserPicks(h.picks);
+            const lKey = hPicks.lock_matchup_key || null;
+            const lGameId = hPicks.lock_game_id ? parseInt(hPicks.lock_game_id, 10) : null;
+
+            if (lKey || lGameId) {
+              const winner = (window.gameWinners[activeWeek] || {})[lKey] || (window.gameWinners[activeWeek] || {})[lGameId];
+              if (winner) {
+                hostLocksDecided++;
+                const uPick = lKey ? hPicks[lKey] : (hPicks[lGameId] || hPichtung = hPicks[String(lGameId)]);
+                const uNorm = normalizeTeam(uPick);
+                const wNorm = normalizeTeam(winner);
+                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
+                  hostLocksWon++;
+                }
+              }
+            }
+          });
+
+          if (hostLocksDecided > 0 || decidedLocks > 0) {
+            document.getElementById("statLockBattle").textContent = `C: ${cousinLocksWon}/${decidedLocks} | H: ${hostLocksWon}/${hostLocksDecided}`;
+            document.getElementById("statLockBattleDesc").textContent = "Lock Win Rates";
+          } else {
+            document.getElementById("statLockBattle5") // fallback
+            document.getElementById("statLockBattle").textContent = "Pending";
+            document.getElementById("statLockBattleDesc").textContent = "Awaiting Kickoffs";
+          }
+        }
+
+      } else {
+        document.getElementById("statSecSweep").textContent = "--";
+        document.getElementById("statSecSweepDesc").textContent = "Clean Sweeps";
+        document.getElementById("statTopUpsetPre").textContent = "Popular Upset";
+        document.getElementById("statTopUpset").textContent = "--";
+        document.getElementById("statTopUpsetDesc").textContent = "No Upsets Picked";
+        document.getElementById("statLock").textContent = "--";
+        document.getElementById("statLockDesc").textContent = "100% Consensus";
+      }
+
       computeSeasonTotals();
+    }
+
+    function toggleAllCards(expand) {
+      document.querySelectorAll(".cousin-picks-body").forEach(b => b.classList.toggle("open", expand));
     }
 
     async function initApp() {
