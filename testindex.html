@@ -1357,7 +1357,7 @@
 
             const uNorm = normalizeTeam(userPick);
             const wNorm = normalizeTeam(winner);
-            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm));
+            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
 
             if (isHit) {
               const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
@@ -1624,7 +1624,12 @@
     }
 
     async function renderActiveWeek() {
-      const games = await fetchEspnSchedule(activeWeek);
+      // Ensure schedule for active week is fully loaded before rendering
+      if (!window.weekSchedules[activeWeek] || window.weekSchedules[activeWeek].length === 0) {
+        await fetchEspnSchedule(activeWeek);
+      }
+
+      const games = window.weekSchedules[activeWeek] || [];
 
       const rows = allWeekRows.filter(r => r.week_number === activeWeek);
       const hostRows = rows.filter(r => r.is_host === true);
@@ -1637,8 +1642,8 @@
       const hostSteven = hostRows.find(h => h.user_name?.toLowerCase() === "steven");
 
       const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
-      const shanePicks = hostShane ? parseUserPicks(shanePicks.picks) : {};
-      const stevenPicks = hostSteven ? parseUserPicks(stevenPicks.picks) : {};
+      const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
+      const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
 
       const mikeScores = mikePicks.scores || {};
       const shaneScores = shanePicks.scores || {};
