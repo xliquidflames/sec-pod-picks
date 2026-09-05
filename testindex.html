@@ -122,7 +122,7 @@
 
     .section-title-bar {
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: center;
       margin-bottom: 0.75rem;
     }
@@ -131,7 +131,7 @@
       font-size: 1.15rem;
       color: var(--accent-gold);
       font-weight: 800;
-      text-align: center;
+      text-align: left;
     }
 
     .host-section-header {
@@ -140,7 +140,7 @@
       color: var(--text-main);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      text-align: center;
+      text-align: left;
       display: block;
       margin-bottom: 0.4rem;
     }
@@ -179,7 +179,7 @@
       color: var(--text-main); 
       text-transform: uppercase; 
       letter-spacing: 0.5px; 
-      text-align: center;
+      text-align: left;
       display: block; 
       margin-bottom: 0.4rem;
     }
@@ -285,6 +285,13 @@
       opacity: 0.85;
       border-radius: 999px;
       box-shadow: 0 0 8px rgba(251, 191, 36, 0.45);
+    }
+
+    .card-divider {
+      height: 1px;
+      background-color: var(--border-color);
+      margin: 0.85rem 0;
+      width: 100%;
     }
 
     .week-selector-bar {
@@ -748,6 +755,8 @@
         <h2 class="section-title">Season Standings</h2>
       </div>
 
+      <div class="card-divider"></div>
+
       <span class="host-section-header">Hosts</span>
 
       <div class="host-season-strip">
@@ -1196,7 +1205,7 @@
         } else {
           const uNorm = normalizeTeam(userPick);
           const wNorm = normalizeTeam(winner);
-          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)));
+          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)));
 
           if (isHit) {
             correct++;
@@ -1672,7 +1681,7 @@
       const hostSteven = hostRows.find(h => h.user_name?.toLowerCase() === "steven");
 
       const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
-      const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
+      const shanePicks = hostShane ? parseUserPicks(shaneShanePicks = hostShane.picks) : {};
       const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
 
       const mikeScores = mikePicks.scores || {};
