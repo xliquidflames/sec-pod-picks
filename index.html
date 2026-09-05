@@ -48,6 +48,7 @@
     header {
       text-align: center;
       margin-bottom: 1.5rem;
+      position: relative;
     }
 
     .logo-container {
@@ -382,7 +383,6 @@
       margin-top: 0.15rem;
     }
 
-
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
       width: 37%;
@@ -441,6 +441,11 @@
     .pick-correct { color: var(--success) !important; font-weight: 700; }
     .pick-incorrect { color: var(--danger) !important; text-decoration: line-through; opacity: 0.8; }
     .pick-pending { color: var(--text-main); }
+
+    .live-game-cell {
+      background: rgba(251, 191, 36, 0.15) !important;
+      border: 1px solid rgba(251, 191, 36, 0.4) !important;
+    }
 
     .host-lock-cell {
       background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(30, 41, 59, 0.95)) !important;
@@ -708,6 +713,7 @@
   <div class="container" id="pageTop">
 
     <header>
+      <!-- <a href="https://xliquidflames.github.io/sec-pod-picks/nflindex.html" class="nav-pill">NFL</a> -->
       <div class="logo-container">
         <img src="logo.png" alt="That SEC Podcast" class="main-logo" />
       </div>
@@ -796,10 +802,11 @@
     <div id="weekContent">
       <div class="card">
         <div class="host-header-toggle" onclick="toggleHostGrid()">
-          <h2 class="section-title" id="weekHostTitle">Hosts' Week 1 Picks</h2>
+          <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
-        <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.85rem;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Here is this week's schedule, lines, scores, and Mike, Shane, and Steven's picks. Highlighted rows are games currently in progress.</p>
+        <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.4rem;">
           <table class="host-grid-table">
             <thead>
               <tr>
@@ -904,23 +911,11 @@
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-
-
-//////////////////////////////
-//CURRENT ACTIVE WEEK.........
-//CURRENT ACTIVE WEEK.........
-//CURRENT ACTIVE WEEK.........
-//CURRENT ACTIVE WEEK.........
-//CURRENT ACTIVE WEEK.........
-//CURRENT ACTIVE WEEK.........
-//CURRENT ACTIVE WEEK.........
-//CURRENT ACTIVE WEEK.........
-//////////////////////////////
-
     let activeWeek = 1;
     let allWeekRows = [];
     window.gameWinners = {};
     window.weekSchedules = {};
+    window.liveGames = {};
 
     const secPatterns = [
       "alabama", "crimson tide", "arkansas", "razorbacks", "auburn", "tigers",
@@ -1025,6 +1020,7 @@
         if (!data.events || data.events.length === 0) return [];
 
         if (!window.gameWinners[week]) window.gameWinners[week] = {};
+        if (!window.liveGames[week]) window.liveGames[week] = {};
 
         const rawGames = [];
 
@@ -1045,8 +1041,10 @@
           }
 
           const isFinal = comp.status && comp.status.type && comp.status.type.completed;
-          let winnerName = null;
+          const state = comp.status && comp.status.type && comp.status.type.state;
+          const isLive = (state === "in");
 
+          let winnerName = null;
           if (isFinal) {
             const winnerComp = comp.competitors.find(c => c.winner === true);
             if (winnerComp) {
@@ -1055,12 +1053,14 @@
           }
 
           const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : '';
-          const oddsDisplay = rawOdds ? rawOdds : 'Line: TBD';
           const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
           
           let time = "TBD";
           if (isFinal) {
             time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+          } else if (isLive) {
+            const liveDetail = comp.status.type.detail || `Period ${comp.status.period}`;
+            time = `${liveDetail}: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
           } else if (comp.date) {
             time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
                    new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -1070,8 +1070,9 @@
             teamA: teamA,
             teamB: teamB,
             rawOdds: rawOdds,
-            detail: isFinal ? `${time} | ${venue}` : `${time} | ${oddsDisplay} | ${venue}`,
-            winner: winnerName
+            detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
+            winner: winnerName,
+            isLive: isLive
           });
         });
 
@@ -1084,13 +1085,18 @@
             window.gameWinners[week][gameId] = g.winner;
             window.gameWinners[week][mKey] = g.winner;
           }
+          if (g.isLive) {
+            window.liveGames[week][mKey] = true;
+            window.liveGames[week][gameId] = true;
+          }
           return {
             id: gameId,
             matchupKey: mKey,
             teamA: g.teamA,
             teamB: g.teamB,
             rawOdds: g.rawOdds,
-            detail: g.detail
+            detail: g.detail,
+            isLive: g.isLive
           };
         });
 
@@ -1162,7 +1168,7 @@
         } else {
           const uNorm = normalizeTeam(userPick);
           const wNorm = normalizeTeam(winner);
-          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)));
+          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)));
 
           if (isHit) {
             correct++;
@@ -1182,7 +1188,7 @@
       if (!winner || !userPick || userPick === "-") return "pick-pending";
       const uNorm = normalizeTeam(userPick);
       const wNorm = normalizeTeam(winner);
-      return (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) ? "pick-correct" : "pick-incorrect";
+      return (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)) ? "pick-correct" : "pick-incorrect";
     }
 
     function computeAtsBadge(userPick, scoreObj, game) {
@@ -1343,7 +1349,7 @@
 
             const uNorm = normalizeTeam(userPick);
             const wNorm = normalizeTeam(winner);
-            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
+            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm));
 
             if (isHit) {
               const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
@@ -1518,23 +1524,6 @@
       switchWeek(target);
     }
 
-
-
-//////////////////////////////
-//CURRENT OPEN WEEK.........
-//CURRENT OPEN WEEK.........
-//CURRENT OPEN WEEK.........
-//CURRENT OPEN WEEK.........
-//CURRENT OPEN WEEK.........
-//CURRENT OPEN WEEK.........
-//CURRENT OPEN WEEK.........
-//CURRENT OPEN WEEK.........
-//CURRENT OPEN WEEK.........
-//CURRENT OPEN WEEK.........
-//CURRENT OPEN WEEK.........
-//CURRENT OPEN WEEK.........
-//////////////////////////////
-
     let CURRENT_OPEN_WEEK = 2;
 
     async function determineDynamicWeeks() {
@@ -1594,7 +1583,7 @@
       const dropdown = document.getElementById("mainWeekSelect");
       if (dropdown) dropdown.value = weekNum;
 
-      document.getElementById("weekHostTitle").textContent = `Hosts' Week ${weekNum} Picks`;
+      document.getElementById("weekHostTitle").textContent = `Week ${weekNum} Info Hub`;
       document.getElementById("weekCousinsTitle").textContent = `The Cousins' Week ${weekNum} Picks`;
 
       const sortDesc = document.getElementById("leaderboardSortDesc");
@@ -1659,6 +1648,7 @@
       hostBody.innerHTML = "";
 
       const isLockActiveThisWeek = (activeWeek !== 1);
+      const liveMap = window.liveGames[activeWeek] || {};
 
       games.forEach(g => {
         const tr = document.createElement("tr");
@@ -1686,22 +1676,25 @@
         const classS = getPickClass(pS, g, activeWeek);
         const classSt = getPickClass(pSt, g, activeWeek);
 
+        const isLiveGame = liveMap[g.matchupKey] || liveMap[g.id];
+        const liveClass = isLiveGame ? 'live-game-cell' : '';
+
         tr.innerHTML = `
-          <td class="matchup-cell">
+          <td class="matchup-cell ${liveClass}">
             <strong>${g.teamA} vs ${g.teamB}</strong>
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
-          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
+          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''} ${liveClass}">
             ${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
             ${atsBadgeM}
           </td>
-          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
+          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''} ${liveClass}">
             ${pS}${isLockS ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
             ${atsBadgeS}
           </td>
-          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
+          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''} ${liveClass}">
             ${pSt}${isLockSt ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
             ${atsBadgeSt}
@@ -1765,7 +1758,7 @@
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
               <span class="rank-badge ${c.rankClass}">#${c.rank}</span>
               <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
-              ${hitLotw ? `<span class="lotw-hit-badge">LOTW <span class="lotw-check">✓</span></span>` : ''}
+              ${hitLotw ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
               <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">${c.score.correct}-${c.score.incorrect}</span>
             </div>
             <span style="color: var(--accent-gold); font-weight: bold;">+</span>
@@ -1847,7 +1840,7 @@
               } else {
                 const uNorm = normalizeTeam(pick);
                 const wNorm = normalizeTeam(winner);
-                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
+                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)) {
                   cousinLocksWon++;
                 } else {
                   cousinLocksLost++;
@@ -1993,7 +1986,18 @@
       const dynamic = await determineDynamicWeeks();
       activeWeek = dynamic.activeWeek;
       CURRENT_OPEN_WEEK = dynamic.openWeek;
+      
+      const weekNums = Array.from({length: 14}, (_, i) => i + 1);
+      await Promise.all(weekNums.map(w => fetchEspnSchedule(w)));
+
       await loadAllSeasonData();
+      await switchWeek(activeWeek);
+
+      setInterval(async () => {
+        if (activeWeek) {
+          await renderActiveWeek();
+        }
+      }, 60000);
     }
 
     initApp();
