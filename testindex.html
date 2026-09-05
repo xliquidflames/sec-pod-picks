@@ -1043,6 +1043,8 @@
           }
 
           const isFinal = comp.status && comp.status.type && comp.status.type.completed;
+          const state = comp.status && comp.status.type && comp.status.type.state;
+          const isLive = (state === "in");
           let winnerName = null;
 
           if (isFinal) {
@@ -1059,6 +1061,9 @@
           let time = "TBD";
           if (isFinal) {
             time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+          } else if (isLive) {
+            const liveDetail = comp.status.type.detail || `Period ${comp.status.period}`;
+            time = `${liveDetail}: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
           } else if (comp.date) {
             time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
                    new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -1068,7 +1073,7 @@
             teamA: teamA,
             teamB: teamB,
             rawOdds: rawOdds,
-            detail: isFinal ? `${time} | ${venue}` : `${time} | ${oddsDisplay} | ${venue}`,
+            detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${oddsDisplay} | ${venue}`,
             winner: winnerName
           });
         });
@@ -1990,6 +1995,13 @@
       activeWeek = dynamic.activeWeek;
       CURRENT_OPEN_WEEK = dynamic.openWeek;
       await loadAllSeasonData();
+
+      // Background polling every 60 seconds (fetches ESPN live scores only, zero Supabase queries)
+      setInterval(async () => {
+        if (activeWeek) {
+          await renderActiveWeek();
+        }
+      }, 60000);
     }
 
     initApp();
