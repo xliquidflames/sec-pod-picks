@@ -127,11 +127,25 @@
       margin-bottom: 0.75rem;
     }
 
+    .cousin-section-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
     .section-title {
       font-size: 1.15rem;
       color: var(--accent-gold);
       font-weight: 800;
       text-align: center;
+    }
+
+    .cousin-section-title {
+      font-size: 1.15rem;
+      color: var(--accent-gold);
+      font-weight: 800;
+      text-align: left;
     }
 
     .host-section-header {
@@ -857,8 +871,8 @@
       </div>
 
       <div class="card">
-        <div class="section-title-bar">
-          <h2 class="section-title" id="weekCousinsTitle">The Cousins' Week 1 Picks</h2>
+        <div class="cousin-section-bar">
+          <h2 class="cousin-section-title" id="weekCousinsTitle">The Cousins' Week 1 Picks</h2>
           <span class="entry-pill" id="entryPill">0 Entries</span>
         </div>
 
@@ -1225,7 +1239,7 @@
       if (!winner || !userPick || userPick === "-") return "pick-pending";
       const uNorm = normalizeTeam(userPick);
       const wNorm = normalizeTeam(winner);
-      return (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)) ? "pick-correct" : "pick-incorrect";
+      return (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) ? "pick-correct" : "pick-incorrect";
     }
 
     function computeAtsBadge(userPick, scoreObj, game) {
