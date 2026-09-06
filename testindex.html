@@ -1040,13 +1040,9 @@
           const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
           const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
-          let teamA = homeName;
-          let teamB = awayName;
-
-          if (!isSecTeam(homeName) && isSecTeam(awayName)) {
-            teamA = awayName;
-            teamB = homeName;
-          }
+          // Fixed: Always maintain Away as teamA and Home as teamB consistently
+          let teamA = awayName;
+          let teamB = homeName;
 
           const isFinal = comp.status && comp.status.type && comp.status.type.completed;
           const state = comp.status && comp.status.type && comp.status.type.state;
@@ -1357,7 +1353,7 @@
 
             const uNorm = normalizeTeam(userPick);
             const wNorm = normalizeTeam(winner);
-            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
+            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm));
 
             if (isHit) {
               const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
@@ -1624,7 +1620,6 @@
     }
 
     async function renderActiveWeek() {
-      // Ensure schedule for active week is fully loaded before rendering
       if (!window.weekSchedules[activeWeek] || window.weekSchedules[activeWeek].length === 0) {
         await fetchEspnSchedule(activeWeek);
       }
@@ -1642,8 +1637,8 @@
       const hostSteven = hostRows.find(h => h.user_name?.toLowerCase() === "steven");
 
       const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
-      const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
-      const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
+      const shanePicks = hostShane ? parseUserPicks(shanePicks.picks) : {};
+      const stevenPicks = hostSteven ? parseUserPicks(stevenPicks.picks) : {};
 
       const mikeScores = mikePicks.scores || {};
       const shaneScores = shanePicks.scores || {};
