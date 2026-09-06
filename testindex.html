@@ -1029,16 +1029,38 @@
       }
     }
 
-    async function isWeekLocked(weekNum) {
+    // Every ESPN scoreboard fetch for a given week used to happen up to
+    // THREE separate times on a single page load: once (sequentially) in
+    // isWeekLocked's loop, once more (also sequentially) in
+    // determineDynamicWeeks' second loop, and again in fetchEspnSchedule.
+    // That's why refreshing felt slow — up to 28 network round-trips fired
+    // one after another before anything could render. This cache means
+    // each week is fetched from the network exactly once per page load,
+    // and the two callers below that need the raw data can request all 14
+    // weeks in parallel instead of waiting on each other.
+    window.espnRawCache = {};
+
+    async function fetchEspnRaw(week) {
+      if (window.espnRawCache[week]) return window.espnRawCache[week];
       try {
-        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${weekNum}&limit=100`;
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
         const res = await fetch(url);
-        
         const serverDateHeader = res.headers.get("date");
         const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
-
         const data = await res.json();
-        if (!data.events || data.events.length === 0) return false;
+        const result = { data, currentTime };
+        window.espnRawCache[week] = result;
+        return result;
+      } catch (err) {
+        console.error(`ESPN fetch failed for week ${week}:`, err);
+        return { data: null, currentTime: new Date() };
+      }
+    }
+
+    async function isWeekLocked(weekNum) {
+      try {
+        const { data, currentTime } = await fetchEspnRaw(weekNum);
+        if (!data || !data.events || data.events.length === 0) return false;
 
         const anyStartedOrCompleted = data.events.some(ev => {
           const comp = ev.competitions && ev.competitions[0];
@@ -1065,11 +1087,9 @@
 
     async function fetchEspnSchedule(week) {
       try {
-        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
-        const res = await fetch(url);
-        const data = await res.json();
+        const { data } = await fetchEspnRaw(week);
 
-        if (!data.events || data.events.length === 0) return [];
+        if (!data || !data.events || data.events.length === 0) return [];
 
         if (!window.gameWinners[week]) window.gameWinners[week] = {};
         if (!window.liveGames[week]) window.liveGames[week] = {};
@@ -1610,6 +1630,14 @@
       let openW = 1;
       let activeW = 1;
 
+      // Kick off all 14 weeks' fetches in parallel right away. Both loops
+      // below used to each fire their own sequential fetch per week — up
+      // to 28 network round-trips, one after another, before this function
+      // could even return. Now every week is already cached (or in
+      // flight) by the time either loop asks for it.
+      const weekNums = Array.from({length: 14}, (_, i) => i + 1);
+      await Promise.all(weekNums.map(w => fetchEspnRaw(w)));
+
       for (let w = 1; w <= 14; w++) {
         const locked = await isWeekLocked(w);
         if (!locked) {
@@ -1621,12 +1649,8 @@
 
       for (let w = 1; w <= 14; w++) {
         try {
-          const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${w}&limit=100`;
-          const res = await fetch(url);
-          const serverDateHeader = res.headers.get("date");
-          const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
-          const data = await res.json();
-          if (!data.events || data.events.length === 0) continue;
+          const { data, currentTime } = await fetchEspnRaw(w);
+          if (!data || !data.events || data.events.length === 0) continue;
 
           const gameDates = data.events
             .map(ev => new Date(ev.competitions[0]?.date || ev.date))
@@ -2085,7 +2109,12 @@
       await Promise.all(weekNums.map(w => fetchEspnSchedule(w)));
 
       await loadAllSeasonData();
-      await switchWeek(activeWeek);
+
+      // loadAllSeasonData() already calls switchWeek() internally at the
+      // end — it was being called a second time here immediately after,
+      // which meant renderActiveWeek() (a full DOM rebuild of the picks
+      // list and season stats) ran twice on every single page load for no
+      // benefit. Removed the duplicate call.
 
       // Live scores are pulled once here, at page load. We deliberately do
       // NOT auto-refresh on a timer anymore — it was wiping out expanded
