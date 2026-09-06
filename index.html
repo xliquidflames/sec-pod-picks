@@ -462,13 +462,16 @@
 
     .lock-badge {
       display: inline-block;
-      font-size: 0.6rem;
+      font-size: 0.8rem;
       font-weight: 900;
-      color: #0f172a;
-      background: #fbbf24;
-      padding: 0.05rem 0.25rem;
+      font-family: 'Courier New', Consolas, monospace;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--bg-main);
+      background: var(--accent-gold);
+      padding: 0.02rem 0.3rem;
       border-radius: 3px;
-      margin-left: 0.2rem;
+      margin-left: 0.3rem;
       vertical-align: middle;
     }
 
@@ -1226,6 +1229,29 @@
       return null;
     }
 
+    // Robust lock-of-the-week matching. lock_matchup_key was stored using
+    // whatever matchup-key format was live at submission time — team-name
+    // text before this season's fix, ESPN's event id after it — so a
+    // direct === comparison against today's key silently misses any ballot
+    // locked before the format changed. Checking the legacy text-based key
+    // too (same idea as getMatchedUserPick's legacy fallback) fixes that.
+    function isLockMatch(picks, game) {
+      if (!picks || !game) return false;
+      const lockKey = picks.lock_matchup_key || null;
+      const lockId = picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
+      if (lockKey && (lockKey === game.matchupKey || lockKey === buildMatchupKey(game.teamA, game.teamB))) {
+        return true;
+      }
+      if (lockId && lockId === game.id) return true;
+      return false;
+    }
+
+    function findLockedGame(picks, games) {
+      if (!picks || !games) return null;
+      if (!picks.lock_matchup_key && !picks.lock_game_id) return null;
+      return games.find(g => isLockMatch(picks, g)) || null;
+    }
+
     function gradePicks(rawPicks, week) {
       const picks = parseUserPicks(rawPicks);
       const winners = window.gameWinners[week] || {};
@@ -1233,14 +1259,11 @@
       let correct = 0, incorrect = 0, pending = 0;
       let lockCorrect = 0, lockIncorrect = 0;
 
-      const userLockId = (week !== 1 && picks.lock_game_id) ? parseInt(picks.lock_game_id, 10) : null;
-      const userLockKey = (week !== 1 && picks.lock_matchup_key) ? picks.lock_matchup_key : null;
-
       sched.forEach(game => {
         const winner = winners[game.matchupKey] || winners[game.id];
         const userPick = getMatchedUserPick(picks, game);
 
-        const isLockGame = (userLockKey && userLockKey === game.matchupKey) || (userLockId && userLockId === game.id);
+        const isLockGame = (week !== 1) && isLockMatch(picks, game);
 
         if (!winner) {
           pending++;
@@ -1742,9 +1765,9 @@
         const atsBadgeS = computeAtsBadge(pS, sS, g);
         const atsBadgeSt = computeAtsBadge(pSt, sSt, g);
 
-        const isLockM = isLockActiveThisWeek && ((mikePicks.lock_matchup_key === g.matchupKey) || (mikePicks.lock_game_id === g.id));
-        const isLockS = isLockActiveThisWeek && ((shanePicks.lock_matchup_key === g.matchupKey) || (shanePicks.lock_game_id === g.id));
-        const isLockSt = isLockActiveThisWeek && ((stevenPicks.lock_matchup_key === g.matchupKey) || (stevenPicks.lock_game_id === g.id));
+        const isLockM = isLockActiveThisWeek && isLockMatch(mikePicks, g);
+        const isLockS = isLockActiveThisWeek && isLockMatch(shanePicks, g);
+        const isLockSt = isLockActiveThisWeek && isLockMatch(stevenPicks, g);
 
         const classM = getPickClass(pM, g, activeWeek);
         const classS = getPickClass(pS, g, activeWeek);
@@ -1825,8 +1848,6 @@
         const item = document.createElement("div");
         item.className = "cousin-item";
         const picks = parseUserPicks(c.picks);
-        const cousinLockKey = isLockActiveThisWeek ? (picks.lock_matchup_key || null) : null;
-        const cousinLockId = isLockActiveThisWeek && picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
         const hitLotw = isLockActiveThisWeek && (c.score.lockCorrect > 0);
 
         item.innerHTML = `
@@ -1843,7 +1864,7 @@
             ${games.map(g => {
               const uPick = getMatchedUserPick(picks, g) || "No Pick";
               const pClass = getPickClass(uPick, g, activeWeek);
-              const isCousinLock = (cousinLockKey && cousinLockKey === g.matchupKey) || (cousinLockId && cousinLockId === g.id);
+              const isCousinLock = isLockActiveThisWeek && isLockMatch(picks, g);
               return `
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
                   <span style="color: var(--text-muted);">${g.teamA} vs ${g.teamB}</span>
@@ -1874,8 +1895,6 @@
           const picks = parseUserPicks(c.picks);
           let pickedNonSec = false;
           let answeredCount = 0;
-          const userLockKey = isLockActiveThisWeek ? (picks.lock_matchup_key || null) : null;
-          const userLockId = isLockActiveThisWeek && picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
 
           games.forEach(g => {
             const pick = getMatchedUserPick(picks, g);
@@ -1905,7 +1924,7 @@
               }
             }
 
-            const isUserLock = (userLockKey && userLockKey === g.matchupKey) || (userLockId && userLockId === g.id);
+            const isUserLock = isLockActiveThisWeek && isLockMatch(picks, g);
             if (isUserLock) {
               totalLocksPlaced++;
               lockCounts[pick] = (lockCounts[pick] || 0) + 1;
@@ -2015,14 +2034,13 @@
           [hostMike, hostShane, hostSteven].forEach(h => {
             if (!h) return;
             const hPicks = parseUserPicks(h.picks);
-            const lKey = hPicks.lock_matchup_key || null;
-            const lGameId = hPicks.lock_game_id ? parseInt(hPicks.lock_game_id, 10) : null;
+            const lockedGame = findLockedGame(hPicks, games);
 
-            if (lKey || lGameId) {
-              const winner = (window.gameWinners[activeWeek] || {})[lKey] || (window.gameWinners[activeWeek] || {})[lGameId];
+            if (lockedGame) {
+              const winner = (window.gameWinners[activeWeek] || {})[lockedGame.matchupKey] || (window.gameWinners[activeWeek] || {})[lockedGame.id];
               if (winner) {
                 hostLocksDecided++;
-                const uPick = lKey ? hPicks[lKey] : (hPicks[lGameId] || hPicks[String(lGameId)]);
+                const uPick = getMatchedUserPick(hPicks, lockedGame);
                 const uNorm = normalizeTeam(uPick);
                 const wNorm = normalizeTeam(winner);
                 if (uNorm === wNorm) {
