@@ -925,19 +925,38 @@
     window.weekSchedules = {};
     window.liveGames = {};
 
-    const secPatterns = [
-      "alabama", "crimson tide", "arkansas", "razorbacks", "auburn", "tigers",
-      "florida", "gators", "georgia", "bulldogs", "kentucky", "wildcats",
-      "lsu", "ole miss", "rebels", "mississippi state", "miss state", "miss st",
-      "missouri", "mizzou", "oklahoma", "sooners", "south carolina", "gamecocks",
-      "tennessee", "volunteers", "vols", "texas", "longhorns", "texas a&m", "aggies",
-      "vanderbilt", "commodores", "vandy"
-    ];
+    // Canonical SEC team identities. Each entry lists every spelling ESPN
+    // might use for that team (full name, "St" abbreviation, nickname).
+    // Classification is by EXACT match against these known spellings, not
+    // substring matching — substring matching used to wrongly classify
+    // schools like "Texas State" or "Florida State" as SEC teams just
+    // because "Texas" or "Florida" appears inside their name. This list
+    // must stay byte-identical to the one in makepicks.html and
+    // hostpicks.html — any difference between them is exactly the kind of
+    // thing that causes a matchup key computed here to disagree with a key
+    // computed there.
+    const secTeamAliases = {
+      alabama: ["Alabama"],
+      arkansas: ["Arkansas"],
+      auburn: ["Auburn"],
+      florida: ["Florida"],
+      georgia: ["Georgia"],
+      kentucky: ["Kentucky"],
+      lsu: ["LSU"],
+      olemiss: ["Ole Miss"],
+      mississippistate: ["Mississippi State", "Mississippi St", "Miss State", "Miss St"],
+      missouri: ["Missouri", "Mizzou"],
+      oklahoma: ["Oklahoma"],
+      southcarolina: ["South Carolina"],
+      tennessee: ["Tennessee"],
+      texas: ["Texas"],
+      texasam: ["Texas A&M", "Texas AM"],
+      vanderbilt: ["Vanderbilt"]
+    };
 
     function isSecTeam(teamName) {
       if (!teamName) return false;
-      const t = teamName.toLowerCase().trim();
-      return secPatterns.some(p => t === p || t.includes(p) || p.includes(t));
+      return secNormalizedNames.has(normalizeTeam(teamName));
     }
 
     function cleanTeamName(name) {
@@ -964,6 +983,10 @@
     function buildMatchupKey(teamA, teamB) {
       return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
     }
+
+    const secNormalizedNames = new Set(
+      Object.values(secTeamAliases).flat().map(n => normalizeTeam(n))
+    );
 
     function toggleTieBreakers() {
       const infoBox = document.getElementById("tiebreakersInfo");
@@ -1040,15 +1063,17 @@
           const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
           const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
-          // Team order must match makepicks.html / hostpicks.html exactly,
-          // since picks are stored keyed by matchupKey (built from this same
-          // team order). SEC team first if it's away and home isn't SEC;
-          // otherwise keep home first. (Previous "away always first" version
-          // reversed the key for any game where the SEC team is home,
-          // breaking the direct pick lookup for that game.)
-          let teamA = homeName;
-          let teamB = awayName;
-          if (!isSecTeam(homeName) && isSecTeam(awayName)) {
+          // Team order no longer depends on home/away at all — the SEC
+          // team is always teamA, the opponent is always teamB. This keeps
+          // every list sorted Alabama-through-Vanderbilt regardless of who
+          // hosts, and removes ESPN home/away data as a variable that could
+          // ever cause this file's matchup keys to disagree with
+          // makepicks.html or hostpicks.html.
+          let teamA, teamB;
+          if (isSecTeam(homeName)) {
+            teamA = homeName;
+            teamB = awayName;
+          } else {
             teamA = awayName;
             teamB = homeName;
           }
@@ -1157,7 +1182,11 @@
         return picks[matchKey];
       }
 
-      return direct || null;
+      // Do NOT fall back to the unvalidated `direct` value here — it already
+      // failed the team-name check above (or never existed). Returning it
+      // anyway let unrelated values leak through as if they belonged to this
+      // game, with no check that they had anything to do with either team.
+      return null;
     }
 
     function gradePicks(rawPicks, week) {
