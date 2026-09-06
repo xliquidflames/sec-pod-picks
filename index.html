@@ -925,19 +925,38 @@
     window.weekSchedules = {};
     window.liveGames = {};
 
-    const secPatterns = [
-      "alabama", "crimson tide", "arkansas", "razorbacks", "auburn", "tigers",
-      "florida", "gators", "georgia", "bulldogs", "kentucky", "wildcats",
-      "lsu", "ole miss", "rebels", "mississippi state", "miss state", "miss st",
-      "missouri", "mizzou", "oklahoma", "sooners", "south carolina", "gamecocks",
-      "tennessee", "volunteers", "vols", "texas", "longhorns", "texas a&m", "aggies",
-      "vanderbilt", "commodores", "vandy"
-    ];
+    // Canonical SEC team identities. Each entry lists every spelling ESPN
+    // might use for that team (full name, "St" abbreviation, nickname).
+    // Classification is by EXACT match against these known spellings, not
+    // substring matching — substring matching used to wrongly classify
+    // schools like "Texas State" or "Florida State" as SEC teams just
+    // because "Texas" or "Florida" appears inside their name. This list
+    // must stay byte-identical to the one in makepicks.html and
+    // hostpicks.html — any difference between them is exactly the kind of
+    // thing that causes a matchup key computed here to disagree with a key
+    // computed there.
+    const secTeamAliases = {
+      alabama: ["Alabama"],
+      arkansas: ["Arkansas"],
+      auburn: ["Auburn"],
+      florida: ["Florida"],
+      georgia: ["Georgia"],
+      kentucky: ["Kentucky"],
+      lsu: ["LSU"],
+      olemiss: ["Ole Miss"],
+      mississippistate: ["Mississippi State", "Mississippi St", "Miss State", "Miss St"],
+      missouri: ["Missouri", "Mizzou"],
+      oklahoma: ["Oklahoma"],
+      southcarolina: ["South Carolina"],
+      tennessee: ["Tennessee"],
+      texas: ["Texas"],
+      texasam: ["Texas A&M", "Texas AM"],
+      vanderbilt: ["Vanderbilt"]
+    };
 
     function isSecTeam(teamName) {
       if (!teamName) return false;
-      const t = teamName.toLowerCase().trim();
-      return secPatterns.some(p => t === p || t.includes(p) || p.includes(t));
+      return secNormalizedNames.has(normalizeTeam(teamName));
     }
 
     function cleanTeamName(name) {
@@ -949,6 +968,21 @@
       return name;
     }
 
+    // Every known spelling of each SEC team collapses to one canonical
+    // string here (built from secTeamAliases below normalizeTeam, but that
+    // works fine due to function hoisting). This is what actually fixes
+    // picks like "Miss State" not matching "Mississippi St" — two
+    // different abbreviations for the same team, used at different times,
+    // that would otherwise normalize to two different strings and never
+    // be recognized as the same pick.
+    const secNameCanonical = {};
+    Object.entries(secTeamAliases).forEach(([canonicalKey, variants]) => {
+      variants.forEach(variant => {
+        const crude = variant.toLowerCase().replace(/[^a-z0-9]/g, "");
+        secNameCanonical[crude] = canonicalKey;
+      });
+    });
+
     function normalizeTeam(str) {
       if (!str) return "";
       const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -958,12 +992,19 @@
       if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
         return "arkansas";
       }
+      if (secNameCanonical[cleaned]) {
+        return secNameCanonical[cleaned];
+      }
       return cleaned;
     }
 
     function buildMatchupKey(teamA, teamB) {
       return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
     }
+
+    const secNormalizedNames = new Set(
+      Object.values(secTeamAliases).flat().map(n => normalizeTeam(n))
+    );
 
     function toggleTieBreakers() {
       const infoBox = document.getElementById("tiebreakersInfo");
@@ -1040,9 +1081,20 @@
           const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
           const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
-          // Fixed: Consistent Away as teamA and Home as teamB alignment matching makepicks
-          let teamA = awayName;
-          let teamB = homeName;
+          // Team order no longer depends on home/away at all — the SEC
+          // team is always teamA, the opponent is always teamB. This keeps
+          // every list sorted Alabama-through-Vanderbilt regardless of who
+          // hosts, and removes ESPN home/away data as a variable that could
+          // ever cause this file's matchup keys to disagree with
+          // makepicks.html or hostpicks.html.
+          let teamA, teamB;
+          if (isSecTeam(homeName)) {
+            teamA = homeName;
+            teamB = awayName;
+          } else {
+            teamA = awayName;
+            teamB = homeName;
+          }
 
           const isFinal = comp.status && comp.status.type && comp.status.type.completed;
           const state = comp.status && comp.status.type && comp.status.type.state;
@@ -1076,7 +1128,15 @@
             rawOdds: rawOdds,
             detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
             winner: winnerName,
-            isLive: isLive
+            isLive: isLive,
+            // ESPN's own event id — stable no matter how ESPN formats a
+            // team's display name. Building the matchup key from team-name
+            // text (the old approach) breaks the moment ESPN shows a name
+            // even slightly differently between when a ballot was submitted
+            // (via makepicks.html, earlier in the week) and when this page
+            // loads live later — which is exactly what happened with UL
+            // Monroe. The id never changes, so keying on it can't drift.
+            espnId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null
           });
         });
 
@@ -1084,7 +1144,7 @@
 
         const mappedGames = rawGames.map((g, idx) => {
           const gameId = idx + 1;
-          const mKey = buildMatchupKey(g.teamA, g.teamB);
+          const mKey = g.espnId || buildMatchupKey(g.teamA, g.teamB);
           if (g.winner) {
             window.gameWinners[week][gameId] = g.winner;
             window.gameWinners[week][mKey] = g.winner;
@@ -1125,6 +1185,17 @@
         return picks[game.matchupKey];
       }
 
+      // Backward compatibility: entries submitted before this fix were
+      // stored under the old team-name-derived key (matchupKey is now
+      // ESPN's event id instead). Try that legacy key directly — a direct
+      // hit here is exact and safe, unlike the broad value-scan below,
+      // which stays as a last resort for anything neither key format
+      // catches (e.g. a genuine ESPN name change mid-week).
+      const legacyKey = buildMatchupKey(game.teamA, game.teamB);
+      if (picks[legacyKey]) {
+        return picks[legacyKey];
+      }
+
       const aNorm = normalizeTeam(game.teamA);
       const bNorm = normalizeTeam(game.teamB);
 
@@ -1148,7 +1219,11 @@
         return picks[matchKey];
       }
 
-      return direct || null;
+      // Do NOT fall back to the unvalidated `direct` value here — it already
+      // failed the team-name check above (or never existed). Returning it
+      // anyway let unrelated values leak through as if they belonged to this
+      // game, with no check that they had anything to do with either team.
+      return null;
     }
 
     function gradePicks(rawPicks, week) {
@@ -1172,7 +1247,7 @@
         } else {
           const uNorm = normalizeTeam(userPick);
           const wNorm = normalizeTeam(winner);
-          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)));
+          const isHit = (uNorm && uNorm === wNorm);
 
           if (isHit) {
             correct++;
@@ -1192,7 +1267,7 @@
       if (!winner || !userPick || userPick === "-") return "pick-pending";
       const uNorm = normalizeTeam(userPick);
       const wNorm = normalizeTeam(winner);
-      return (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) ? "pick-correct" : "pick-incorrect";
+      return (uNorm === wNorm) ? "pick-correct" : "pick-incorrect";
     }
 
     function computeAtsBadge(userPick, scoreObj, game) {
@@ -1353,7 +1428,7 @@
 
             const uNorm = normalizeTeam(userPick);
             const wNorm = normalizeTeam(winner);
-            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
+            const isHit = (uNorm === wNorm);
 
             if (isHit) {
               const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
@@ -1412,106 +1487,84 @@
         return b.underdogUpsetWins - a.underdogUpsetWins;
       });
 
-      const topStatsKey = candidateKey(sortedByStats[0]);
-      const tiedForTopCount = sortedByStats.filter(c => candidateKey(c) === topStatsKey).length;
-      
-      const thirdPlaceCandidate = sortedByStats[2] || sortedByStats[0];
-      const thirdPlaceKey = candidateKey(thirdPlaceCandidate);
-      const tiedWithPodiumCount = sortedByStats.filter(c => candidateKey(c) === thirdPlaceKey).length;
-
-      if (tiedForTopCount > 3 || tiedWithPodiumCount > 3) {
-        top5Container.innerHTML = `<div class="top3-pending" style="color: var(--accent-gold); font-size: 0.9rem; padding: 0.85rem 0;">Everyone is tied!</div>`;
-        if (decisionLog) {
-          decisionLog.innerHTML = `
-            <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Live Podium Decision Logic:</div>
-            <div class="tiebreaker-decision-item">
-              <strong>Complete Deadlock:</strong> ${tiedForTopCount} Cousins are currently tied across every performance tiebreaker. The Top 3 podium will emerge as weekend games conclude.
-            </div>
-          `;
-          decisionLog.style.display = "block";
+      // Group cousins into tiers: everyone sharing an identical line across
+      // all five tiebreakers occupies the same tier. Because the sort above is a
+      // total ordering built from those same five fields, cousins with an
+      // identical key always end up adjacent, so a single pass groups them
+      // correctly.
+      const tiers = [];
+      sortedByStats.forEach(c => {
+        const key = candidateKey(c);
+        const lastTier = tiers[tiers.length - 1];
+        if (lastTier && lastTier.key === key) {
+          lastTier.members.push(c);
+        } else {
+          tiers.push({ key, members: [c] });
         }
-        return;
-      }
-
-      const sortedCousins = allCousins.sort((a, b) => {
-        if (b.correct !== a.correct) return b.correct - a.correct;
-        if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
-        if (a.incorrect !== b.incorrect) return a.incorrect - b.incorrect;
-        if (b.consensusDivergenceWins !== a.consensusDivergenceWins) {
-          return b.consensusDivergenceWins - a.consensusDivergenceWins;
-        }
-        if (b.underdogUpsetWins !== a.underdogUpsetWins) {
-          return b.underdogUpsetWins - a.underdogUpsetWins;
-        }
-        return a.user_name.localeCompare(b.user_name);
       });
 
-      const top3Podium = sortedCousins.slice(0, 3);
+      const podiumTiers = tiers.slice(0, 3);
       const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
 
-      top5Container.innerHTML = top3Podium.map((c, idx) => `
-        <div class="top3-item">
-          <div style="display: flex; align-items: center;">
-            <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">#${idx + 1}</span>
-            <strong>${c.user_name}</strong>
-            ${c.lockCorrect > 0 ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
+      top5Container.innerHTML = podiumTiers.map((tier, idx) => {
+        const isTie = tier.members.length > 1;
+        const rep = tier.members[0];
+        const label = isTie ? `${tier.members.length}-way tie` : rep.user_name;
+        const lockBadge = (!isTie && rep.lockCorrect > 0)
+          ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>`
+          : '';
+        return `
+          <div class="top3-item">
+            <div style="display: flex; align-items: center;">
+              <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">#${idx + 1}</span>
+              <strong>${label}</strong>
+              ${lockBadge}
+            </div>
+            <div style="font-weight: 800; color: var(--accent-gold);">${rep.correct}-${rep.incorrect}</div>
           </div>
-          <div style="font-weight: 800; color: var(--accent-gold);">${c.correct}-${c.incorrect}</div>
-        </div>
-      `).join("");
+        `;
+      }).join("");
 
       if (decisionLog) {
-        const decisions = [];
-        const topWins = top3Podium[0]?.correct;
-        const contenders = sortedCousins.filter(c => c.correct === topWins);
+        const criteriaOrder = [
+          { field: "correct", label: "Total Correct Wins" },
+          { field: "lockCorrect", label: "Lock of the Week Hits" },
+          { field: "incorrect", label: "Fewest Total Losses" },
+          { field: "consensusDivergenceWins", label: "Consensus Divergence" },
+          { field: "underdogUpsetWins", label: "Underdog Upset Accuracy" }
+        ];
 
-        if (contenders.length > 1) {
-          const lockHits = Array.from(new Set(contenders.map(c => c.lockCorrect))).sort((a, b) => b - a);
-          if (lockHits.length > 1 && lockHits[0] > 0) {
-            const topLockCousins = contenders.filter(c => c.lockCorrect === lockHits[0]);
-            decisions.push(`
-              <div class="tiebreaker-decision-item">
-                <strong>Lock of the Week:</strong> ${topLockCousins.map(c => c.user_name).join(", ")} hit their Lock of the Week (${lockHits[0]}), breaking the tie over contenders with fewer lock wins.
-              </div>
-            `);
+        const firstDifference = (a, b) => {
+          for (const { field, label } of criteriaOrder) {
+            if (a[field] !== b[field]) return { label, aVal: a[field], bVal: b[field] };
           }
+          return null;
+        };
 
-          const divergenceCounts = Array.from(new Set(contenders.map(c => c.consensusDivergenceWins))).sort((a, b) => b - a);
-          if (divergenceCounts.length > 1 && divergenceCounts[0] > 0) {
-            const topDiv = contenders.filter(c => c.consensusDivergenceWins === divergenceCounts[0]);
-            const divPicks = topDiv[0]?.divergencePickList.join(", ") || "contrarian picks";
-            decisions.push(`
+        const placeLabels = ["1st Place", "2nd Place", "3rd Place"];
+        const decisions = podiumTiers.map((tier, idx) => {
+          if (tier.members.length > 1) {
+            return `
               <div class="tiebreaker-decision-item">
-                <strong>Consensus Divergence:</strong> ${topDiv.map(c => c.user_name).join(", ")} hit ${divergenceCounts[0]} against-the-grain pick(s) (${divPicks}) to earn tiebreaker advantage over other tied Cousins.
+                <strong>${placeLabels[idx]}:</strong> ${tier.members.length} Cousins are deadlocked with identical records across all five tiebreakers.
               </div>
-            `);
+            `;
           }
-
-          const underdogCounts = Array.from(new Set(contenders.map(c => c.underdogUpsetWins))).sort((a, b) => b - a);
-          if (underdogCounts.length > 1 && underdogCounts[0] > 0) {
-            const topDog = contenders.filter(c => c.underdogUpsetWins === underdogCounts[0]);
-            const dogPicks = topDog[0]?.underdogPickList.join(", ") || "underdog picks";
-            decisions.push(`
+          const nextTier = tiers[idx + 1];
+          const diff = nextTier ? firstDifference(tier.members[0], nextTier.members[0]) : null;
+          if (diff) {
+            return `
               <div class="tiebreaker-decision-item">
-                <strong>Underdog Upset Accuracy:</strong> ${topDog.map(c => c.user_name).join(", ")} correctly called ${dogPicks} to claim the higher podium seed.
+                <strong>${placeLabels[idx]}:</strong> ${tier.members[0].user_name} holds the spot outright, separated by ${diff.label} (${diff.aVal} vs ${diff.bVal}).
               </div>
-            `);
+            `;
           }
-
-          if (decisions.length === 0) {
-            decisions.push(`
-              <div class="tiebreaker-decision-item">
-                <strong>Alphabetical Seeding:</strong> Contenders are deadlocked across all performance metrics, so podium positions currently follow alphabetical ordering.
-              </div>
-            `);
-          }
-        } else {
-          decisions.push(`
+          return `
             <div class="tiebreaker-decision-item">
-              <strong>Outright Score:</strong> Season podium ranks are currently determined outright by total correct wins.
+              <strong>${placeLabels[idx]}:</strong> ${tier.members[0].user_name} holds the spot outright.
             </div>
-          `);
-        }
+          `;
+        });
 
         decisionLog.innerHTML = `
           <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Live Podium Decision Logic:</div>
@@ -1563,13 +1616,26 @@
           const lastKickoff = gameDates[gameDates.length - 1];
           const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
 
-          const sundayAfter = new Date(lastGameEnd);
-          sundayAfter.setDate(sundayAfter.getDate() + (7 - sundayAfter.getDay()) % 7);
-          sundayAfter.setHours(0, 0, 0, 0);
+          // Find the next Tuesday strictly after the last game ends. Using
+          // "next occurrence of a fixed weekday" (rather than "days until
+          // Sunday") avoids the bug where a week's last game falls ON that
+          // target weekday (as Week 1's Sunday game does) — the old
+          // (7 - day) % 7 math collapsed to 0 in that case and reset the
+          // transition point to the START of that same day, before the game
+          // had even been played. This also builds in the Mon/Tue buffer
+          // requested: the new week won't start loading until Tuesday,
+          // regardless of whether the prior week's finale was Saturday or
+          // (Week 1 only) Sunday. Change TRANSITION_WEEKDAY to 1 for Monday.
+          const TRANSITION_WEEKDAY = 2; // 0=Sun, 1=Mon, 2=Tue, ...
+          const transitionDay = new Date(lastGameEnd);
+          transitionDay.setHours(0, 0, 0, 0);
+          do {
+            transitionDay.setDate(transitionDay.getDate() + 1);
+          } while (transitionDay.getDay() !== TRANSITION_WEEKDAY);
 
           if (currentTime >= firstKickoff) {
             activeW = w;
-            if (currentTime >= sundayAfter) {
+            if (currentTime >= transitionDay) {
               activeW = Math.min(w + 1, openW);
             }
           }
@@ -1850,7 +1916,7 @@
               } else {
                 const uNorm = normalizeTeam(pick);
                 const wNorm = normalizeTeam(winner);
-                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
+                if (uNorm === wNorm) {
                   cousinLocksWon++;
                 } else {
                   cousinLocksLost++;
@@ -1959,7 +2025,7 @@
                 const uPick = lKey ? hPicks[lKey] : (hPicks[lGameId] || hPicks[String(lGameId)]);
                 const uNorm = normalizeTeam(uPick);
                 const wNorm = normalizeTeam(winner);
-                if (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) {
+                if (uNorm === wNorm) {
                   hostLocksWon++;
                 }
               }
@@ -2003,14 +2069,14 @@
       await loadAllSeasonData();
       await switchWeek(activeWeek);
 
-      setInterval(async () => {
-        if (activeWeek) {
-          await renderActiveWeek();
-        }
-      }, 60000);
+      // Live scores are pulled once here, at page load. We deliberately do
+      // NOT auto-refresh on a timer anymore — it was wiping out expanded
+      // cousin cards and scroll position every 60 seconds. If someone wants
+      // updated scores, a manual browser refresh re-runs this same load.
     }
 
     initApp();
   </script>
 </body>
 </html>
+
