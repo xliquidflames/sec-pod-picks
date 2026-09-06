@@ -1110,7 +1110,15 @@
             rawOdds: rawOdds,
             detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
             winner: winnerName,
-            isLive: isLive
+            isLive: isLive,
+            // ESPN's own event id — stable no matter how ESPN formats a
+            // team's display name. Building the matchup key from team-name
+            // text (the old approach) breaks the moment ESPN shows a name
+            // even slightly differently between when a ballot was submitted
+            // (via makepicks.html, earlier in the week) and when this page
+            // loads live later — which is exactly what happened with UL
+            // Monroe. The id never changes, so keying on it can't drift.
+            espnId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null
           });
         });
 
@@ -1118,7 +1126,7 @@
 
         const mappedGames = rawGames.map((g, idx) => {
           const gameId = idx + 1;
-          const mKey = buildMatchupKey(g.teamA, g.teamB);
+          const mKey = g.espnId || buildMatchupKey(g.teamA, g.teamB);
           if (g.winner) {
             window.gameWinners[week][gameId] = g.winner;
             window.gameWinners[week][mKey] = g.winner;
@@ -1157,6 +1165,17 @@
 
       if (picks[game.matchupKey]) {
         return picks[game.matchupKey];
+      }
+
+      // Backward compatibility: entries submitted before this fix were
+      // stored under the old team-name-derived key (matchupKey is now
+      // ESPN's event id instead). Try that legacy key directly — a direct
+      // hit here is exact and safe, unlike the broad value-scan below,
+      // which stays as a last resort for anything neither key format
+      // catches (e.g. a genuine ESPN name change mid-week).
+      const legacyKey = buildMatchupKey(game.teamA, game.teamB);
+      if (picks[legacyKey]) {
+        return picks[legacyKey];
       }
 
       const aNorm = normalizeTeam(game.teamA);
