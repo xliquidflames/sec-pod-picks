@@ -450,7 +450,14 @@
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
-            detail: `${time} | ${odds} | ${venue}`
+            detail: `${time} | ${odds} | ${venue}`,
+            // ESPN's own event id — stable no matter how ESPN formats a
+            // team's display name. Building the matchup key from team-name
+            // text (the old approach) breaks the moment ESPN shows a name
+            // even slightly differently between when this ballot was
+            // submitted and when index.html loads later — which is
+            // exactly what happened with UL Monroe. The id never changes.
+            espnId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null
           });
         });
 
@@ -458,7 +465,7 @@
 
         return rawGames.map((g, idx) => ({
           id: idx + 1,
-          matchupKey: buildMatchupKey(g.teamA, g.teamB),
+          matchupKey: g.espnId || buildMatchupKey(g.teamA, g.teamB),
           teamA: g.teamA,
           teamB: g.teamB,
           detail: g.detail
