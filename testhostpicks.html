@@ -346,11 +346,30 @@
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const secCanonicalList = [
-      "Alabama", "Arkansas", "Auburn", "Florida", "Georgia", "Kentucky",
-      "LSU", "Ole Miss", "Mississippi State", "Miss State", "Missouri",
-      "Oklahoma", "South Carolina", "Tennessee", "Texas", "Texas A&M", "Vanderbilt"
-    ];
+    // Canonical SEC team identities. Each entry lists every spelling ESPN
+    // might use for that team (full name, "St" abbreviation, nickname).
+    // Classification is by EXACT match against these known spellings, not
+    // substring matching — substring matching used to wrongly classify
+    // schools like "Texas State" or "Florida State" as SEC teams just
+    // because "Texas" or "Florida" appears inside their name.
+    const secTeamAliases = {
+      alabama: ["Alabama"],
+      arkansas: ["Arkansas"],
+      auburn: ["Auburn"],
+      florida: ["Florida"],
+      georgia: ["Georgia"],
+      kentucky: ["Kentucky"],
+      lsu: ["LSU"],
+      olemiss: ["Ole Miss"],
+      mississippistate: ["Mississippi State", "Mississippi St", "Miss State", "Miss St"],
+      missouri: ["Missouri", "Mizzou"],
+      oklahoma: ["Oklahoma"],
+      southcarolina: ["South Carolina"],
+      tennessee: ["Tennessee"],
+      texas: ["Texas"],
+      texasam: ["Texas A&M", "Texas AM"],
+      vanderbilt: ["Vanderbilt"]
+    };
 
     let currentSchedule = [];
     let hostPicks = {};
@@ -368,8 +387,7 @@
 
     function isSecTeam(teamName) {
       if (!teamName) return false;
-      const lower = teamName.toLowerCase().trim();
-      return secCanonicalList.some(sec => lower.includes(sec.toLowerCase()) || sec.toLowerCase().includes(lower));
+      return secNormalizedNames.has(normalizeTeam(teamName));
     }
 
     function normalizeTeam(str) {
@@ -383,6 +401,10 @@
       }
       return cleaned;
     }
+
+    const secNormalizedNames = new Set(
+      Object.values(secTeamAliases).flat().map(n => normalizeTeam(n))
+    );
 
     function buildMatchupKey(teamA, teamB) {
       return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
@@ -406,10 +428,17 @@
           const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
           const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
-          let teamA = homeName;
-          let teamB = awayName;
-
-          if (!isSecTeam(homeName) && isSecTeam(awayName)) {
+          // Team order no longer depends on home/away at all — the SEC
+          // team is always teamA, the opponent is always teamB. This keeps
+          // every list sorted Alabama-through-Vanderbilt regardless of who
+          // hosts, and removes ESPN home/away data as a variable that could
+          // ever cause this file's matchup keys to disagree with index.html
+          // or makepicks.html.
+          let teamA, teamB;
+          if (isSecTeam(homeName)) {
+            teamA = homeName;
+            teamB = awayName;
+          } else {
             teamA = awayName;
             teamB = homeName;
           }
