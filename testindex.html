@@ -1172,7 +1172,7 @@
         } else {
           const uNorm = normalizeTeam(userPick);
           const wNorm = normalizeTeam(winner);
-          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)));
+          const isHit = (uNorm && (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)));
 
           if (isHit) {
             correct++;
@@ -1192,7 +1192,7 @@
       if (!winner || !userPick || userPick === "-") return "pick-pending";
       const uNorm = normalizeTeam(userPick);
       const wNorm = normalizeTeam(winner);
-      return (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm)) ? "pick-correct" : "pick-incorrect";
+      return (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm)) ? "pick-correct" : "pick-incorrect";
     }
 
     function computeAtsBadge(userPick, scoreObj, game) {
@@ -1353,7 +1353,7 @@
 
             const uNorm = normalizeTeam(userPick);
             const wNorm = normalizeTeam(winner);
-            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(wNorm));
+            const isHit = (uNorm === wNorm || uNorm.includes(wNorm) || wNorm.includes(uNorm));
 
             if (isHit) {
               const gameDist = (weekGameDistributions[row.week_number] || {})[gameObj.matchupKey];
@@ -1637,8 +1637,8 @@
       const hostSteven = hostRows.find(h => h.user_name?.toLowerCase() === "steven");
 
       const mikePicks = hostMike ? parseUserPicks(hostMike.picks) : {};
-      const shanePicks = hostShane ? parseUserPicks(shanePicks.picks) : {};
-      const stevenPicks = hostSteven ? parseUserPicks(stevenPicks.picks) : {};
+      const shanePicks = hostShane ? parseUserPicks(hostShane.picks) : {};
+      const stevenPicks = hostSteven ? parseUserPicks(hostSteven.picks) : {};
 
       const mikeScores = mikePicks.scores || {};
       const shaneScores = shanePicks.scores || {};
