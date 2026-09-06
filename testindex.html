@@ -968,6 +968,21 @@
       return name;
     }
 
+    // Every known spelling of each SEC team collapses to one canonical
+    // string here (built from secTeamAliases below normalizeTeam, but that
+    // works fine due to function hoisting). This is what actually fixes
+    // picks like "Miss State" not matching "Mississippi St" — two
+    // different abbreviations for the same team, used at different times,
+    // that would otherwise normalize to two different strings and never
+    // be recognized as the same pick.
+    const secNameCanonical = {};
+    Object.entries(secTeamAliases).forEach(([canonicalKey, variants]) => {
+      variants.forEach(variant => {
+        const crude = variant.toLowerCase().replace(/[^a-z0-9]/g, "");
+        secNameCanonical[crude] = canonicalKey;
+      });
+    });
+
     function normalizeTeam(str) {
       if (!str) return "";
       const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -976,6 +991,9 @@
       }
       if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
         return "arkansas";
+      }
+      if (secNameCanonical[cleaned]) {
+        return secNameCanonical[cleaned];
       }
       return cleaned;
     }
