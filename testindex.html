@@ -1040,7 +1040,7 @@
           const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
           const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
-          // Fixed: Always maintain Away as teamA and Home as teamB consistently
+          // Fixed: Consistent Away as teamA and Home as teamB alignment matching makepicks
           let teamA = awayName;
           let teamB = homeName;
 
