@@ -374,12 +374,6 @@
     // behind them), so it stays off for that one week specifically.
     const isLockAllowed = (targetWeek !== 1);
 
-    const submittedStorageKey = `sec_picks_submitted_w${targetWeek}`;
-    if (localStorage.getItem(submittedStorageKey)) {
-      alert(`You have already submitted an entry for Week ${targetWeek}. Redirecting to the leaderboard...`);
-      window.location.href = "index.html";
-    }
-
     // Canonical SEC team identities. Each entry lists every spelling ESPN
     // might use for that team (full name, "St" abbreviation, nickname).
     // Classification is by EXACT match against these known spellings, not
@@ -527,7 +521,17 @@
           }
 
           const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "Line: TBD";
+          const isNeutralSite = comp.neutralSite === true;
+          const city = comp.venue && comp.venue.address ? comp.venue.address.city : "";
           const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : "";
+
+          // Real "Away @ Home" convention, using ESPN's actual home/away
+          // designation — kept completely separate from teamA/teamB, which
+          // stay SEC-team-first for the matchup key and sort order no
+          // matter what. This is purely the label people read.
+          const matchupLabel = isNeutralSite
+            ? `${awayName} @ ${homeName}${city ? ` in ${city}` : ""} (NS)`
+            : `${awayName} @ ${homeName}`;
           
           let time = "TBD";
           if (comp.date) {
@@ -538,6 +542,9 @@
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
+            awayName: awayName,
+            homeName: homeName,
+            matchupLabel: matchupLabel,
             detail: `${time} | ${odds} | ${venue}`,
             // ESPN's own event id — stable no matter how ESPN formats a
             // team's display name. Building the matchup key from team-name
@@ -556,6 +563,9 @@
           matchupKey: g.espnId || buildMatchupKey(g.teamA, g.teamB),
           teamA: g.teamA,
           teamB: g.teamB,
+          awayName: g.awayName,
+          homeName: g.homeName,
+          matchupLabel: g.matchupLabel,
           detail: g.detail
         }));
 
@@ -668,15 +678,15 @@
         card.id = `card_${g.matchupKey}`;
         card.innerHTML = `
           <div class="game-header-row">
-            <span class="game-title">Game ${g.id}: ${g.teamA} vs ${g.teamB}</span>
+            <span class="game-title">Game ${g.id}: ${g.matchupLabel}</span>
             ${isLockAllowed ? `
               <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">Lock Of\nThe Week</button>
             ` : ""}
           </div>
           ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           <div class="pick-grid">
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${g.teamA}</button>
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${g.teamB}</button>
+            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.awayName}')">${g.awayName}</button>
+            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.homeName}')">${g.homeName}</button>
           </div>
         `;
         container.appendChild(card);
@@ -804,8 +814,6 @@
           }
           return;
         }
-
-        localStorage.setItem(submittedStorageKey, "true");
 
         statusAlert.style.color = "var(--success)";
         statusAlert.innerHTML = `Week ${targetWeek} ballot submitted! Returning to Leaderboard...`;
