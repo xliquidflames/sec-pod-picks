@@ -374,12 +374,6 @@
     // behind them), so it stays off for that one week specifically.
     const isLockAllowed = (targetWeek !== 1);
 
-    const submittedStorageKey = `sec_picks_submitted_w${targetWeek}`;
-    if (localStorage.getItem(submittedStorageKey)) {
-      alert(`You have already submitted an entry for Week ${targetWeek}. Redirecting to the leaderboard...`);
-      window.location.href = "index.html";
-    }
-
     // Canonical SEC team identities. Each entry lists every spelling ESPN
     // might use for that team (full name, "St" abbreviation, nickname).
     // Classification is by EXACT match against these known spellings, not
@@ -820,8 +814,6 @@
           }
           return;
         }
-
-        localStorage.setItem(submittedStorageKey, "true");
 
         statusAlert.style.color = "var(--success)";
         statusAlert.innerHTML = `Week ${targetWeek} ballot submitted! Returning to Leaderboard...`;
