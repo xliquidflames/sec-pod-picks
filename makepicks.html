@@ -104,6 +104,17 @@
       margin-bottom: 1.25rem;
     }
 
+    .name-reminder {
+      font-size: 0.8rem;
+      color: var(--text-main);
+      margin-top: 0.45rem;
+      line-height: 1.4;
+    }
+
+    .name-reminder strong {
+      color: var(--accent-gold);
+    }
+
     label {
       display: block;
       color: var(--text-main);
@@ -187,8 +198,8 @@
     }
 
     .game-detail {
-      font-size: 0.72rem;
-      color: var(--text-muted);
+      font-size: 0.8rem;
+      color: var(--text-main);
       display: block;
       margin-bottom: 0.75rem;
       line-height: 1.3;
@@ -284,6 +295,9 @@
       <div class="user-input-group">
         <label for="userNameInput">Your Handle / Name:</label>
         <input type="text" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" required />
+        <div class="name-reminder">
+          ⚠️ Type it <strong>exactly</strong> the same every week — same spelling, capitalization, and @ symbol (if you use one). "SECFan" and "@SECFan" and "secfan" count as different people and your season total won't add up if they don't match exactly.
+        </div>
       </div>
 
       <div id="gamesList">
@@ -353,6 +367,21 @@
       return secNormalizedNames.has(normalizeTeam(teamName));
     }
 
+    // Every known spelling of each SEC team collapses to one canonical
+    // string here (built from secTeamAliases above, before normalizeTeam —
+    // fine due to function hoisting). This is what actually fixes picks
+    // like "Miss State" not matching "Mississippi St" — two different
+    // abbreviations for the same team, used at different times, that
+    // would otherwise normalize to two different strings and never be
+    // recognized as the same pick.
+    const secNameCanonical = {};
+    Object.entries(secTeamAliases).forEach(([canonicalKey, variants]) => {
+      variants.forEach(variant => {
+        const crude = variant.toLowerCase().replace(/[^a-z0-9]/g, "");
+        secNameCanonical[crude] = canonicalKey;
+      });
+    });
+
     function normalizeTeam(str) {
       if (!str) return "";
       const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -361,6 +390,9 @@
       }
       if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
         return "arkansas";
+      }
+      if (secNameCanonical[cleaned]) {
+        return secNameCanonical[cleaned];
       }
       return cleaned;
     }
