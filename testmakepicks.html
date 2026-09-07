@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Make Picks - That SEC Podcast</title>
+  <script data-goatcounter="https://liquidflames.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -316,6 +318,12 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const targetWeek = parseInt(urlParams.get("week"), 10) || 1;
+    // Lock of the Week applies to Week 2 onward. Week 1 is permanently
+    // exempt — not a bug, a deliberate choice: the feature didn't exist
+    // yet when Week 1 picks were submitted, so there's no lock data for
+    // that week and never will be. Showing lock UI or stats for Week 1
+    // would just be confusing (empty/placeholder values with nothing
+    // behind them), so it stays off for that one week specifically.
     const isLockAllowed = (targetWeek !== 1);
 
     const submittedStorageKey = `sec_picks_submitted_w${targetWeek}`;
@@ -607,6 +615,12 @@
       if (pickedGameCount < currentSchedule.length) {
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = `Please make selections for all ${currentSchedule.length} games.`;
+        return;
+      }
+
+      if (isLockAllowed && !currentLockMatchupKey) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = "Please select your Lock of the Week pick before submitting.";
         return;
       }
 
