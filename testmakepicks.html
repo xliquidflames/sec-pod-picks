@@ -106,6 +106,46 @@
       margin-bottom: 1.25rem;
     }
 
+    .name-input-wrapper {
+      position: relative;
+    }
+
+    .name-suggestions {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 20;
+    }
+
+    .name-suggestions.open {
+      display: block;
+    }
+
+    .name-suggestion-item {
+      padding: 0.55rem 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      cursor: pointer;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .name-suggestion-item:last-child {
+      border-bottom: none;
+    }
+
+    .name-suggestion-item:hover {
+      background: var(--accent-gold);
+      color: #0a1120;
+    }
+
     .name-reminder {
       font-size: 0.8rem;
       color: var(--text-main);
@@ -300,7 +340,10 @@
     <div class="card-panel">
       <div class="user-input-group">
         <label for="userNameInput">Your Handle / Name:</label>
-        <input type="text" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" required />
+        <div class="name-input-wrapper">
+          <input type="text" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" autocomplete="off" required />
+          <div id="nameSuggestions" class="name-suggestions"></div>
+        </div>
         <div class="name-reminder">
           ⚠️ Type it <strong>exactly</strong> the same every week — same spelling, capitalization, and @ symbol (if you use one). "SECFan" and "@SECFan" count as two different people, and your season total won't add up if you switch back and forth.
         </div>
@@ -527,8 +570,87 @@
       document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
       document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
 
+      loadKnownNames();
+      setupNameAutocomplete();
+
       currentSchedule = await fetchEspnSchedule(targetWeek);
       renderForm();
+    }
+
+    // Pulls every distinct name anyone has ever submitted under (across all
+    // weeks, not just this one) so we can suggest it back to a returning
+    // cousin as they type — the goal is to make it easy to pick the exact
+    // same spelling they used before, since a mismatched name silently
+    // splits one person into two entries in the season standings.
+    let knownNames = [];
+
+    async function loadKnownNames() {
+      try {
+        const { data, error } = await supabaseClient
+          .from("picks")
+          .select("user_name")
+          .eq("is_host", false);
+
+        if (error || !data) return;
+
+        const seen = new Set();
+        const names = [];
+        data.forEach(row => {
+          const trimmed = (row.user_name || "").trim();
+          const key = trimmed.toLowerCase();
+          if (trimmed && !seen.has(key)) {
+            seen.add(key);
+            names.push(trimmed);
+          }
+        });
+        names.sort((a, b) => a.localeCompare(b));
+        knownNames = names;
+      } catch (err) {
+        console.error("Could not load known names:", err);
+      }
+    }
+
+    function setupNameAutocomplete() {
+      const input = document.getElementById("userNameInput");
+      const box = document.getElementById("nameSuggestions");
+      if (!input || !box) return;
+
+      input.addEventListener("input", () => {
+        const query = input.value.trim().toLowerCase();
+        if (!query) {
+          box.classList.remove("open");
+          box.innerHTML = "";
+          return;
+        }
+        const matches = knownNames
+          .filter(n => n.toLowerCase().includes(query))
+          .slice(0, 6);
+
+        if (matches.length === 0) {
+          box.classList.remove("open");
+          box.innerHTML = "";
+          return;
+        }
+
+        box.innerHTML = matches.map(n =>
+          `<div class="name-suggestion-item">${n}</div>`
+        ).join("");
+        box.classList.add("open");
+      });
+
+      box.addEventListener("click", (e) => {
+        const item = e.target.closest(".name-suggestion-item");
+        if (!item) return;
+        input.value = item.textContent;
+        box.classList.remove("open");
+        box.innerHTML = "";
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".name-input-wrapper")) {
+          box.classList.remove("open");
+        }
+      });
     }
 
     function renderForm() {
