@@ -469,13 +469,34 @@
           const city = comp.venue && comp.venue.address ? comp.venue.address.city : '';
           const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
 
-          // Real "Away @ Home" convention, using ESPN's actual home/away
-          // designation — kept completely separate from teamA/teamB, which
-          // stay SEC-team-first for the matchup key and sort order no
-          // matter what. This is purely the label people read.
-          const matchupLabel = isNeutralSite
-            ? `${awayName} @ ${homeName}${city ? ` in ${city}` : ''} (NS)`
-            : `${awayName} @ ${homeName}`;
+          // Label wording — separate from teamA/teamB, which stay SEC-
+          // team-first no matter what for the matchup key, sort order, and
+          // grading. The SEC side leads the sentence whenever exactly one
+          // team is SEC (an SEC team traveling reads naturally as "Texas @
+          // Ohio State"; an SEC team hosting flips to "Arkansas hosts
+          // Tulane" instead of "Tulane @ Arkansas", so it still reads
+          // alphabetically down the list). A true conference game just
+          // uses the plain, real away/home order. displayFirst/
+          // displaySecond carry that same order into the pick buttons and
+          // score labels below, so those stay visually in sync with
+          // whatever the header says.
+          const homeIsSec = isSecTeam(homeName);
+          const awayIsSec = isSecTeam(awayName);
+          const isConferenceGame = homeIsSec && awayIsSec;
+
+          let displayFirst, displaySecond, matchupLabel;
+          if (!isConferenceGame && homeIsSec) {
+            displayFirst = homeName;
+            displaySecond = awayName;
+            matchupLabel = `${homeName} hosts ${awayName}`;
+          } else {
+            displayFirst = awayName;
+            displaySecond = homeName;
+            matchupLabel = `${awayName} @ ${homeName}`;
+          }
+          if (isNeutralSite) {
+            matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
+          }
           
           let time = "TBD";
           if (isFinal) {
@@ -490,6 +511,8 @@
             teamB: teamB,
             awayName: awayName,
             homeName: homeName,
+            displayFirst: displayFirst,
+            displaySecond: displaySecond,
             matchupLabel: matchupLabel,
             detail: isFinal ? `${time} | ${venue}` : `${time} | ${odds} | ${venue}`,
             // ESPN's own event id — stable no matter how ESPN formats a
@@ -510,6 +533,8 @@
           teamB: g.teamB,
           awayName: g.awayName,
           homeName: g.homeName,
+          displayFirst: g.displayFirst,
+          displaySecond: g.displaySecond,
           matchupLabel: g.matchupLabel,
           detail: g.detail
         }));
@@ -552,21 +577,21 @@
           </div>
           ${game.detail ? `<span class="game-detail">${game.detail}</span>` : ''}
           <div class="pick-buttons-grid">
-            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_A" onclick="selectTeam('${game.matchupKey}', '${game.awayName}')">
-              ${game.awayName}
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_A" onclick="selectTeam('${game.matchupKey}', '${game.displayFirst}')">
+              ${game.displayFirst}
             </button>
-            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_B" onclick="selectTeam('${game.matchupKey}', '${game.homeName}')">
-              ${game.homeName}
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_B" onclick="selectTeam('${game.matchupKey}', '${game.displaySecond}')">
+              ${game.displaySecond}
             </button>
           </div>
           <div class="score-inputs-grid">
             <div class="score-group">
-              <span class="score-label">${game.awayName} Score</span>
-              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_A" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.awayName}', '${game.homeName}')" />
+              <span class="score-label">${game.displayFirst} Score</span>
+              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_A" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.displayFirst}', '${game.displaySecond}')" />
             </div>
             <div class="score-group">
-              <span class="score-label">${game.homeName} Score</span>
-              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_B" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.awayName}', '${game.homeName}')" />
+              <span class="score-label">${game.displaySecond} Score</span>
+              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_B" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.displayFirst}', '${game.displaySecond}')" />
             </div>
           </div>
         `;
