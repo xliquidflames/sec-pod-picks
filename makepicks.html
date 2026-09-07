@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Make Picks - That SEC Podcast</title>
+  <script data-goatcounter="https://liquidflames.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -179,6 +181,10 @@
       cursor: pointer;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: pre-line;
+      line-height: 1.25;
       gap: 0.3rem;
       transition: all 0.15s ease;
       text-transform: uppercase;
@@ -296,7 +302,7 @@
         <label for="userNameInput">Your Handle / Name:</label>
         <input type="text" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" required />
         <div class="name-reminder">
-          ⚠️ Type it <strong>exactly</strong> the same every week — same spelling, spacing, capitalization, and @ symbol if you use one. "SECFan","@SECFan","SEC Fan", and "secfan" count as different people and your season total won't add up.
+          ⚠️ Type it <strong>exactly</strong> the same every week — same spelling, capitalization, and @ symbol (if you use one). "SECFan" and "@SECFan" count as two different people, and your season total won't add up if you switch back and forth.
         </div>
       </div>
 
@@ -316,6 +322,12 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const targetWeek = parseInt(urlParams.get("week"), 10) || 1;
+    // Lock of the Week applies to Week 2 onward. Week 1 is permanently
+    // exempt — not a bug, a deliberate choice: the feature didn't exist
+    // yet when Week 1 picks were submitted, so there's no lock data for
+    // that week and never will be. Showing lock UI or stats for Week 1
+    // would just be confusing (empty/placeholder values with nothing
+    // behind them), so it stays off for that one week specifically.
     const isLockAllowed = (targetWeek !== 1);
 
     const submittedStorageKey = `sec_picks_submitted_w${targetWeek}`;
@@ -535,9 +547,7 @@
           <div class="game-header-row">
             <span class="game-title">Game ${g.id}: ${g.teamA} vs ${g.teamB}</span>
             ${isLockAllowed ? `
-              <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">
-                Lock of the Week
-              </button>
+              <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">Lock Of\nThe Week</button>
             ` : ""}
           </div>
           ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
@@ -586,7 +596,7 @@
           } else {
             card.classList.remove("is-locked");
             lockBtn.classList.remove("active");
-            lockBtn.textContent = "Lock of the Week";
+            lockBtn.textContent = "Lock Of\nThe Week";
           }
         }
       });
@@ -607,6 +617,12 @@
       if (pickedGameCount < currentSchedule.length) {
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = `Please make selections for all ${currentSchedule.length} games.`;
+        return;
+      }
+
+      if (isLockAllowed && !currentLockMatchupKey) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = "Please select your Lock of the Week pick before submitting.";
         return;
       }
 
