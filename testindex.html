@@ -1191,15 +1191,34 @@
           const city = comp.venue && comp.venue.address ? comp.venue.address.city : '';
           const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
 
-          // Real "Away @ Home" convention, using the actual ESPN home/away
-          // designation — separate from teamA/teamB, which stay SEC-team-
-          // first no matter what for the matchup key, sort order, and
-          // grading. This is purely the label a person reads; it never
-          // touches how a pick gets stored or matched.
-          const matchupLabel = isNeutralSite
-            ? `${awayName} @ ${homeName}${city ? ` in ${city}` : ''} (NS)`
-            : `${awayName} @ ${homeName}`;
-          
+          // Label wording — separate from teamA/teamB, which stay SEC-
+          // team-first no matter what for the matchup key, sort order, and
+          // grading. The SEC side leads the sentence whenever exactly one
+          // team is SEC (an SEC team traveling reads naturally as "Texas @
+          // Ohio State"; an SEC team hosting flips to "Arkansas hosts
+          // Tulane" instead of "Tulane @ Arkansas", so it still reads
+          // alphabetically down the list). A true conference game just
+          // uses the plain, real away/home order — two SEC names next to
+          // each other doesn't create the same "wait, that's not
+          // alphabetical" jolt a non-conference opponent leading would.
+          const homeIsSec = isSecTeam(homeName);
+          const awayIsSec = isSecTeam(awayName);
+          const isConferenceGame = homeIsSec && awayIsSec;
+
+          let displayFirst, displaySecond, matchupLabel;
+          if (!isConferenceGame && homeIsSec) {
+            displayFirst = homeName;
+            displaySecond = awayName;
+            matchupLabel = `${homeName} hosts ${awayName}`;
+          } else {
+            displayFirst = awayName;
+            displaySecond = homeName;
+            matchupLabel = `${awayName} @ ${homeName}`;
+          }
+          if (isNeutralSite) {
+            matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
+          }
+
           let time = "TBD";
           if (isFinal) {
             time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
