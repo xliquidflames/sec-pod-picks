@@ -5,6 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>That SEC Podcast Pick'em Headquarters</title>
+  <script data-goatcounter="https://liquidflames.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -187,11 +189,61 @@
       text-transform: uppercase;
     }
 
+    .season-standings-card, .elevated-card {
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    }
+
+    .tier-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .tier-header.expandable {
+      cursor: pointer;
+    }
+
+    .tier-toggle-arrow {
+      color: var(--accent-gold);
+      font-weight: bold;
+      margin-left: 0.5rem;
+    }
+
+    .tier-names-grid {
+      display: none;
+      column-count: 4;
+      column-gap: 0.6rem;
+      font-size: 0.64rem;
+      color: var(--text-muted);
+      line-height: 1.75;
+      padding-top: 0.5rem;
+      margin-top: 0.5rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .tier-names-grid.open {
+      display: block;
+    }
+
+    .tier-names-grid span {
+      display: block;
+      break-inside: avoid;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    @media (max-width: 380px) {
+      .tier-names-grid {
+        column-count: 3;
+      }
+    }
+
     .tiebreakers-toggle {
       background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 0.75rem;
+      font-size: 0.65rem;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -731,11 +783,14 @@
       <div class="main-title-badge">2026 Pick'em Headquarters</div>
     </header>
 
-    <div class="card">
+    <div class="card season-standings-card">
       <div class="section-title-bar">
         <h2 class="section-title">Season Standings</h2>
       </div>
 
+      <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
+        Hosts
+      </span>
       <div class="host-season-strip">
         <div class="host-season-card">
           <div class="host-season-name">Mike</div>
@@ -752,7 +807,7 @@
       </div>
 
       <div id="top5Section" style="margin-top: 0.8rem;">
-        <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
+        <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
           Top 3 Cousins
         </span>
         <div id="top5CousinsList">
@@ -811,7 +866,7 @@
     </div>
 
     <div id="weekContent">
-      <div class="card">
+      <div class="card elevated-card">
         <div class="host-header-toggle" onclick="toggleHostGrid()">
           <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
@@ -834,7 +889,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card elevated-card">
         <div class="section-title-bar">
           <h2 class="section-title" id="weekCousinsTitle">The Cousins' Week 1 Picks</h2>
           <span class="entry-pill" id="entryPill">0 Entries</span>
@@ -1549,6 +1604,11 @@
       const podiumTiers = tiers.slice(0, 3);
       const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
 
+      const namesGrid = (members, gridId) => {
+        const sorted = [...members].sort((a, b) => a.user_name.localeCompare(b.user_name));
+        return `<div class="tier-names-grid" id="${gridId}">${sorted.map(m => `<span>${m.user_name}</span>`).join("")}</div>`;
+      };
+
       top5Container.innerHTML = podiumTiers.map((tier, idx) => {
         const isTie = tier.members.length > 1;
         const rep = tier.members[0];
@@ -1556,14 +1616,21 @@
         const lockBadge = (!isTie && rep.lockCorrect > 0)
           ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>`
           : '';
+        const gridId = `tierNames_${idx}`;
         return `
-          <div class="top3-item">
-            <div style="display: flex; align-items: center;">
-              <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">#${idx + 1}</span>
-              <strong>${label}</strong>
-              ${lockBadge}
+          <div class="top3-item" style="flex-direction: column; align-items: stretch;">
+            <div class="tier-header ${isTie ? 'expandable' : ''}" ${isTie ? `onclick="toggleTierExpand('${gridId}')"` : ''}>
+              <div style="display: flex; align-items: center;">
+                <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">${idx + 1}</span>
+                <strong>${label}</strong>
+                ${lockBadge}
+              </div>
+              <div style="display: flex; align-items: center;">
+                <span style="font-weight: 800; color: var(--accent-gold);">${rep.correct}-${rep.incorrect}</span>
+                ${isTie ? `<span class="tier-toggle-arrow">+</span>` : ''}
+              </div>
             </div>
-            <div style="font-weight: 800; color: var(--accent-gold);">${rep.correct}-${rep.incorrect}</div>
+            ${isTie ? namesGrid(tier.members, gridId) : ''}
           </div>
         `;
       }).join("");
@@ -1837,29 +1904,30 @@
       });
 
       const uniqueWeeklyWins = Array.from(new Set(cousinRows.map(c => c.score.correct))).sort((a, b) => b - a);
-      const wTier1Wins = uniqueWeeklyWins[0];
-      const wTier2Wins = uniqueWeeklyWins[1];
-      const wTier3Wins = uniqueWeeklyWins[2];
 
       const gamesHaveStarted = cousinRows.some(c => c.score.correct > 0 || c.score.incorrect > 0);
 
-      let seqWeeklyRank = 4;
+      // Dense ranking for the whole list, not just the top 3: every cousin
+      // sharing a win total shares a rank, and the next distinct win total
+      // gets the very next rank number — no gaps. So four people tied at
+      // 14-2 are all "#3", and the next group down (13-3, however many
+      // people) is "#4", not "#4" through "#8". This used to only apply to
+      // 1st/2nd/3rd; past that it fell back to a plain sequential counter
+      // that gave ties in 4th place or lower different numbers.
+      const rankClassFor = (rank) => {
+        if (rank === 1) return "rank-gold";
+        if (rank === 2) return "rank-silver";
+        if (rank === 3) return "rank-bronze";
+        return "";
+      };
+
       cousinRows.forEach(c => {
         if (!gamesHaveStarted) {
           c.rank = "-";
           c.rankClass = "";
-        } else if (c.score.correct === wTier1Wins) {
-          c.rank = 1;
-          c.rankClass = "rank-gold";
-        } else if (wTier2Wins !== undefined && c.score.correct === wTier2Wins) {
-          c.rank = 2;
-          c.rankClass = "rank-silver";
-        } else if (wTier3Wins !== undefined && c.score.correct === wTier3Wins) {
-          c.rank = 3;
-          c.rankClass = "rank-bronze";
         } else {
-          c.rank = seqWeeklyRank++;
-          c.rankClass = "";
+          c.rank = uniqueWeeklyWins.indexOf(c.score.correct) + 1;
+          c.rankClass = rankClassFor(c.rank);
         }
       });
 
@@ -2094,6 +2162,12 @@
       }
 
       computeSeasonTotals();
+    }
+
+    function toggleTierExpand(gridId) {
+      const grid = document.getElementById(gridId);
+      if (!grid) return;
+      grid.classList.toggle("open");
     }
 
     function toggleAllCards(expand) {
