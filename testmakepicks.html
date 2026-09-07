@@ -525,13 +525,34 @@
           const city = comp.venue && comp.venue.address ? comp.venue.address.city : "";
           const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : "";
 
-          // Real "Away @ Home" convention, using ESPN's actual home/away
-          // designation — kept completely separate from teamA/teamB, which
-          // stay SEC-team-first for the matchup key and sort order no
-          // matter what. This is purely the label people read.
-          const matchupLabel = isNeutralSite
-            ? `${awayName} @ ${homeName}${city ? ` in ${city}` : ""} (NS)`
-            : `${awayName} @ ${homeName}`;
+          // Label wording — separate from teamA/teamB, which stay SEC-
+          // team-first no matter what for the matchup key, sort order, and
+          // grading. The SEC side leads the sentence whenever exactly one
+          // team is SEC (an SEC team traveling reads naturally as "Texas @
+          // Ohio State"; an SEC team hosting flips to "Arkansas hosts
+          // Tulane" instead of "Tulane @ Arkansas", so it still reads
+          // alphabetically down the list). A true conference game just
+          // uses the plain, real away/home order. displayFirst/
+          // displaySecond carry that same order into the pick buttons and
+          // score labels below, so those stay visually in sync with
+          // whatever the header says.
+          const homeIsSec = isSecTeam(homeName);
+          const awayIsSec = isSecTeam(awayName);
+          const isConferenceGame = homeIsSec && awayIsSec;
+
+          let displayFirst, displaySecond, matchupLabel;
+          if (!isConferenceGame && homeIsSec) {
+            displayFirst = homeName;
+            displaySecond = awayName;
+            matchupLabel = `${homeName} hosts ${awayName}`;
+          } else {
+            displayFirst = awayName;
+            displaySecond = homeName;
+            matchupLabel = `${awayName} @ ${homeName}`;
+          }
+          if (isNeutralSite) {
+            matchupLabel += `${city ? ` in ${city}` : ""} (NS)`;
+          }
           
           let time = "TBD";
           if (comp.date) {
@@ -544,6 +565,8 @@
             teamB: teamB,
             awayName: awayName,
             homeName: homeName,
+            displayFirst: displayFirst,
+            displaySecond: displaySecond,
             matchupLabel: matchupLabel,
             detail: `${time} | ${odds} | ${venue}`,
             // ESPN's own event id — stable no matter how ESPN formats a
@@ -565,6 +588,8 @@
           teamB: g.teamB,
           awayName: g.awayName,
           homeName: g.homeName,
+          displayFirst: g.displayFirst,
+          displaySecond: g.displaySecond,
           matchupLabel: g.matchupLabel,
           detail: g.detail
         }));
@@ -685,8 +710,8 @@
           </div>
           ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           <div class="pick-grid">
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.awayName}')">${g.awayName}</button>
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.homeName}')">${g.homeName}</button>
+            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.displayFirst}')">${g.displayFirst}</button>
+            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.displaySecond}')">${g.displaySecond}</button>
           </div>
         `;
         container.appendChild(card);
