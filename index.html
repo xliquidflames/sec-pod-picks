@@ -1900,29 +1900,30 @@
       });
 
       const uniqueWeeklyWins = Array.from(new Set(cousinRows.map(c => c.score.correct))).sort((a, b) => b - a);
-      const wTier1Wins = uniqueWeeklyWins[0];
-      const wTier2Wins = uniqueWeeklyWins[1];
-      const wTier3Wins = uniqueWeeklyWins[2];
 
       const gamesHaveStarted = cousinRows.some(c => c.score.correct > 0 || c.score.incorrect > 0);
 
-      let seqWeeklyRank = 4;
+      // Dense ranking for the whole list, not just the top 3: every cousin
+      // sharing a win total shares a rank, and the next distinct win total
+      // gets the very next rank number — no gaps. So four people tied at
+      // 14-2 are all "#3", and the next group down (13-3, however many
+      // people) is "#4", not "#4" through "#8". This used to only apply to
+      // 1st/2nd/3rd; past that it fell back to a plain sequential counter
+      // that gave ties in 4th place or lower different numbers.
+      const rankClassFor = (rank) => {
+        if (rank === 1) return "rank-gold";
+        if (rank === 2) return "rank-silver";
+        if (rank === 3) return "rank-bronze";
+        return "";
+      };
+
       cousinRows.forEach(c => {
         if (!gamesHaveStarted) {
           c.rank = "-";
           c.rankClass = "";
-        } else if (c.score.correct === wTier1Wins) {
-          c.rank = 1;
-          c.rankClass = "rank-gold";
-        } else if (wTier2Wins !== undefined && c.score.correct === wTier2Wins) {
-          c.rank = 2;
-          c.rankClass = "rank-silver";
-        } else if (wTier3Wins !== undefined && c.score.correct === wTier3Wins) {
-          c.rank = 3;
-          c.rankClass = "rank-bronze";
         } else {
-          c.rank = seqWeeklyRank++;
-          c.rankClass = "";
+          c.rank = uniqueWeeklyWins.indexOf(c.score.correct) + 1;
+          c.rankClass = rankClassFor(c.rank);
         }
       });
 
