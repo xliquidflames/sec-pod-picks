@@ -181,6 +181,10 @@
       cursor: pointer;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: pre-line;
+      line-height: 1.25;
       gap: 0.3rem;
       transition: all 0.15s ease;
       text-transform: uppercase;
@@ -543,9 +547,7 @@
           <div class="game-header-row">
             <span class="game-title">Game ${g.id}: ${g.teamA} vs ${g.teamB}</span>
             ${isLockAllowed ? `
-              <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">
-                Lock of the Week
-              </button>
+              <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">Lock Of\nThe Week</button>
             ` : ""}
           </div>
           ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
@@ -594,7 +596,7 @@
           } else {
             card.classList.remove("is-locked");
             lockBtn.classList.remove("active");
-            lockBtn.textContent = "Lock of the Week";
+            lockBtn.textContent = "Lock Of\nThe Week";
           }
         }
       });
