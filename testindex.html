@@ -685,9 +685,8 @@
       border-radius: 999px;
     }
 
-    .btn-float-top {
+    .btn-float-top, .btn-float-sport {
       position: fixed;
-      bottom: 1.5rem;
       right: 1.5rem;
       background: var(--bg-card);
       border: 1px solid var(--accent-gold);
@@ -705,7 +704,15 @@
       transition: all 0.15s ease;
     }
 
-    .btn-float-top:hover {
+    .btn-float-top {
+      bottom: 4.4rem;
+    }
+
+    .btn-float-sport {
+      bottom: 1.5rem;
+    }
+
+    .btn-float-top:hover, .btn-float-sport:hover {
       background: var(--accent-gold);
       color: var(--bg-main);
     }
@@ -776,7 +783,6 @@
   <div class="container" id="pageTop">
 
     <header>
-      <!-- <a href="https://xliquidflames.github.io/sec-pod-picks/nflindex.html" class="nav-pill">NFL</a> -->
       <div class="logo-container">
         <img src="logo.png" alt="That SEC Podcast" class="main-logo" />
       </div>
@@ -951,6 +957,7 @@
     </div>
 
     <a href="#pageTop" class="btn-float-top">&uarr; Top</a>
+    <a href="nflindex.html" class="btn-float-sport">NFL</a>
 
     <footer class="site-footer" id="pageBottom">
       <div class="footer-container">
@@ -1187,37 +1194,7 @@
           }
 
           const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : '';
-          const isNeutralSite = comp.neutralSite === true;
-          const city = comp.venue && comp.venue.address ? comp.venue.address.city : '';
           const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
-
-          // Label wording — separate from teamA/teamB, which stay SEC-
-          // team-first no matter what for the matchup key, sort order, and
-          // grading. The SEC side leads the sentence whenever exactly one
-          // team is SEC (an SEC team traveling reads naturally as "Texas @
-          // Ohio State"; an SEC team hosting flips to "Arkansas hosts
-          // Tulane" instead of "Tulane @ Arkansas", so it still reads
-          // alphabetically down the list). A true conference game just
-          // uses the plain, real away/home order — two SEC names next to
-          // each other doesn't create the same "wait, that's not
-          // alphabetical" jolt a non-conference opponent leading would.
-          const homeIsSec = isSecTeam(homeName);
-          const awayIsSec = isSecTeam(awayName);
-          const isConferenceGame = homeIsSec && awayIsSec;
-
-          let displayFirst, displaySecond, matchupLabel;
-          if (!isConferenceGame && homeIsSec) {
-            displayFirst = homeName;
-            displaySecond = awayName;
-            matchupLabel = `${homeName} hosts ${awayName}`;
-          } else {
-            displayFirst = awayName;
-            displaySecond = homeName;
-            matchupLabel = `${awayName} @ ${homeName}`;
-          }
-          if (isNeutralSite) {
-            matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
-          }
 
           let time = "TBD";
           if (isFinal) {
@@ -1234,7 +1211,6 @@
             teamA: teamA,
             teamB: teamB,
             rawOdds: rawOdds,
-            matchupLabel: matchupLabel,
             detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
             winner: winnerName,
             isLive: isLive,
@@ -1267,7 +1243,6 @@
             matchupKey: mKey,
             teamA: g.teamA,
             teamB: g.teamB,
-            matchupLabel: g.matchupLabel,
             rawOdds: g.rawOdds,
             detail: g.detail,
             isLive: g.isLive
@@ -1903,7 +1878,7 @@
 
         tr.innerHTML = `
           <td class="matchup-cell">
-            <strong>${g.matchupLabel}</strong>
+            <strong>${g.teamA} vs ${g.teamB}</strong>
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
           <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
@@ -1991,7 +1966,7 @@
               const isCousinLock = isLockActiveThisWeek && isLockMatch(picks, g);
               return `
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
-                  <span style="color: var(--text-muted);">${g.matchupLabel}</span>
+                  <span style="color: var(--text-muted);">${g.teamA} vs ${g.teamB}</span>
                   <span class="${pClass}">
                     ${uPick}
                     ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
