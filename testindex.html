@@ -1230,6 +1230,7 @@
           }
 
           let time = "TBD";
+          let kickoff = new Date(8640000000000000);
           if (isFinal) {
             time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
           } else if (isLive) {
@@ -1239,10 +1240,15 @@
             time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
                    new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
+          if (comp.date) {
+            const kd = new Date(comp.date);
+            if (!isNaN(kd.getTime())) kickoff = kd;
+          }
 
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
+            kickoff: kickoff,
             rawOdds: rawOdds,
             matchupLabel: matchupLabel,
             detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
@@ -1259,7 +1265,16 @@
           });
         });
 
-        rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
+        // Adopted the NFL site's sort convention: chronological by kickoff
+        // (date, then time) instead of alphabetical by SEC team. This
+        // sidesteps a real inconsistency the alphabetical approach had —
+        // a conference game's list position used to depend on which of
+        // the two SEC teams was hosting that year, so the same rivalry
+        // could land under a different letter season to season. Kickoff
+        // order has no such ambiguity. teamA/teamB are untouched and
+        // still SEC-team-first for the matchup key and grading; this only
+        // changes what order rows appear in.
+        rawGames.sort((a, b) => a.kickoff - b.kickoff);
 
         const mappedGames = rawGames.map((g, idx) => {
           const gameId = idx + 1;
