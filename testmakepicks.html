@@ -204,11 +204,20 @@
     }
 
     .game-title {
+      flex: 1;
+      text-align: center;
       color: var(--accent-gold);
       font-size: 0.8rem;
-      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+
+    .matchup-sec-team {
+      font-weight: 800;
+    }
+
+    .matchup-other-team {
+      font-weight: 400;
     }
 
     .btn-lock-toggle {
@@ -523,37 +532,23 @@
           const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "Line: TBD";
           const isNeutralSite = comp.neutralSite === true;
           const city = comp.venue && comp.venue.address ? comp.venue.address.city : "";
-          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : "";
+          const venue = (comp.venue && comp.venue.address)
+            ? `${comp.venue.address.city || ""}${comp.venue.address.state ? ", " + comp.venue.address.state : ""}`
+            : "";
 
-          // Label wording — separate from teamA/teamB, which stay SEC-
-          // team-first no matter what for the matchup key, sort order, and
-          // grading. The SEC side leads the sentence whenever exactly one
-          // team is SEC (an SEC team traveling reads naturally as "Texas @
-          // Ohio State"; an SEC team hosting flips to "Arkansas hosts
-          // Tulane" instead of "Tulane @ Arkansas", so it still reads
-          // alphabetically down the list). A true conference game just
-          // uses the plain, real away/home order. displayFirst/
-          // displaySecond carry that same order into the pick buttons and
-          // score labels below, so those stay visually in sync with
-          // whatever the header says.
-          const homeIsSec = isSecTeam(homeName);
-          const awayIsSec = isSecTeam(awayName);
-          const isConferenceGame = homeIsSec && awayIsSec;
-
-          let displayFirst, displaySecond, matchupLabel;
-          if (!isConferenceGame && homeIsSec) {
-            displayFirst = homeName;
-            displaySecond = awayName;
-            matchupLabel = `${homeName} hosts ${awayName}`;
-          } else {
-            displayFirst = awayName;
-            displaySecond = homeName;
-            matchupLabel = `${awayName} @ ${homeName}`;
-          }
+          // Real, literal "Away @ Home" text — never flipped. The SEC side
+          // is bolded wherever it actually falls in the sentence (instead
+          // of always being first), so the eye can anchor on weight
+          // rather than position; centering the whole title (CSS) helps
+          // it read as one unit. Completely separate from teamA/teamB,
+          // which stay SEC-team-first no matter what for the matchup key.
+          const awayClass = isSecTeam(awayName) ? "matchup-sec-team" : "matchup-other-team";
+          const homeClass = isSecTeam(homeName) ? "matchup-sec-team" : "matchup-other-team";
+          let matchupLabel = `<span class="${awayClass}">${awayName}</span> @ <span class="${homeClass}">${homeName}</span>`;
           if (isNeutralSite) {
             matchupLabel += `${city ? ` in ${city}` : ""} (NS)`;
           }
-          
+
           let time = "TBD";
           if (comp.date) {
             time = new Date(comp.date).toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " + 
@@ -563,10 +558,6 @@
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
-            awayName: awayName,
-            homeName: homeName,
-            displayFirst: displayFirst,
-            displaySecond: displaySecond,
             matchupLabel: matchupLabel,
             detail: `${time} | ${odds} | ${venue}`,
             // ESPN's own event id — stable no matter how ESPN formats a
@@ -586,10 +577,6 @@
           matchupKey: g.espnId || buildMatchupKey(g.teamA, g.teamB),
           teamA: g.teamA,
           teamB: g.teamB,
-          awayName: g.awayName,
-          homeName: g.homeName,
-          displayFirst: g.displayFirst,
-          displaySecond: g.displaySecond,
           matchupLabel: g.matchupLabel,
           detail: g.detail
         }));
@@ -703,15 +690,15 @@
         card.id = `card_${g.matchupKey}`;
         card.innerHTML = `
           <div class="game-header-row">
-            <span class="game-title">Game ${g.id}: ${g.matchupLabel}</span>
+            <span class="game-title"><strong>Game ${g.id}:</strong> ${g.matchupLabel}</span>
             ${isLockAllowed ? `
               <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">Lock Of\nThe Week</button>
             ` : ""}
           </div>
           ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           <div class="pick-grid">
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.displayFirst}')">${g.displayFirst}</button>
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.displaySecond}')">${g.displaySecond}</button>
+            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${g.teamA}</button>
+            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${g.teamB}</button>
           </div>
         `;
         container.appendChild(card);
