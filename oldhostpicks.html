@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Host Portal - That SEC Podcast</title>
-  <script data-goatcounter="https://liquidflames.goatcounter.com/count"
-          async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -392,21 +390,6 @@
       return secNormalizedNames.has(normalizeTeam(teamName));
     }
 
-    // Every known spelling of each SEC team collapses to one canonical
-    // string here (built from secTeamAliases above, before normalizeTeam —
-    // fine due to function hoisting). This is what actually fixes picks
-    // like "Miss State" not matching "Mississippi St" — two different
-    // abbreviations for the same team, used at different times, that
-    // would otherwise normalize to two different strings and never be
-    // recognized as the same pick.
-    const secNameCanonical = {};
-    Object.entries(secTeamAliases).forEach(([canonicalKey, variants]) => {
-      variants.forEach(variant => {
-        const crude = variant.toLowerCase().replace(/[^a-z0-9]/g, "");
-        secNameCanonical[crude] = canonicalKey;
-      });
-    });
-
     function normalizeTeam(str) {
       if (!str) return "";
       const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -415,9 +398,6 @@
       }
       if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
         return "arkansas";
-      }
-      if (secNameCanonical[cleaned]) {
-        return secNameCanonical[cleaned];
       }
       return cleaned;
     }
@@ -465,38 +445,7 @@
 
           const isFinal = comp.status && comp.status.type && comp.status.type.completed;
           const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : 'Line: TBD';
-          const isNeutralSite = comp.neutralSite === true;
-          const city = comp.venue && comp.venue.address ? comp.venue.address.city : '';
           const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
-
-          // Label wording — separate from teamA/teamB, which stay SEC-
-          // team-first no matter what for the matchup key, sort order, and
-          // grading. The SEC side leads the sentence whenever exactly one
-          // team is SEC (an SEC team traveling reads naturally as "Texas @
-          // Ohio State"; an SEC team hosting flips to "Arkansas hosts
-          // Tulane" instead of "Tulane @ Arkansas", so it still reads
-          // alphabetically down the list). A true conference game just
-          // uses the plain, real away/home order. displayFirst/
-          // displaySecond carry that same order into the pick buttons and
-          // score labels below, so those stay visually in sync with
-          // whatever the header says.
-          const homeIsSec = isSecTeam(homeName);
-          const awayIsSec = isSecTeam(awayName);
-          const isConferenceGame = homeIsSec && awayIsSec;
-
-          let displayFirst, displaySecond, matchupLabel;
-          if (!isConferenceGame && homeIsSec) {
-            displayFirst = homeName;
-            displaySecond = awayName;
-            matchupLabel = `${homeName} hosts ${awayName}`;
-          } else {
-            displayFirst = awayName;
-            displaySecond = homeName;
-            matchupLabel = `${awayName} @ ${homeName}`;
-          }
-          if (isNeutralSite) {
-            matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
-          }
           
           let time = "TBD";
           if (isFinal) {
@@ -509,11 +458,6 @@
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
-            awayName: awayName,
-            homeName: homeName,
-            displayFirst: displayFirst,
-            displaySecond: displaySecond,
-            matchupLabel: matchupLabel,
             detail: isFinal ? `${time} | ${venue}` : `${time} | ${odds} | ${venue}`,
             // ESPN's own event id — stable no matter how ESPN formats a
             // team's display name. Building the matchup key from team-name
@@ -531,11 +475,6 @@
           matchupKey: g.espnId || buildMatchupKey(g.teamA, g.teamB),
           teamA: g.teamA,
           teamB: g.teamB,
-          awayName: g.awayName,
-          homeName: g.homeName,
-          displayFirst: g.displayFirst,
-          displaySecond: g.displaySecond,
-          matchupLabel: g.matchupLabel,
           detail: g.detail
         }));
       } catch (e) {
@@ -570,28 +509,28 @@
 
         card.innerHTML = `
           <div class="game-header-row">
-            <span class="game-title">GAME ${game.id}: ${game.matchupLabel}</span>
+            <span class="game-title">GAME ${game.id}: ${game.teamA} VS ${game.teamB}</span>
             <button type="button" class="btn-lock-toggle" id="lock_btn_${game.matchupKey}" onclick="toggleLock('${game.matchupKey}')">
               Lock of Week
             </button>
           </div>
           ${game.detail ? `<span class="game-detail">${game.detail}</span>` : ''}
           <div class="pick-buttons-grid">
-            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_A" onclick="selectTeam('${game.matchupKey}', '${game.displayFirst}')">
-              ${game.displayFirst}
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_A" onclick="selectTeam('${game.matchupKey}', '${game.teamA}')">
+              ${game.teamA}
             </button>
-            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_B" onclick="selectTeam('${game.matchupKey}', '${game.displaySecond}')">
-              ${game.displaySecond}
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_B" onclick="selectTeam('${game.matchupKey}', '${game.teamB}')">
+              ${game.teamB}
             </button>
           </div>
           <div class="score-inputs-grid">
             <div class="score-group">
-              <span class="score-label">${game.displayFirst} Score</span>
-              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_A" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.displayFirst}', '${game.displaySecond}')" />
+              <span class="score-label">${game.teamA} Score</span>
+              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_A" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.teamA}', '${game.teamB}')" />
             </div>
             <div class="score-group">
-              <span class="score-label">${game.displaySecond} Score</span>
-              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_B" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.displayFirst}', '${game.displaySecond}')" />
+              <span class="score-label">${game.teamB} Score</span>
+              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_B" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.teamA}', '${game.teamB}')" />
             </div>
           </div>
         `;

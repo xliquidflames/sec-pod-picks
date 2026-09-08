@@ -685,8 +685,9 @@
       border-radius: 999px;
     }
 
-    .btn-float-top, .btn-float-sport {
+    .btn-float-top {
       position: fixed;
+      bottom: 1.5rem;
       right: 1.5rem;
       background: var(--bg-card);
       border: 1px solid var(--accent-gold);
@@ -704,15 +705,7 @@
       transition: all 0.15s ease;
     }
 
-    .btn-float-top {
-      bottom: 4.4rem;
-    }
-
-    .btn-float-sport {
-      bottom: 1.5rem;
-    }
-
-    .btn-float-top:hover, .btn-float-sport:hover {
+    .btn-float-top:hover {
       background: var(--accent-gold);
       color: var(--bg-main);
     }
@@ -783,6 +776,7 @@
   <div class="container" id="pageTop">
 
     <header>
+      <!-- <a href="https://xliquidflames.github.io/sec-pod-picks/nflindex.html" class="nav-pill">NFL</a> -->
       <div class="logo-container">
         <img src="logo.png" alt="That SEC Podcast" class="main-logo" />
       </div>
@@ -957,7 +951,6 @@
     </div>
 
     <a href="#pageTop" class="btn-float-top">&uarr; Top</a>
-    <a href="nflindex.html" class="btn-float-sport">NFL</a>
 
     <footer class="site-footer" id="pageBottom">
       <div class="footer-container">
@@ -1195,7 +1188,7 @@
 
           const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : '';
           const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
-
+          
           let time = "TBD";
           if (isFinal) {
             time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
