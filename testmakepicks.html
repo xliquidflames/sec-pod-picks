@@ -550,14 +550,18 @@
           }
 
           let time = "TBD";
+          let kickoff = new Date(8640000000000000);
           if (comp.date) {
-            time = new Date(comp.date).toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " + 
-                   new Date(comp.date).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+            const d = new Date(comp.date);
+            if (!isNaN(d.getTime())) kickoff = d;
+            time = d.toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " + 
+                   d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
           }
 
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
+            kickoff: kickoff,
             matchupLabel: matchupLabel,
             detail: `${time} | ${odds} | ${venue}`,
             // ESPN's own event id — stable no matter how ESPN formats a
@@ -570,7 +574,13 @@
           });
         });
 
-        rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
+        // Adopted the NFL site's sort convention: chronological by kickoff
+        // instead of alphabetical by SEC team — sidesteps the inconsistency
+        // where a conference game's list position depended on which of the
+        // two SEC teams happened to be hosting that year. teamA/teamB are
+        // untouched and still SEC-team-first for the matchup key; this
+        // only changes what order rows appear in.
+        rawGames.sort((a, b) => a.kickoff - b.kickoff);
 
         return rawGames.map((g, idx) => ({
           id: idx + 1,
