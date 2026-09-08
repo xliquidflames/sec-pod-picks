@@ -445,17 +445,9 @@
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
       width: 37%;
-      text-align: center;
+      text-align: left;
       padding: 0.45rem 0.4rem;
       font-size: 0.75rem;
-    }
-
-    .matchup-sec-team {
-      font-weight: 800;
-    }
-
-    .matchup-other-team {
-      font-weight: 400;
     }
 
     .matchup-subdetail {
@@ -661,12 +653,6 @@
       justify-content: space-between;
       font-size: 0.8rem;
       padding: 0.2rem 0;
-    }
-
-    .pick-line-matchup {
-      flex: 1;
-      text-align: center;
-      color: var(--text-muted);
     }
 
     .btn-ctrl {
@@ -1208,29 +1194,9 @@
           }
 
           const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : '';
-          const isNeutralSite = comp.neutralSite === true;
-          const city = comp.venue && comp.venue.address ? comp.venue.address.city : '';
-          const venue = (comp.venue && comp.venue.address)
-            ? `${comp.venue.address.city || ''}${comp.venue.address.state ? ', ' + comp.venue.address.state : ''}`
-            : '';
-
-          // Real, literal "Away @ Home" text — never flipped, so it always
-          // matches reality. The SEC side is bolded wherever it actually
-          // falls in the sentence (instead of always being first), so the
-          // eye can anchor on weight rather than position; centering the
-          // whole thing (done in CSS) reinforces that it reads as one
-          // unit rather than a left-to-right sentence. This is completely
-          // separate from teamA/teamB, which stay SEC-team-first no matter
-          // what for the matchup key, sort order, and grading.
-          const awayClass = isSecTeam(awayName) ? 'matchup-sec-team' : 'matchup-other-team';
-          const homeClass = isSecTeam(homeName) ? 'matchup-sec-team' : 'matchup-other-team';
-          let matchupLabel = `<span class="${awayClass}">${awayName}</span> @ <span class="${homeClass}">${homeName}</span>`;
-          if (isNeutralSite) {
-            matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
-          }
+          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
 
           let time = "TBD";
-          let kickoff = new Date(8640000000000000);
           if (isFinal) {
             time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
           } else if (isLive) {
@@ -1240,17 +1206,11 @@
             time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
                    new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
-          if (comp.date) {
-            const kd = new Date(comp.date);
-            if (!isNaN(kd.getTime())) kickoff = kd;
-          }
 
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
-            kickoff: kickoff,
             rawOdds: rawOdds,
-            matchupLabel: matchupLabel,
             detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
             winner: winnerName,
             isLive: isLive,
@@ -1265,16 +1225,7 @@
           });
         });
 
-        // Adopted the NFL site's sort convention: chronological by kickoff
-        // (date, then time) instead of alphabetical by SEC team. This
-        // sidesteps a real inconsistency the alphabetical approach had —
-        // a conference game's list position used to depend on which of
-        // the two SEC teams was hosting that year, so the same rivalry
-        // could land under a different letter season to season. Kickoff
-        // order has no such ambiguity. teamA/teamB are untouched and
-        // still SEC-team-first for the matchup key and grading; this only
-        // changes what order rows appear in.
-        rawGames.sort((a, b) => a.kickoff - b.kickoff);
+        rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
 
         const mappedGames = rawGames.map((g, idx) => {
           const gameId = idx + 1;
@@ -1292,7 +1243,6 @@
             matchupKey: mKey,
             teamA: g.teamA,
             teamB: g.teamB,
-            matchupLabel: g.matchupLabel,
             rawOdds: g.rawOdds,
             detail: g.detail,
             isLive: g.isLive
@@ -1924,7 +1874,7 @@
 
         tr.innerHTML = `
           <td class="matchup-cell">
-            ${g.matchupLabel}
+            <strong>${g.teamA} vs ${g.teamB}</strong>
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
           <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
@@ -2012,7 +1962,7 @@
               const isCousinLock = isLockActiveThisWeek && isLockMatch(picks, g);
               return `
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
-                  <span class="pick-line-matchup">${g.matchupLabel}</span>
+                  <span style="color: var(--text-muted);">${g.teamA} vs ${g.teamB}</span>
                   <span class="${pClass}">
                     ${uPick}
                     ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
