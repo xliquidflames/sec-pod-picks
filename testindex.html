@@ -445,9 +445,17 @@
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
       width: 37%;
-      text-align: left;
+      text-align: center;
       padding: 0.45rem 0.4rem;
       font-size: 0.75rem;
+    }
+
+    .matchup-sec-team {
+      font-weight: 800;
+    }
+
+    .matchup-other-team {
+      font-weight: 400;
     }
 
     .matchup-subdetail {
@@ -655,6 +663,12 @@
       padding: 0.2rem 0;
     }
 
+    .pick-line-matchup {
+      flex: 1;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
     .btn-ctrl {
       background: var(--bg-card-alt);
       color: var(--text-muted);
@@ -685,9 +699,8 @@
       border-radius: 999px;
     }
 
-    .btn-float-top {
+    .btn-float-top, .btn-float-sport {
       position: fixed;
-      bottom: 1.5rem;
       right: 1.5rem;
       background: var(--bg-card);
       border: 1px solid var(--accent-gold);
@@ -705,7 +718,15 @@
       transition: all 0.15s ease;
     }
 
-    .btn-float-top:hover {
+    .btn-float-top {
+      bottom: 4.4rem;
+    }
+
+    .btn-float-sport {
+      bottom: 1.5rem;
+    }
+
+    .btn-float-top:hover, .btn-float-sport:hover {
       background: var(--accent-gold);
       color: var(--bg-main);
     }
@@ -776,7 +797,6 @@
   <div class="container" id="pageTop">
 
     <header>
-      <!-- <a href="https://xliquidflames.github.io/sec-pod-picks/nflindex.html" class="nav-pill">NFL</a> -->
       <div class="logo-container">
         <img src="logo.png" alt="That SEC Podcast" class="main-logo" />
       </div>
@@ -871,7 +891,7 @@
           <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Here is this week's schedule, lines, scores, and Mike, Shane, and Steven's picks. Highlighted rows are games currently in progress.</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Games are sorted in chronological order.</p>
         <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.4rem;">
           <table class="host-grid-table">
             <thead>
@@ -951,6 +971,7 @@
     </div>
 
     <a href="#pageTop" class="btn-float-top">&uarr; Top</a>
+    <a href="nflindex.html" class="btn-float-sport">NFL</a>
 
     <footer class="site-footer" id="pageBottom">
       <div class="footer-container">
@@ -1187,9 +1208,29 @@
           }
 
           const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : '';
-          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
-          
+          const isNeutralSite = comp.neutralSite === true;
+          const city = comp.venue && comp.venue.address ? comp.venue.address.city : '';
+          const venue = (comp.venue && comp.venue.address)
+            ? `${comp.venue.address.city || ''}${comp.venue.address.state ? ', ' + comp.venue.address.state : ''}`
+            : '';
+
+          // Real, literal "Away @ Home" text — never flipped, so it always
+          // matches reality. The SEC side is bolded wherever it actually
+          // falls in the sentence (instead of always being first), so the
+          // eye can anchor on weight rather than position; centering the
+          // whole thing (done in CSS) reinforces that it reads as one
+          // unit rather than a left-to-right sentence. This is completely
+          // separate from teamA/teamB, which stay SEC-team-first no matter
+          // what for the matchup key, sort order, and grading.
+          const awayClass = isSecTeam(awayName) ? 'matchup-sec-team' : 'matchup-other-team';
+          const homeClass = isSecTeam(homeName) ? 'matchup-sec-team' : 'matchup-other-team';
+          let matchupLabel = `<span class="${awayClass}">${awayName}</span> @ <span class="${homeClass}">${homeName}</span>`;
+          if (isNeutralSite) {
+            matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
+          }
+
           let time = "TBD";
+          let kickoff = new Date(8640000000000000);
           if (isFinal) {
             time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
           } else if (isLive) {
@@ -1199,11 +1240,17 @@
             time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
                    new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
+          if (comp.date) {
+            const kd = new Date(comp.date);
+            if (!isNaN(kd.getTime())) kickoff = kd;
+          }
 
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
+            kickoff: kickoff,
             rawOdds: rawOdds,
+            matchupLabel: matchupLabel,
             detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
             winner: winnerName,
             isLive: isLive,
@@ -1218,7 +1265,16 @@
           });
         });
 
-        rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
+        // Adopted the NFL site's sort convention: chronological by kickoff
+        // (date, then time) instead of alphabetical by SEC team. This
+        // sidesteps a real inconsistency the alphabetical approach had —
+        // a conference game's list position used to depend on which of
+        // the two SEC teams was hosting that year, so the same rivalry
+        // could land under a different letter season to season. Kickoff
+        // order has no such ambiguity. teamA/teamB are untouched and
+        // still SEC-team-first for the matchup key and grading; this only
+        // changes what order rows appear in.
+        rawGames.sort((a, b) => a.kickoff - b.kickoff);
 
         const mappedGames = rawGames.map((g, idx) => {
           const gameId = idx + 1;
@@ -1236,6 +1292,7 @@
             matchupKey: mKey,
             teamA: g.teamA,
             teamB: g.teamB,
+            matchupLabel: g.matchupLabel,
             rawOdds: g.rawOdds,
             detail: g.detail,
             isLive: g.isLive
@@ -1613,9 +1670,6 @@
         const isTie = tier.members.length > 1;
         const rep = tier.members[0];
         const label = isTie ? `${tier.members.length}-way tie` : rep.user_name;
-        const lockBadge = (!isTie && rep.lockCorrect > 0)
-          ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>`
-          : '';
         const gridId = `tierNames_${idx}`;
         return `
           <div class="top3-item" style="flex-direction: column; align-items: stretch;">
@@ -1623,7 +1677,6 @@
               <div style="display: flex; align-items: center;">
                 <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">${idx + 1}</span>
                 <strong>${label}</strong>
-                ${lockBadge}
               </div>
               <div style="display: flex; align-items: center;">
                 <span style="font-weight: 800; color: var(--accent-gold);">${rep.correct}-${rep.incorrect}</span>
@@ -1871,7 +1924,7 @@
 
         tr.innerHTML = `
           <td class="matchup-cell">
-            <strong>${g.teamA} vs ${g.teamB}</strong>
+            ${g.matchupLabel}
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
           <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
@@ -1959,7 +2012,7 @@
               const isCousinLock = isLockActiveThisWeek && isLockMatch(picks, g);
               return `
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
-                  <span style="color: var(--text-muted);">${g.teamA} vs ${g.teamB}</span>
+                  <span class="pick-line-matchup">${g.matchupLabel}</span>
                   <span class="${pClass}">
                     ${uPick}
                     ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}

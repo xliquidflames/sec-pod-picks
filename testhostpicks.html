@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Host Portal - That SEC Podcast</title>
+  <script data-goatcounter="https://liquidflames.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -141,11 +143,20 @@
     }
 
     .game-title {
+      flex: 1;
+      text-align: center;
       color: var(--accent-gold);
       font-size: 0.78rem;
-      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+
+    .matchup-sec-team {
+      font-weight: 800;
+    }
+
+    .matchup-other-team {
+      font-weight: 400;
     }
 
     .btn-lock-toggle {
@@ -390,6 +401,21 @@
       return secNormalizedNames.has(normalizeTeam(teamName));
     }
 
+    // Every known spelling of each SEC team collapses to one canonical
+    // string here (built from secTeamAliases above, before normalizeTeam —
+    // fine due to function hoisting). This is what actually fixes picks
+    // like "Miss State" not matching "Mississippi St" — two different
+    // abbreviations for the same team, used at different times, that
+    // would otherwise normalize to two different strings and never be
+    // recognized as the same pick.
+    const secNameCanonical = {};
+    Object.entries(secTeamAliases).forEach(([canonicalKey, variants]) => {
+      variants.forEach(variant => {
+        const crude = variant.toLowerCase().replace(/[^a-z0-9]/g, "");
+        secNameCanonical[crude] = canonicalKey;
+      });
+    });
+
     function normalizeTeam(str) {
       if (!str) return "";
       const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -398,6 +424,9 @@
       }
       if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
         return "arkansas";
+      }
+      if (secNameCanonical[cleaned]) {
+        return secNameCanonical[cleaned];
       }
       return cleaned;
     }
@@ -445,19 +474,43 @@
 
           const isFinal = comp.status && comp.status.type && comp.status.type.completed;
           const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : 'Line: TBD';
-          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
-          
+          const isNeutralSite = comp.neutralSite === true;
+          const city = comp.venue && comp.venue.address ? comp.venue.address.city : '';
+          const venue = (comp.venue && comp.venue.address)
+            ? `${comp.venue.address.city || ''}${comp.venue.address.state ? ', ' + comp.venue.address.state : ''}`
+            : '';
+
+          // Real, literal "Away @ Home" text — never flipped. The SEC side
+          // is bolded wherever it actually falls in the sentence (instead
+          // of always being first), so the eye can anchor on weight
+          // rather than position; centering the whole title (CSS) helps
+          // it read as one unit. Completely separate from teamA/teamB,
+          // which stay SEC-team-first no matter what for the matchup key.
+          const awayClass = isSecTeam(awayName) ? 'matchup-sec-team' : 'matchup-other-team';
+          const homeClass = isSecTeam(homeName) ? 'matchup-sec-team' : 'matchup-other-team';
+          let matchupLabel = `<span class="${awayClass}">${awayName}</span> @ <span class="${homeClass}">${homeName}</span>`;
+          if (isNeutralSite) {
+            matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
+          }
+
           let time = "TBD";
+          let kickoff = new Date(8640000000000000);
           if (isFinal) {
             time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
           } else if (comp.date) {
             time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
                    new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
+          if (comp.date) {
+            const kd = new Date(comp.date);
+            if (!isNaN(kd.getTime())) kickoff = kd;
+          }
 
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
+            kickoff: kickoff,
+            matchupLabel: matchupLabel,
             detail: isFinal ? `${time} | ${venue}` : `${time} | ${odds} | ${venue}`,
             // ESPN's own event id — stable no matter how ESPN formats a
             // team's display name. Building the matchup key from team-name
@@ -468,13 +521,20 @@
           });
         });
 
-        rawGames.sort((a, b) => a.teamA.localeCompare(b.teamA));
+        // Adopted the NFL site's sort convention: chronological by kickoff
+        // instead of alphabetical by SEC team — sidesteps the inconsistency
+        // where a conference game's list position depended on which of the
+        // two SEC teams happened to be hosting that year. teamA/teamB are
+        // untouched and still SEC-team-first for the matchup key; this
+        // only changes what order rows appear in.
+        rawGames.sort((a, b) => a.kickoff - b.kickoff);
 
         return rawGames.map((g, idx) => ({
           id: idx + 1,
           matchupKey: g.espnId || buildMatchupKey(g.teamA, g.teamB),
           teamA: g.teamA,
           teamB: g.teamB,
+          matchupLabel: g.matchupLabel,
           detail: g.detail
         }));
       } catch (e) {
@@ -509,7 +569,7 @@
 
         card.innerHTML = `
           <div class="game-header-row">
-            <span class="game-title">GAME ${game.id}: ${game.teamA} VS ${game.teamB}</span>
+            <span class="game-title"><strong>GAME ${game.id}:</strong> ${game.matchupLabel}</span>
             <button type="button" class="btn-lock-toggle" id="lock_btn_${game.matchupKey}" onclick="toggleLock('${game.matchupKey}')">
               Lock of Week
             </button>
