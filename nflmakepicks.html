@@ -495,46 +495,58 @@
         const rawGames = [];
 
         data.events.forEach(ev => {
-          const comp = ev.competitions[0];
-          const home = comp.competitors.find(c => c.homeAway === "home");
-          const away = comp.competitors.find(c => c.homeAway === "away");
+          // One malformed game used to be able to take the entire week's
+          // schedule down with it (same class of bug that made
+          // nflindex.html get stuck on "Loading schedule..." for a week
+          // with an oddly-shaped venue). Wrapping each game individually
+          // means one bad game gets skipped and logged instead of
+          // silently killing everyone else's data too.
+          try {
+            const comp = ev.competitions[0];
+            const home = comp.competitors.find(c => c.homeAway === "home");
+            const away = comp.competitors.find(c => c.homeAway === "away");
 
-          const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
-          const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
+            const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
+            const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
-          // No SEC-style "our teams first" concept here — all 32 teams are
-          // equally in scope, so there's no natural alphabetical anchor the
-          // way there was for the SEC site. Games are just listed away vs
-          // home, and the whole week is sorted chronologically by kickoff
-          // instead (see the sort below), which is the natural convention
-          // for a general NFL schedule.
-          const teamA = awayName;
-          const teamB = homeName;
+            // No SEC-style "our teams first" concept here — all 32 teams are
+            // equally in scope, so there's no natural alphabetical anchor
+            // the way there was for the SEC site. Games are just listed
+            // away vs home, and the whole week is sorted chronologically by
+            // kickoff instead (see the sort below), which is the natural
+            // convention for a general NFL schedule.
+            const teamA = awayName;
+            const teamB = homeName;
 
-          const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "Line: TBD";
-          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : "";
+            const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "Line: TBD";
+            const venue = (comp.venue && comp.venue.address)
+              ? `${comp.venue.address.city || ""}${comp.venue.address.state ? ", " + comp.venue.address.state : ""}`
+              : "";
 
-          let time = "TBD";
-          let kickoff = new Date(8640000000000000);
-          if (comp.date) {
-            const d = new Date(comp.date);
-            if (!isNaN(d.getTime())) kickoff = d;
-            time = d.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" }) + " " +
-                   d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+            let time = "TBD";
+            let kickoff = new Date(8640000000000000);
+            if (comp.date) {
+              const d = new Date(comp.date);
+              if (!isNaN(d.getTime())) kickoff = d;
+              time = d.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" }) + " " +
+                     d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+            }
+
+            rawGames.push({
+              teamA: teamA,
+              teamB: teamB,
+              kickoff: kickoff,
+              detail: `${time} | ${odds} | ${venue}`,
+              // ESPN's own event id — stable no matter how ESPN formats a
+              // team's display name. Building the matchup key from team-name
+              // text breaks the moment ESPN shows a name even slightly
+              // differently between when a ballot was submitted and later —
+              // the id never changes, so keying on it can't drift.
+              espnId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null
+            });
+          } catch (gameErr) {
+            console.error(`Skipping one malformed game in week ${week}:`, gameErr, ev);
           }
-
-          rawGames.push({
-            teamA: teamA,
-            teamB: teamB,
-            kickoff: kickoff,
-            detail: `${time} | ${odds} | ${venue}`,
-            // ESPN's own event id — stable no matter how ESPN formats a
-            // team's display name. Building the matchup key from team-name
-            // text breaks the moment ESPN shows a name even slightly
-            // differently between when a ballot was submitted and later —
-            // the id never changes, so keying on it can't drift.
-            espnId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null
-          });
         });
 
         rawGames.sort((a, b) => a.kickoff - b.kickoff);

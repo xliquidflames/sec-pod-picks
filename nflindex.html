@@ -951,67 +951,81 @@
         const rawGames = [];
 
         data.events.forEach(ev => {
-          const comp = ev.competitions[0];
-          const home = comp.competitors.find(c => c.homeAway === 'home');
-          const away = comp.competitors.find(c => c.homeAway === 'away');
+          // One malformed game (missing venue data, an unexpected field
+          // shape from an international or showcase game, etc.) used to
+          // throw partway through this loop and take the ENTIRE week's
+          // schedule down with it — window.weekSchedules[week] never got
+          // set, so the page was stuck on "Loading schedule..." until a
+          // manual week change forced a retry. Wrapping each game
+          // individually means one bad game gets skipped and logged
+          // instead of silently killing everyone else's data too.
+          try {
+            const comp = ev.competitions[0];
+            const home = comp.competitors.find(c => c.homeAway === 'home');
+            const away = comp.competitors.find(c => c.homeAway === 'away');
 
-          const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
-          const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
+            const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
+            const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
-          // No SEC-style "our teams first" concept for NFL — all 32 teams
-          // are equally in scope, so games are just listed away vs home,
-          // and the week is sorted chronologically by kickoff instead (see
-          // below), which is the natural convention for a general NFL
-          // schedule.
-          const teamA = awayName;
-          const teamB = homeName;
+            // No SEC-style "our teams first" concept for NFL — all 32 teams
+            // are equally in scope, so games are just listed away vs home,
+            // and the week is sorted chronologically by kickoff instead
+            // (see below), which is the natural convention for a general
+            // NFL schedule.
+            const teamA = awayName;
+            const teamB = homeName;
 
-          const isFinal = comp.status && comp.status.type && comp.status.type.completed;
-          const state = comp.status && comp.status.type && comp.status.type.state;
-          const isLive = (state === "in");
+            const isFinal = comp.status && comp.status.type && comp.status.type.completed;
+            const state = comp.status && comp.status.type && comp.status.type.state;
+            const isLive = (state === "in");
 
-          let winnerName = null;
-          if (isFinal) {
-            const winnerComp = comp.competitors.find(c => c.winner === true);
-            if (winnerComp) {
-              winnerName = cleanTeamName(winnerComp.team.shortDisplayName || winnerComp.team.name);
+            let winnerName = null;
+            if (isFinal) {
+              const winnerComp = comp.competitors.find(c => c.winner === true);
+              if (winnerComp) {
+                winnerName = cleanTeamName(winnerComp.team.shortDisplayName || winnerComp.team.name);
+              }
             }
-          }
 
-          const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : '';
-          const venue = comp.venue ? `${comp.venue.address.city}, ${comp.venue.address.state}` : '';
+            const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : '';
+            const venue = (comp.venue && comp.venue.address)
+              ? `${comp.venue.address.city || ''}${comp.venue.address.state ? ', ' + comp.venue.address.state : ''}`
+              : '';
 
-          let time = "TBD";
-          let kickoff = new Date(8640000000000000);
-          if (isFinal) {
-            time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
-          } else if (isLive) {
-            const liveDetail = comp.status.type.detail || `Period ${comp.status.period}`;
-            time = `${liveDetail}: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
-          } else if (comp.date) {
-            const d = new Date(comp.date);
-            if (!isNaN(d.getTime())) kickoff = d;
-            time = d.toLocaleDateString([], { weekday: 'short', month: 'numeric', day: 'numeric' }) + ' ' +
-                   d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-          }
-          if (comp.date) {
-            const d2 = new Date(comp.date);
-            if (!isNaN(d2.getTime())) kickoff = d2;
-          }
+            let time = "TBD";
+            let kickoff = new Date(8640000000000000);
+            if (isFinal) {
+              time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+            } else if (isLive) {
+              const liveDetail = comp.status.type.detail || `Period ${comp.status.period}`;
+              time = `${liveDetail}: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+            } else if (comp.date) {
+              const d = new Date(comp.date);
+              if (!isNaN(d.getTime())) kickoff = d;
+              time = d.toLocaleDateString([], { weekday: 'short', month: 'numeric', day: 'numeric' }) + ' ' +
+                     d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            }
+            if (comp.date) {
+              const d2 = new Date(comp.date);
+              if (!isNaN(d2.getTime())) kickoff = d2;
+            }
 
-          rawGames.push({
-            teamA: teamA,
-            teamB: teamB,
-            kickoff: kickoff,
-            rawOdds: rawOdds,
-            detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
-            winner: winnerName,
-            isLive: isLive,
-            // ESPN's own event id — stable no matter how ESPN formats a
-            // team's display name. The id never changes, so keying on it
-            // can't drift the way a team-name-derived key could.
-            espnId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null
-          });
+            rawGames.push({
+              teamA: teamA,
+              teamB: teamB,
+              kickoff: kickoff,
+              rawOdds: rawOdds,
+              detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
+              winner: winnerName,
+              isLive: isLive,
+              // ESPN's own event id — stable no matter how ESPN formats a
+              // team's display name. The id never changes, so keying on it
+              // can't drift the way a team-name-derived key could.
+              espnId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null
+            });
+          } catch (gameErr) {
+            console.error(`Skipping one malformed game in week ${week}:`, gameErr, ev);
+          }
         });
 
         rawGames.sort((a, b) => a.kickoff - b.kickoff);
