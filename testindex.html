@@ -516,16 +516,15 @@
     }
 
     .day-tag {
-      position: absolute;
-      top: -1px;
-      left: -1px;
-      font-size: 0.55rem;
+      display: inline-block;
+      font-size: 0.6rem;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.4px;
-      padding: 0.1rem 0.4rem;
-      border-radius: 6px 0 6px 0;
+      padding: 0.12rem 0.45rem;
+      border-radius: 4px;
       color: #0f172a;
+      margin-bottom: 0.35rem;
     }
 
     .host-lock-cell {
@@ -1982,45 +1981,31 @@
           tr.classList.add('live-game-row');
         }
 
-        // Day-group box: a colored border wraps around every consecutive
-        // row that falls on the same calendar day, with a small corner tag
-        // naming that day on the first row of the group. The matchup cell
-        // gets the left edge (+ the tag), Steven's cell gets the right
-        // edge, and all four cells share the top/bottom edge so the whole
-        // row-width box reads as one unit rather than four separate ones.
+        // Day tag: a small label naming the day (Friday, Saturday, etc.)
+        // shown once, on the first row of each new calendar day, right
+        // above the matchup text in that row's cell.
         const group = dayGroupInfo(games, idx, false);
-        let firstCellStyle = '';
-        let lastCellStyle = '';
-        let midCellStyle = '';
-        let tagHtml = '';
-        if (group) {
-          const topStyle = group.isFirst ? `border-top: 2px solid ${group.color} !important;` : '';
-          const bottomStyle = group.isLast ? `border-bottom: 2px solid ${group.color} !important;` : '';
-          firstCellStyle = `position: relative; border-left: 2px solid ${group.color} !important; ${topStyle} ${bottomStyle}`;
-          lastCellStyle = `border-right: 2px solid ${group.color} !important; ${topStyle} ${bottomStyle}`;
-          midCellStyle = `${topStyle} ${bottomStyle}`;
-          if (group.isFirst) {
-            tagHtml = `<span class="day-tag" style="background: ${group.color};">${group.label}</span>`;
-          }
-        }
+        const tagHtml = (group && group.isFirst)
+          ? `<div><span class="day-tag" style="background: ${group.color};">${group.label}</span></div>`
+          : '';
 
         tr.innerHTML = `
-          <td class="matchup-cell" style="${firstCellStyle}">
+          <td class="matchup-cell">
             ${tagHtml}
             ${g.matchupLabel}
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
-          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}" style="${midCellStyle}">
+          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
             ${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
             ${atsBadgeM}
           </td>
-          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}" style="${midCellStyle}">
+          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
             ${pS}${isLockS ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
             ${atsBadgeS}
           </td>
-          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}" style="${lastCellStyle}">
+          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
             ${pSt}${isLockSt ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
             ${atsBadgeSt}
