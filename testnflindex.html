@@ -329,16 +329,17 @@
       border-color: rgba(251, 191, 36, 0.4);
     }
 
-    .day-tag {
-      display: inline-block;
-      font-size: 0.6rem;
+    .day-divider {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      text-align: center;
+      font-size: 0.72rem;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.4px;
-      padding: 0.12rem 0.45rem;
-      border-radius: 4px;
-      color: #0f172a;
-      margin-bottom: 0.35rem;
+      letter-spacing: 0.5px;
+      padding: 0.4rem;
+      margin-bottom: 0.4rem;
     }
 
     .schedule-matchup {
@@ -1014,8 +1015,9 @@
             } else if (comp.date) {
               const d = new Date(comp.date);
               if (!isNaN(d.getTime())) kickoff = d;
-              time = d.toLocaleDateString([], { weekday: 'short', month: 'numeric', day: 'numeric' }) + ' ' +
-                     d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+              // Just the time-of-day here — the date now lives in the day
+              // divider row instead of being repeated on every single game.
+              time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
             }
             if (comp.date) {
               const d2 = new Date(comp.date);
@@ -1558,7 +1560,8 @@
         isFirst: thisKey !== prevKey,
         isLast: thisKey !== nextKey,
         color: DAY_GROUP_COLORS[dayNum] || 'var(--border-color)',
-        label: dayLabelFor(dayNum, isNflSite)
+        label: dayLabelFor(dayNum, isNflSite),
+        dateStr: g.kickoff.toLocaleDateString([], { month: 'numeric', day: 'numeric' })
       };
     }
 
@@ -1578,15 +1581,20 @@
         const isLive = liveMap[g.matchupKey] || liveMap[g.id];
         const winner = winners[g.matchupKey] || winners[g.id];
 
+        // A standalone full-width divider row sits ahead of the first game
+        // of each new calendar day — "SATURDAY 9/19" — rather than a tag
+        // stuck on one specific game, which read like it was calling that
+        // one game out instead of labeling the group. Same background as
+        // a normal row, just the text colored per day.
         const group = dayGroupInfo(games, idx, true);
-        const tagHtml = (group && group.isFirst)
-          ? `<span class="day-tag" style="background: ${group.color};">${group.label}</span>`
+        const dividerHtml = (group && group.isFirst)
+          ? `<div class="day-divider" style="color: ${group.color};">${group.label} ${group.dateStr}</div>`
           : '';
 
         return `
+          ${dividerHtml}
           <div class="schedule-row ${isLive ? 'live-row' : ''}">
             <div>
-              ${tagHtml ? `<div>${tagHtml}</div>` : ''}
               <div class="schedule-matchup">${g.teamA} vs ${g.teamB}</div>
               ${g.detail ? `<span class="schedule-detail">${g.detail}</span>` : ''}
             </div>
