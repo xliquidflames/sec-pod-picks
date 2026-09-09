@@ -444,7 +444,7 @@
 
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
-      width: 24%;
+      width: 30%;
       text-align: center;
       padding: 0.45rem 0.4rem;
       font-size: 0.75rem;
@@ -467,35 +467,29 @@
     }
 
     .host-grid-table th.kick-header,
-    .host-grid-table td.kick-cell {
-      width: 14%;
-      text-align: center;
-      padding: 0.45rem 0.25rem;
-      font-size: 0.68rem;
-      color: var(--text-muted);
+    .host-grid-table th.line-header {
+      width: auto;
     }
 
-    .host-grid-table th.line-header,
+    .host-grid-table td.kick-cell,
     .host-grid-table td.line-cell {
-      width: 11%;
       text-align: center;
       padding: 0.45rem 0.25rem;
       font-size: 0.68rem;
       color: var(--text-muted);
     }
 
-    .host-grid-table th.location-header,
-    .host-grid-table td.location-cell {
-      width: 14%;
-      text-align: center;
-      padding: 0.45rem 0.25rem;
-      font-size: 0.68rem;
-      color: var(--text-muted);
+    .host-grid-table td.kick-cell {
+      width: 16%;
     }
 
-    .host-grid-table th:not(.matchup-header):not(.kick-header):not(.line-header):not(.location-header),
+    .host-grid-table td.line-cell {
+      width: 13%;
+    }
+
+    .host-grid-table th:not(.matchup-header):not(.kick-header):not(.line-header),
     .host-grid-table td.pick-cell {
-      width: 12.33%;
+      width: 13.67%;
       padding: 0.45rem 0.2rem;
       font-size: 0.75rem;
       font-weight: 600;
@@ -926,14 +920,13 @@
                 <th class="matchup-header">Matchup</th>
                 <th class="kick-header">Kick</th>
                 <th class="line-header">Line</th>
-                <th class="location-header">Location</th>
                 <th id="thMike">Mike</th>
                 <th id="thShane">Shane</th>
                 <th id="thSteven">Steven</th>
               </tr>
             </thead>
             <tbody id="hostGridBody">
-              <tr><td colspan="7" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
+              <tr><td colspan="6" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1325,14 +1318,13 @@
             if (!isNaN(kd.getTime())) kickoff = kd;
           }
 
-          // Experimental: Kick/Line/Location now live in their own table
-          // columns instead of being crammed into one subtext line under
-          // the matchup. lineText and locationText stay constant
-          // regardless of game state; kickText is the one that changes
-          // meaning once a game goes live or final (kickoff time becomes
-          // a live score, then a final score).
+          // Kick/Line now live in their own table columns instead of being
+          // crammed into one subtext line under the matchup. lineText
+          // stays constant regardless of game state; kickText is the one
+          // that changes meaning once a game goes live or final (kickoff
+          // time becomes a live score, then a final score). The Location
+          // column was tried and dropped per feedback.
           const lineText = rawOdds ? rawOdds : 'Line: TBD';
-          const locationText = venue || '';
 
           rawGames.push({
             teamA: teamA,
@@ -1342,7 +1334,6 @@
             matchupLabel: matchupLabel,
             kickText: kickText,
             lineText: lineText,
-            locationText: locationText,
             winner: winnerName,
             isLive: isLive,
             // ESPN's own event id — stable no matter how ESPN formats a
@@ -1387,7 +1378,6 @@
             rawOdds: g.rawOdds,
             kickText: g.kickText,
             lineText: g.lineText,
-            locationText: g.locationText,
             isLive: g.isLive,
             kickoff: g.kickoff
           };
@@ -1990,13 +1980,14 @@
         // of each new calendar day — "SATURDAY 9/19" — rather than a tag
         // stuck on one specific game's cell, which read like it was
         // calling that one game out instead of labeling the whole group.
-        // Same background as a normal row, spans all seven columns, just
-        // the text colored per day.
+        // Same background as a normal row, spans all six columns, text in
+        // the same gold used for the other headers rather than a
+        // different color per day.
         const group = dayGroupInfo(games, idx, false);
         if (group && group.isFirst) {
           const dividerTr = document.createElement("tr");
           dividerTr.innerHTML = `
-            <td colspan="7" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: ${group.color};">
+            <td colspan="6" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
               ${group.label} ${group.dateStr}
             </td>
           `;
@@ -2039,7 +2030,6 @@
           </td>
           <td class="kick-cell">${g.kickText}</td>
           <td class="line-cell">${g.lineText}</td>
-          <td class="location-cell">${g.locationText}</td>
           <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
             ${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
