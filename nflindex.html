@@ -329,6 +329,19 @@
       border-color: rgba(251, 191, 36, 0.4);
     }
 
+    .day-divider {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      text-align: center;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0.4rem;
+      margin-bottom: 0.4rem;
+    }
+
     .schedule-matchup {
       font-weight: 700;
       color: var(--text-main);
@@ -1002,8 +1015,9 @@
             } else if (comp.date) {
               const d = new Date(comp.date);
               if (!isNaN(d.getTime())) kickoff = d;
-              time = d.toLocaleDateString([], { weekday: 'short', month: 'numeric', day: 'numeric' }) + ' ' +
-                     d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+              // Just the time-of-day here — the date now lives in the day
+              // divider row instead of being repeated on every single game.
+              time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
             }
             if (comp.date) {
               const d2 = new Date(comp.date);
@@ -1048,7 +1062,8 @@
             teamB: g.teamB,
             rawOdds: g.rawOdds,
             detail: g.detail,
-            isLive: g.isLive
+            isLive: g.isLive,
+            kickoff: g.kickoff
           };
         });
 
@@ -1500,6 +1515,56 @@
       await renderActiveWeek();
     }
 
+    // Shared day-grouping helpers. Games are already sorted chronologically,
+    // so games on the same calendar day are always contiguous — grouping
+    // just means detecting where one day's block ends and the next begins.
+    const DAY_GROUP_COLORS = {
+      0: '#4d93a3', // Sunday — muted teal
+      1: '#b8748f', // Monday — muted rose
+      2: '#94a3b8', // Tuesday — light gray (rare, but was falling back to a too-dark default before)
+      3: '#94a3b8', // Wednesday — light gray (rare, but was falling back to a too-dark default before)
+      4: '#8c7cc4', // Thursday — muted violet
+      5: '#5586b3', // Friday — muted blue
+      6: '#5c9973'  // Saturday — muted green
+    };
+
+    function localDateKey(d) {
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    }
+
+    function hasRealKickoff(g) {
+      return g.kickoff && g.kickoff.getFullYear() < 9999;
+    }
+
+    function dayLabelFor(dayNum, isNflSite) {
+      const names = { 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
+      if (isNflSite && dayNum === 1) return 'MNF';
+      return names[dayNum];
+    }
+
+    // Returns the day-group CSS/positioning info for the game at `idx`
+    // within the full, chronologically-sorted `games` list — whether it's
+    // the first and/or last game of its day, and what color/label that
+    // day's box should use. isNflSite controls only the label text
+    // (Monday becomes "MNF" for NFL, stays "Monday" for SEC).
+    function dayGroupInfo(games, idx, isNflSite) {
+      const g = games[idx];
+      if (!hasRealKickoff(g)) return null;
+
+      const thisKey = localDateKey(g.kickoff);
+      const prevKey = (idx > 0 && hasRealKickoff(games[idx - 1])) ? localDateKey(games[idx - 1].kickoff) : null;
+      const nextKey = (idx < games.length - 1 && hasRealKickoff(games[idx + 1])) ? localDateKey(games[idx + 1].kickoff) : null;
+
+      const dayNum = g.kickoff.getDay();
+      return {
+        isFirst: thisKey !== prevKey,
+        isLast: thisKey !== nextKey,
+        color: DAY_GROUP_COLORS[dayNum] || 'var(--border-color)',
+        label: dayLabelFor(dayNum, isNflSite),
+        dateStr: g.kickoff.toLocaleDateString([], { month: 'numeric', day: 'numeric' })
+      };
+    }
+
     function renderSchedule(games) {
       const container = document.getElementById("scheduleList");
       if (!container) return;
@@ -1512,10 +1577,22 @@
       const liveMap = window.liveGames[activeWeek] || {};
       const winners = window.gameWinners[activeWeek] || {};
 
-      container.innerHTML = games.map(g => {
+      container.innerHTML = games.map((g, idx) => {
         const isLive = liveMap[g.matchupKey] || liveMap[g.id];
         const winner = winners[g.matchupKey] || winners[g.id];
+
+        // A standalone full-width divider row sits ahead of the first game
+        // of each new calendar day — "SATURDAY 9/19" — rather than a tag
+        // stuck on one specific game, which read like it was calling that
+        // one game out instead of labeling the group. Same background as
+        // a normal row, just the text colored per day.
+        const group = dayGroupInfo(games, idx, true);
+        const dividerHtml = (group && group.isFirst)
+          ? `<div class="day-divider" style="color: ${group.color};">${group.label} ${group.dateStr}</div>`
+          : '';
+
         return `
+          ${dividerHtml}
           <div class="schedule-row ${isLive ? 'live-row' : ''}">
             <div>
               <div class="schedule-matchup">${g.teamA} vs ${g.teamB}</div>
