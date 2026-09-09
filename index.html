@@ -515,6 +515,8 @@
       border-bottom: 1px solid rgba(251, 191, 36, 0.4) !important;
     }
 
+
+
     .host-lock-cell {
       background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(30, 41, 59, 0.95)) !important;
       box-shadow: inset 0 0 10px rgba(251, 191, 36, 0.25);
@@ -891,7 +893,7 @@
           <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Games are sorted in chronological order.</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Here is this week's schedule, lines, scores, and Mike, Shane, and Steven's picks. Highlighted rows are games currently in progress.</p>
         <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.4rem;">
           <table class="host-grid-table">
             <thead>
@@ -1081,6 +1083,55 @@
       return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
     }
 
+    // Shared day-grouping helpers. Games are already sorted chronologically,
+    // so games on the same calendar day are always contiguous — grouping
+    // just means detecting where one day's block ends and the next begins.
+    const DAY_GROUP_COLORS = {
+      0: '#4d93a3', // Sunday — muted teal
+      1: '#b8748f', // Monday — muted rose
+      2: '#94a3b8', // Tuesday — light gray (rare, but was falling back to a too-dark default before)
+      3: '#94a3b8', // Wednesday — light gray (rare, but was falling back to a too-dark default before)
+      4: '#8c7cc4', // Thursday — muted violet
+      5: '#5586b3', // Friday — muted blue
+      6: '#5c9973'  // Saturday — muted green
+    };
+
+    function localDateKey(d) {
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    }
+
+    function hasRealKickoff(g) {
+      return g.kickoff && g.kickoff.getFullYear() < 9999;
+    }
+
+    function dayLabelFor(dayNum, isNflSite) {
+      const names = { 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
+      if (isNflSite && dayNum === 1) return 'MNF';
+      return names[dayNum];
+    }
+
+    // Returns the day-group CSS/positioning info for the game at `idx`
+    // within the full, chronologically-sorted `games` list — whether it's
+    // the first and/or last game of its day, and what color/label/date
+    // that day's divider row should show.
+    function dayGroupInfo(games, idx, isNflSite) {
+      const g = games[idx];
+      if (!hasRealKickoff(g)) return null;
+
+      const thisKey = localDateKey(g.kickoff);
+      const prevKey = (idx > 0 && hasRealKickoff(games[idx - 1])) ? localDateKey(games[idx - 1].kickoff) : null;
+      const nextKey = (idx < games.length - 1 && hasRealKickoff(games[idx + 1])) ? localDateKey(games[idx + 1].kickoff) : null;
+
+      const dayNum = g.kickoff.getDay();
+      return {
+        isFirst: thisKey !== prevKey,
+        isLast: thisKey !== nextKey,
+        color: DAY_GROUP_COLORS[dayNum] || 'var(--border-color)',
+        label: dayLabelFor(dayNum, isNflSite),
+        dateStr: g.kickoff.toLocaleDateString([], { month: 'numeric', day: 'numeric' })
+      };
+    }
+
     const secNormalizedNames = new Set(
       Object.values(secTeamAliases).flat().map(n => normalizeTeam(n))
     );
@@ -1237,8 +1288,9 @@
             const liveDetail = comp.status.type.detail || `Period ${comp.status.period}`;
             time = `${liveDetail}: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
           } else if (comp.date) {
-            time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
-                   new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            // Just the time-of-day here — the date now lives in the day
+            // divider row instead of being repeated on every single game.
+            time = new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
           if (comp.date) {
             const kd = new Date(comp.date);
@@ -1295,7 +1347,8 @@
             matchupLabel: g.matchupLabel,
             rawOdds: g.rawOdds,
             detail: g.detail,
-            isLive: g.isLive
+            isLive: g.isLive,
+            kickoff: g.kickoff
           };
         });
 
@@ -1891,7 +1944,24 @@
       const isLockActiveThisWeek = (activeWeek !== 1);
       const liveMap = window.liveGames[activeWeek] || {};
 
-      games.forEach(g => {
+      games.forEach((g, idx) => {
+        // A standalone full-width divider row sits ahead of the first game
+        // of each new calendar day — "SATURDAY 9/19" — rather than a tag
+        // stuck on one specific game's cell, which read like it was
+        // calling that one game out instead of labeling the whole group.
+        // Same background as a normal row, spans all four columns, just
+        // the text colored per day.
+        const group = dayGroupInfo(games, idx, false);
+        if (group && group.isFirst) {
+          const dividerTr = document.createElement("tr");
+          dividerTr.innerHTML = `
+            <td colspan="4" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: ${group.color};">
+              ${group.label} ${group.dateStr}
+            </td>
+          `;
+          hostBody.appendChild(dividerTr);
+        }
+
         const tr = document.createElement("tr");
         const pM = getMatchedUserPick(mikePicks, g) || "-";
         const pS = getMatchedUserPick(shanePicks, g) || "-";
