@@ -515,6 +515,19 @@
       border-bottom: 1px solid rgba(251, 191, 36, 0.4) !important;
     }
 
+    .day-tag {
+      position: absolute;
+      top: -1px;
+      left: -1px;
+      font-size: 0.55rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 0.1rem 0.4rem;
+      border-radius: 6px 0 6px 0;
+      color: #0f172a;
+    }
+
     .host-lock-cell {
       background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(30, 41, 59, 0.95)) !important;
       box-shadow: inset 0 0 10px rgba(251, 191, 36, 0.25);
@@ -891,7 +904,7 @@
           <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Games are sorted in chronological order.</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Here is this week's schedule, lines, scores, and Mike, Shane, and Steven's picks. Highlighted rows are games currently in progress.</p>
         <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.4rem;">
           <table class="host-grid-table">
             <thead>
@@ -1079,6 +1092,52 @@
 
     function buildMatchupKey(teamA, teamB) {
       return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
+    }
+
+    // Shared day-grouping helpers. Games are already sorted chronologically,
+    // so games on the same calendar day are always contiguous — grouping
+    // just means detecting where one day's block ends and the next begins.
+    const DAY_GROUP_COLORS = {
+      0: '#22d3ee', // Sunday
+      1: '#f472b6', // Monday
+      4: '#a78bfa', // Thursday
+      5: '#60a5fa', // Friday
+      6: '#4ade80'  // Saturday
+    };
+
+    function localDateKey(d) {
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    }
+
+    function hasRealKickoff(g) {
+      return g.kickoff && g.kickoff.getFullYear() < 9999;
+    }
+
+    function dayLabelFor(dayNum, isNflSite) {
+      const names = { 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
+      if (isNflSite && dayNum === 1) return 'MNF';
+      return names[dayNum];
+    }
+
+    // Returns the day-group CSS/positioning info for the game at `idx`
+    // within the full, chronologically-sorted `games` list — whether it's
+    // the first and/or last game of its day, and what color/label that
+    // day's box should use.
+    function dayGroupInfo(games, idx, isNflSite) {
+      const g = games[idx];
+      if (!hasRealKickoff(g)) return null;
+
+      const thisKey = localDateKey(g.kickoff);
+      const prevKey = (idx > 0 && hasRealKickoff(games[idx - 1])) ? localDateKey(games[idx - 1].kickoff) : null;
+      const nextKey = (idx < games.length - 1 && hasRealKickoff(games[idx + 1])) ? localDateKey(games[idx + 1].kickoff) : null;
+
+      const dayNum = g.kickoff.getDay();
+      return {
+        isFirst: thisKey !== prevKey,
+        isLast: thisKey !== nextKey,
+        color: DAY_GROUP_COLORS[dayNum] || 'var(--border-color)',
+        label: dayLabelFor(dayNum, isNflSite)
+      };
     }
 
     const secNormalizedNames = new Set(
@@ -1295,7 +1354,8 @@
             matchupLabel: g.matchupLabel,
             rawOdds: g.rawOdds,
             detail: g.detail,
-            isLive: g.isLive
+            isLive: g.isLive,
+            kickoff: g.kickoff
           };
         });
 
@@ -1891,7 +1951,7 @@
       const isLockActiveThisWeek = (activeWeek !== 1);
       const liveMap = window.liveGames[activeWeek] || {};
 
-      games.forEach(g => {
+      games.forEach((g, idx) => {
         const tr = document.createElement("tr");
         const pM = getMatchedUserPick(mikePicks, g) || "-";
         const pS = getMatchedUserPick(shanePicks, g) || "-";
@@ -1922,22 +1982,45 @@
           tr.classList.add('live-game-row');
         }
 
+        // Day-group box: a colored border wraps around every consecutive
+        // row that falls on the same calendar day, with a small corner tag
+        // naming that day on the first row of the group. The matchup cell
+        // gets the left edge (+ the tag), Steven's cell gets the right
+        // edge, and all four cells share the top/bottom edge so the whole
+        // row-width box reads as one unit rather than four separate ones.
+        const group = dayGroupInfo(games, idx, false);
+        let firstCellStyle = '';
+        let lastCellStyle = '';
+        let midCellStyle = '';
+        let tagHtml = '';
+        if (group) {
+          const topStyle = group.isFirst ? `border-top: 2px solid ${group.color} !important;` : '';
+          const bottomStyle = group.isLast ? `border-bottom: 2px solid ${group.color} !important;` : '';
+          firstCellStyle = `position: relative; border-left: 2px solid ${group.color} !important; ${topStyle} ${bottomStyle}`;
+          lastCellStyle = `border-right: 2px solid ${group.color} !important; ${topStyle} ${bottomStyle}`;
+          midCellStyle = `${topStyle} ${bottomStyle}`;
+          if (group.isFirst) {
+            tagHtml = `<span class="day-tag" style="background: ${group.color};">${group.label}</span>`;
+          }
+        }
+
         tr.innerHTML = `
-          <td class="matchup-cell">
+          <td class="matchup-cell" style="${firstCellStyle}">
+            ${tagHtml}
             ${g.matchupLabel}
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
-          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
+          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}" style="${midCellStyle}">
             ${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
             ${atsBadgeM}
           </td>
-          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
+          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}" style="${midCellStyle}">
             ${pS}${isLockS ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
             ${atsBadgeS}
           </td>
-          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
+          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}" style="${lastCellStyle}">
             ${pSt}${isLockSt ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
             ${atsBadgeSt}
