@@ -439,6 +439,79 @@
       return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
     }
 
+    // Every ESPN scoreboard fetch for a given week happens at most once per
+    // page load thanks to this cache.
+    window.espnRawCache = {};
+
+    async function fetchEspnRaw(week) {
+      if (window.espnRawCache[week]) return window.espnRawCache[week];
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
+        const res = await fetch(url);
+        const serverDateHeader = res.headers.get("date");
+        const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+        const data = await res.json();
+        const result = { data, currentTime };
+        window.espnRawCache[week] = result;
+        return result;
+      } catch (err) {
+        console.error(`ESPN fetch failed for week ${week}:`, err);
+        return { data: null, currentTime: new Date() };
+      }
+    }
+
+    const TOTAL_WEEKS = 14;
+
+    // Figures out which week to default the "Select Week" dropdown to when
+    // the portal first loads, instead of it always sitting on Week 1 no
+    // matter how far the season's progressed. Hosts move to the next
+    // week's admin page on MONDAY specifically — a day earlier than the
+    // cousin-facing leaderboard, which waits until Tuesday. That's
+    // intentional, not a mismatch to fix: hosts record and prep for the
+    // next week sooner than when the podcast wants the audience to see it
+    // reflected on the public leaderboard.
+    async function determineActiveWeek() {
+      let activeW = 1;
+      const weekNums = Array.from({length: TOTAL_WEEKS}, (_, i) => i + 1);
+      await Promise.all(weekNums.map(w => fetchEspnRaw(w)));
+
+      for (let w = 1; w <= TOTAL_WEEKS; w++) {
+        try {
+          const { data, currentTime } = await fetchEspnRaw(w);
+          if (!data || !data.events || data.events.length === 0) continue;
+
+          const gameDates = data.events
+            .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+            .filter(d => !isNaN(d.getTime()))
+            .sort((a, b) => a - b);
+
+          if (gameDates.length === 0) continue;
+
+          const firstKickoff = gameDates[0];
+          const lastKickoff = gameDates[gameDates.length - 1];
+          const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
+
+          const TRANSITION_WEEKDAY = 1; // 0=Sun, 1=Mon, 2=Tue, ...
+          const transitionDay = new Date(lastGameEnd);
+          transitionDay.setHours(0, 0, 0, 0);
+          do {
+            transitionDay.setDate(transitionDay.getDate() + 1);
+          } while (transitionDay.getDay() !== TRANSITION_WEEKDAY);
+
+          if (currentTime >= firstKickoff) {
+            activeW = w;
+            if (currentTime >= transitionDay) {
+              activeW = Math.min(w + 1, TOTAL_WEEKS);
+            }
+          }
+        } catch (e) {
+          console.error(`Error calculating active week for week ${w}:`, e);
+        }
+      }
+
+      return activeW;
+    }
+
     async function fetchEspnSchedule(week) {
       try {
         const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
@@ -818,7 +891,12 @@
       }
     }
 
-    loadSchedule();
+    (async () => {
+      const activeWeek = await determineActiveWeek();
+      const weekSelect = document.getElementById("weekSelect");
+      if (weekSelect) weekSelect.value = String(activeWeek);
+      loadSchedule();
+    })();
   </script>
 </body>
 </html>
