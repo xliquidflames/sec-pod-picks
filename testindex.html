@@ -444,7 +444,7 @@
 
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
-      width: 37%;
+      width: 24%;
       text-align: center;
       padding: 0.45rem 0.4rem;
       font-size: 0.75rem;
@@ -466,9 +466,36 @@
       font-weight: normal;
     }
 
-    .host-grid-table th:not(.matchup-header),
+    .host-grid-table th.kick-header,
+    .host-grid-table td.kick-cell {
+      width: 14%;
+      text-align: center;
+      padding: 0.45rem 0.25rem;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    .host-grid-table th.line-header,
+    .host-grid-table td.line-cell {
+      width: 11%;
+      text-align: center;
+      padding: 0.45rem 0.25rem;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    .host-grid-table th.location-header,
+    .host-grid-table td.location-cell {
+      width: 14%;
+      text-align: center;
+      padding: 0.45rem 0.25rem;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    .host-grid-table th:not(.matchup-header):not(.kick-header):not(.line-header):not(.location-header),
     .host-grid-table td.pick-cell {
-      width: 21%;
+      width: 12.33%;
       padding: 0.45rem 0.2rem;
       font-size: 0.75rem;
       font-weight: 600;
@@ -666,8 +693,6 @@
     }
 
     .pick-line-matchup {
-      flex: 1;
-      text-align: center;
       color: var(--text-muted);
     }
 
@@ -899,13 +924,16 @@
             <thead>
               <tr>
                 <th class="matchup-header">Matchup</th>
+                <th class="kick-header">Kick</th>
+                <th class="line-header">Line</th>
+                <th class="location-header">Location</th>
                 <th id="thMike">Mike</th>
                 <th id="thShane">Shane</th>
                 <th id="thSteven">Steven</th>
               </tr>
             </thead>
             <tbody id="hostGridBody">
-              <tr><td colspan="4" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
+              <tr><td colspan="7" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1280,22 +1308,31 @@
             matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
           }
 
-          let time = "TBD";
+          let kickText = "TBD";
           let kickoff = new Date(8640000000000000);
           if (isFinal) {
-            time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+            kickText = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
           } else if (isLive) {
             const liveDetail = comp.status.type.detail || `Period ${comp.status.period}`;
-            time = `${liveDetail}: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+            kickText = `${liveDetail}: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
           } else if (comp.date) {
-            // Just the time-of-day here — the date now lives in the day
+            // Just the time-of-day here — the date lives in the day
             // divider row instead of being repeated on every single game.
-            time = new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            kickText = new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
           if (comp.date) {
             const kd = new Date(comp.date);
             if (!isNaN(kd.getTime())) kickoff = kd;
           }
+
+          // Experimental: Kick/Line/Location now live in their own table
+          // columns instead of being crammed into one subtext line under
+          // the matchup. lineText and locationText stay constant
+          // regardless of game state; kickText is the one that changes
+          // meaning once a game goes live or final (kickoff time becomes
+          // a live score, then a final score).
+          const lineText = rawOdds ? rawOdds : 'Line: TBD';
+          const locationText = venue || '';
 
           rawGames.push({
             teamA: teamA,
@@ -1303,7 +1340,9 @@
             kickoff: kickoff,
             rawOdds: rawOdds,
             matchupLabel: matchupLabel,
-            detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
+            kickText: kickText,
+            lineText: lineText,
+            locationText: locationText,
             winner: winnerName,
             isLive: isLive,
             // ESPN's own event id — stable no matter how ESPN formats a
@@ -1346,7 +1385,9 @@
             teamB: g.teamB,
             matchupLabel: g.matchupLabel,
             rawOdds: g.rawOdds,
-            detail: g.detail,
+            kickText: g.kickText,
+            lineText: g.lineText,
+            locationText: g.locationText,
             isLive: g.isLive,
             kickoff: g.kickoff
           };
@@ -1949,13 +1990,13 @@
         // of each new calendar day — "SATURDAY 9/19" — rather than a tag
         // stuck on one specific game's cell, which read like it was
         // calling that one game out instead of labeling the whole group.
-        // Same background as a normal row, spans all four columns, just
+        // Same background as a normal row, spans all seven columns, just
         // the text colored per day.
         const group = dayGroupInfo(games, idx, false);
         if (group && group.isFirst) {
           const dividerTr = document.createElement("tr");
           dividerTr.innerHTML = `
-            <td colspan="4" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: ${group.color};">
+            <td colspan="7" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: ${group.color};">
               ${group.label} ${group.dateStr}
             </td>
           `;
@@ -1995,8 +2036,10 @@
         tr.innerHTML = `
           <td class="matchup-cell">
             ${g.matchupLabel}
-            ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
+          <td class="kick-cell">${g.kickText}</td>
+          <td class="line-cell">${g.lineText}</td>
+          <td class="location-cell">${g.locationText}</td>
           <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
             ${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
