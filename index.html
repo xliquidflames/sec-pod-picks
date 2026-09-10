@@ -1947,13 +1947,14 @@
         // of each new calendar day — "SATURDAY 9/19" — rather than a tag
         // stuck on one specific game's cell, which read like it was
         // calling that one game out instead of labeling the whole group.
-        // Same background as a normal row, spans all four columns, just
-        // the text colored per day.
+        // Same background as a normal row, spans all four columns, text in
+        // the same gold used for the other headers rather than a
+        // different color per day.
         const group = dayGroupInfo(games, idx, false);
         if (group && group.isFirst) {
           const dividerTr = document.createElement("tr");
           dividerTr.innerHTML = `
-            <td colspan="4" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: ${group.color};">
+            <td colspan="4" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
               ${group.label} ${group.dateStr}
             </td>
           `;
