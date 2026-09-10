@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-alt: #162032;
+      --accent-gold: #fbbf24;
+      --accent-gold-hover: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --success: #4ade80;
+      --danger: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    html, body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100dvh;
+    }
+
+    body {
+      padding: 1.5rem 1rem 3rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 700px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      color: var(--accent-gold);
+      font-weight: 900;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .card {
+      background: var(--bg-card);
+      padding: 1.25rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.05rem;
+      color: var(--accent-gold);
+      font-weight: 800;
+      margin-bottom: 0.4rem;
+    }
+
+    .section-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 0.85rem;
+      line-height: 1.4;
+    }
+
+    /* --- PIN gate --- */
+    #pinGate {
+      max-width: 400px;
+      margin: 3rem auto 0;
+      text-align: center;
+    }
+
+    #pinGate label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    #pinGate input {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      background: #0d1527;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 1.1rem;
+      text-align: center;
+      letter-spacing: 2px;
+      outline: none;
+      margin-bottom: 0.85rem;
+    }
+
+    #pinGate input:focus {
+      border-color: var(--accent-gold);
+    }
+
+    .btn-unlock {
+      width: 100%;
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #0f172a;
+      font-size: 1rem;
+      font-weight: 900;
+      padding: 0.85rem;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    #pinError {
+      color: var(--danger);
+      font-size: 0.85rem;
+      margin-top: 0.75rem;
+      min-height: 1.2rem;
+    }
+
+    #adminContent {
+      display: none;
+    }
+
+    /* --- Report elements --- */
+    .sport-toggle {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .sport-btn {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.7rem;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .sport-btn.active {
+      background: var(--accent-gold);
+      color: #0f172a;
+      border-color: var(--accent-gold);
+    }
+
+    .traffic-link {
+      display: block;
+      text-align: center;
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #0f172a;
+      font-weight: 900;
+      padding: 0.85rem;
+      border-radius: 10px;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 0.9rem;
+    }
+
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .report-table th {
+      text-align: left;
+      color: var(--accent-gold);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0.4rem 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .report-table td {
+      padding: 0.45rem 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .report-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .muted-cell {
+      color: var(--text-muted);
+    }
+
+    .empty-note {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 0.75rem 0;
+    }
+
+    .dupe-group {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .loading-note {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 1.5rem 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Admin Panel</h1>
+
+    <div id="pinGate">
+      <label for="adminPinInput">Enter Admin PIN</label>
+      <input type="password" id="adminPinInput" inputmode="numeric" placeholder="••••" />
+      <button type="button" class="btn-unlock" onclick="checkPin()">Unlock</button>
+      <div id="pinError"></div>
+    </div>
+
+    <div id="adminContent">
+      <div class="card">
+        <div class="section-title">Site Traffic</div>
+        <div class="section-desc">Full analytics — visits, referrers, trends over time — live on GoatCounter.</div>
+        <a href="https://liquidflames.goatcounter.com" target="_blank" rel="noopener noreferrer" class="traffic-link">Open GoatCounter Dashboard &rarr;</a>
+      </div>
+
+      <div class="sport-toggle">
+        <button type="button" class="sport-btn active" id="btnSecTab" onclick="switchSport('sec')">SEC</button>
+        <button type="button" class="sport-btn" id="btnNflTab" onclick="switchSport('nfl')">NFL</button>
+      </div>
+
+      <div id="reportsContainer">
+        <div class="loading-note">Loading season data...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ Change this before deploying — this is a placeholder, and since
+    // this whole site runs without any real backend or login system, this
+    // PIN is just a client-side string comparison, same as the Host
+    // Security PIN elsewhere on the site. It stops casual browsing, not a
+    // determined look at the page source. Keep it different from the host
+    // PIN (fewer people know it, so less chance it leaks), and don't reuse
+    // it anywhere that matters.
+    const ADMIN_PIN = "0654";
+
+    function checkPin() {
+      const entered = document.getElementById("adminPinInput").value.trim();
+      const errorEl = document.getElementById("pinError");
+      if (entered === ADMIN_PIN) {
+        document.getElementById("pinGate").style.display = "none";
+        document.getElementById("adminContent").style.display = "block";
+        loadEverything();
+      } else {
+        errorEl.textContent = "Incorrect PIN.";
+      }
+    }
+
+    document.getElementById("adminPinInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") checkPin();
+    });
+
+    const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let seasonData = { sec: null, nfl: null };
+    let activeSport = "sec";
+
+    // Same caching pattern used on index.html/nflindex.html — each week's
+    // ESPN data is fetched from the network once, regardless of how many
+    // times different reports need it.
+    const espnRawCache = {};
+
+    async function fetchEspnRaw(sportPath, week) {
+      const cacheKey = `${sportPath}_${week}`;
+      if (espnRawCache[cacheKey]) return espnRawCache[cacheKey];
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/${sportPath}/scoreboard?${sportPath === "college-football" ? "groups=8&" : ""}seasontype=2&dates=2026&week=${week}&limit=100`;
+        const res = await fetch(url);
+        const serverDateHeader = res.headers.get("date");
+        const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+        const data = await res.json();
+        const result = { data, currentTime };
+        espnRawCache[cacheKey] = result;
+        return result;
+      } catch (err) {
+        console.error(`ESPN fetch failed for ${sportPath} week ${week}:`, err);
+        return { data: null, currentTime: new Date() };
+      }
+    }
+
+    async function isWeekLocked(sportPath, weekNum) {
+      try {
+        const { data, currentTime } = await fetchEspnRaw(sportPath, weekNum);
+        if (!data || !data.events || data.events.length === 0) return false;
+
+        const anyStartedOrCompleted = data.events.some(ev => {
+          const comp = ev.competitions && ev.competitions[0];
+          const isComp = comp && comp.status && comp.status.type && comp.status.type.completed;
+          const state = comp && comp.status && comp.status.type && comp.status.type.state;
+          return isComp || state === "in" || state === "post";
+        });
+        if (anyStartedOrCompleted) return true;
+
+        const kickoffTimes = data.events
+          .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+          .filter(d => !isNaN(d.getTime()))
+          .sort((a, b) => a - b);
+        if (kickoffTimes.length === 0) return false;
+
+        return currentTime >= kickoffTimes[0];
+      } catch (err) {
+        return false;
+      }
+    }
+
+    async function getFirstKickoff(sportPath, weekNum) {
+      const { data } = await fetchEspnRaw(sportPath, weekNum);
+      if (!data || !data.events || data.events.length === 0) return null;
+      const kickoffTimes = data.events
+        .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+        .filter(d => !isNaN(d.getTime()))
+        .sort((a, b) => a - b);
+      return kickoffTimes.length > 0 ? kickoffTimes[0] : null;
+    }
+
+    // Figures out which week is still open (hasn't locked yet) and grabs
+    // the first-kickoff timestamp for every week along the way, since
+    // multiple reports below need one or both of those.
+    async function analyzeSeasonWeeks(sportPath, totalWeeks) {
+      const weekNums = Array.from({ length: totalWeeks }, (_, i) => i + 1);
+      await Promise.all(weekNums.map(w => fetchEspnRaw(sportPath, w)));
+
+      let openWeek = totalWeeks;
+      for (let w = 1; w <= totalWeeks; w++) {
+        const locked = await isWeekLocked(sportPath, w);
+        if (!locked) {
+          openWeek = w;
+          break;
+        }
+      }
+
+      const firstKickoffByWeek = {};
+      for (let w = 1; w <= totalWeeks; w++) {
+        firstKickoffByWeek[w] = await getFirstKickoff(sportPath, w);
+      }
+
+      return { openWeek, firstKickoffByWeek };
+    }
+
+    function normalizeNameForDupeCheck(name) {
+      return (name || "").trim().toLowerCase().replace(/^@/, "").replace(/[^a-z0-9]/g, "");
+    }
+
+    function findPossibleDuplicates(rows) {
+      const names = Array.from(new Set(rows.map(r => r.user_name)));
+      const byNormalized = {};
+      names.forEach(n => {
+        const key = normalizeNameForDupeCheck(n);
+        if (!key) return;
+        if (!byNormalized[key]) byNormalized[key] = [];
+        byNormalized[key].push(n);
+      });
+      return Object.values(byNormalized).filter(group => group.length > 1);
+    }
+
+    // A person's own "attendance window" starts at their first submission,
+    // not Week 1 globally — someone who joined in Week 5 hasn't "missed"
+    // Weeks 1-4, they just weren't playing yet. Only gaps *after* someone's
+    // own first week count against them.
+    function computeAttendance(rows, weeksToCheck) {
+      const byName = {};
+      rows.forEach(r => {
+        if (!byName[r.user_name]) byName[r.user_name] = new Set();
+        byName[r.user_name].add(r.week_number);
+      });
+
+      const missed = [];
+      const perfect = [];
+      Object.entries(byName).forEach(([name, weeksSet]) => {
+        const firstWeek = Math.min(...weeksSet);
+        const relevantWeeks = weeksToCheck.filter(w => w >= firstWeek);
+        const missedWeeks = relevantWeeks.filter(w => !weeksSet.has(w));
+        if (missedWeeks.length > 0) {
+          missed.push({ name, missedWeeks });
+        } else if (relevantWeeks.length > 0) {
+          perfect.push(name);
+        }
+      });
+
+      missed.sort((a, b) => b.missedWeeks.length - a.missedWeeks.length);
+      perfect.sort((a, b) => a.localeCompare(b));
+      return { missed, perfect };
+    }
+
+    function computeSubmissionTiming(rows, firstKickoffByWeek) {
+      const byName = {};
+      rows.forEach(r => {
+        const kickoff = firstKickoffByWeek[r.week_number];
+        if (!kickoff || !r.created_at) return;
+        const submitted = new Date(r.created_at);
+        const hoursBefore = (kickoff.getTime() - submitted.getTime()) / (1000 * 60 * 60);
+        if (!byName[r.user_name]) byName[r.user_name] = [];
+        byName[r.user_name].push(hoursBefore);
+      });
+
+      const results = Object.entries(byName).map(([name, hoursList]) => {
+        const avg = hoursList.reduce((a, b) => a + b, 0) / hoursList.length;
+        return { name, avgHoursBefore: avg, count: hoursList.length };
+      });
+
+      results.sort((a, b) => a.avgHoursBefore - b.avgHoursBefore);
+      return results;
+    }
+
+    function computeParticipationTrend(rows) {
+      const weeks = Array.from(new Set(rows.map(r => r.week_number))).sort((a, b) => a - b);
+      return weeks.map(w => ({
+        week: w,
+        count: new Set(rows.filter(r => r.week_number === w).map(r => r.user_name)).size
+      }));
+    }
+
+    function computeNewPlayersByWeek(rows) {
+      const firstWeekByName = {};
+      rows.forEach(r => {
+        if (!(r.user_name in firstWeekByName) || r.week_number < firstWeekByName[r.user_name]) {
+          firstWeekByName[r.user_name] = r.week_number;
+        }
+      });
+      const byWeek = {};
+      Object.entries(firstWeekByName).forEach(([name, w]) => {
+        if (!byWeek[w]) byWeek[w] = [];
+        byWeek[w].push(name);
+      });
+      Object.values(byWeek).forEach(list => list.sort((a, b) => a.localeCompare(b)));
+      return byWeek;
+    }
+
+    function formatHours(h) {
+      const abs = Math.abs(h).toFixed(1);
+      return h >= 0 ? `${abs} hrs early` : `${abs} hrs LATE`;
+    }
+
+    async function loadSportData(tableName, sportPath, totalWeeks) {
+      let cousinRows = [];
+      if (tableName === "picks") {
+        const { data, error } = await supabaseClient
+          .from("picks")
+          .select("user_name, week_number, created_at")
+          .eq("is_host", false);
+        if (error) throw error;
+        cousinRows = data || [];
+      } else {
+        const { data, error } = await supabaseClient
+          .from("nfl_picks")
+          .select("user_name, week_number, created_at");
+        if (error) throw error;
+        cousinRows = data || [];
+      }
+
+      const { openWeek, firstKickoffByWeek } = await analyzeSeasonWeeks(sportPath, totalWeeks);
+      const weeksToCheck = Array.from({ length: openWeek - 1 }, (_, i) => i + 1);
+
+      const attendance = computeAttendance(cousinRows, weeksToCheck);
+      const duplicates = findPossibleDuplicates(cousinRows);
+      const timing = computeSubmissionTiming(cousinRows, firstKickoffByWeek);
+      const trend = computeParticipationTrend(cousinRows);
+      const newPlayers = computeNewPlayersByWeek(cousinRows);
+
+      return { openWeek, attendance, duplicates, timing, trend, newPlayers };
+    }
+
+    async function loadEverything() {
+      try {
+        const [sec, nfl] = await Promise.all([
+          loadSportData("picks", "college-football", 14),
+          loadSportData("nfl_picks", "nfl", 18)
+        ]);
+        seasonData.sec = sec;
+        seasonData.nfl = nfl;
+        renderReports();
+      } catch (err) {
+        document.getElementById("reportsContainer").innerHTML =
+          `<div class="card"><div class="empty-note" style="color: var(--danger);">Error loading data: ${err.message}</div></div>`;
+      }
+    }
+
+    function switchSport(sport) {
+      activeSport = sport;
+      document.getElementById("btnSecTab").classList.toggle("active", sport === "sec");
+      document.getElementById("btnNflTab").classList.toggle("active", sport === "nfl");
+      renderReports();
+    }
+
+    function renderReports() {
+      const d = seasonData[activeSport];
+      if (!d) return;
+      const container = document.getElementById("reportsContainer");
+
+      const missedHtml = d.attendance.missed.length === 0
+        ? `<div class="empty-note">Nobody's missed a week since they joined — clean sheet.</div>`
+        : `<table class="report-table"><thead><tr><th>Name</th><th>Missed Weeks</th></tr></thead><tbody>
+            ${d.attendance.missed.map(m => `<tr><td>${m.name}</td><td class="muted-cell">${m.missedWeeks.join(", ")}</td></tr>`).join("")}
+          </tbody></table>`;
+
+      const perfectHtml = d.attendance.perfect.length === 0
+        ? `<div class="empty-note">No one's played every eligible week yet.</div>`
+        : `<table class="report-table"><tbody>
+            ${d.attendance.perfect.map(n => `<tr><td>${n}</td></tr>`).join("")}
+          </tbody></table>`;
+
+      const dupeHtml = d.duplicates.length === 0
+        ? `<div class="empty-note">No suspiciously similar names found.</div>`
+        : d.duplicates.map(group => `<div class="dupe-group">${group.join(" &nbsp;&harr;&nbsp; ")}</div>`).join("");
+
+      const timingHtml = d.timing.length === 0
+        ? `<div class="empty-note">Not enough data yet.</div>`
+        : `<table class="report-table"><thead><tr><th>Name</th><th>Avg. Submitted</th><th>Entries</th></tr></thead><tbody>
+            ${d.timing.map(t => `<tr><td>${t.name}</td><td class="muted-cell">${formatHours(t.avgHoursBefore)}</td><td class="muted-cell">${t.count}</td></tr>`).join("")}
+          </tbody></table>`;
+
+      const trendHtml = d.trend.length === 0
+        ? `<div class="empty-note">No submissions yet.</div>`
+        : `<table class="report-table"><thead><tr><th>Week</th><th>Submitters</th></tr></thead><tbody>
+            ${d.trend.map(t => `<tr><td>Week ${t.week}</td><td class="muted-cell">${t.count}</td></tr>`).join("")}
+          </tbody></table>`;
+
+      const newPlayerWeeks = Object.keys(d.newPlayers).map(Number).sort((a, b) => a - b);
+      const newPlayersHtml = newPlayerWeeks.length === 0
+        ? `<div class="empty-note">No submissions yet.</div>`
+        : `<table class="report-table"><thead><tr><th>Week</th><th>First-Time Players</th></tr></thead><tbody>
+            ${newPlayerWeeks.map(w => `<tr><td>Week ${w}</td><td class="muted-cell">${d.newPlayers[w].join(", ")}</td></tr>`).join("")}
+          </tbody></table>`;
+
+      container.innerHTML = `
+        <div class="card">
+          <div class="section-title">Missed Weeks</div>
+          <div class="section-desc">Anyone who's submitted before but skipped a week since then (only counts weeks after their own first submission).</div>
+          ${missedHtml}
+        </div>
+
+        <div class="card">
+          <div class="section-title">Perfect Attendance</div>
+          <div class="section-desc">Submitted every eligible week with zero gaps.</div>
+          ${perfectHtml}
+        </div>
+
+        <div class="card">
+          <div class="section-title">Possible Duplicate Names</div>
+          <div class="section-desc">Names that are identical once you ignore capitalization, spacing, and a leading "@" — the exact pattern that's bitten this pool before.</div>
+          ${dupeHtml}
+        </div>
+
+        <div class="card">
+          <div class="section-title">Submission Timing</div>
+          <div class="section-desc">Average time before the week's first kickoff that each person submits. Sorted closest-to-the-wire first.</div>
+          ${timingHtml}
+        </div>
+
+        <div class="card">
+          <div class="section-title">Participation Trend</div>
+          <div class="section-desc">Total unique submitters per week.</div>
+          ${trendHtml}
+        </div>
+
+        <div class="card">
+          <div class="section-title">New Players By Week</div>
+          <div class="section-desc">Whoever's earliest submission this season falls in that week.</div>
+          ${newPlayersHtml}
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
