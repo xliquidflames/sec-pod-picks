@@ -491,6 +491,7 @@
       margin-top: 0.2rem;
       text-transform: uppercase;
       letter-spacing: 0.3px;
+      white-space: nowrap;
     }
 
     .ats-cover {
@@ -1532,7 +1533,7 @@
       if (pickedMargin + requiredSpread > 0) {
         return `<span class="ats-badge ats-cover">Covers ${spreadFormatted}</span>`;
       } else if (pickedMargin + requiredSpread < 0) {
-        return `<span class="ats-badge ats-no-cover">No Cover ${spreadFormatted}</span>`;
+        return `<span class="ats-badge ats-no-cover">Miss ${spreadFormatted}</span>`;
       } else {
         return `<span class="ats-badge ats-cover">Push ${spreadFormatted}</span>`;
       }
