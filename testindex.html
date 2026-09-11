@@ -474,10 +474,6 @@
       border-radius: 4px;
     }
 
-    .matchup-sec-team-logo {
-      box-shadow: 0 0 0 2px var(--accent-gold);
-    }
-
     .matchup-at-symbol {
       font-size: 0.65rem;
       color: var(--text-muted);
@@ -1310,11 +1306,11 @@
           const homeIsSec = isSecTeam(homeName);
 
           const awayLogoHtml = awayLogo
-            ? `<img src="${awayLogo}" alt="${awayName}" title="${awayName}" class="matchup-team-logo ${awayIsSec ? 'matchup-sec-team-logo' : ''}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${awayName}</span>`
+            ? `<img src="${awayLogo}" alt="${awayName}" title="${awayName}" class="matchup-team-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${awayName}</span>`
             : `<span class="matchup-team-fallback ${awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${awayName}</span>`;
 
           const homeLogoHtml = homeLogo
-            ? `<img src="${homeLogo}" alt="${homeName}" title="${homeName}" class="matchup-team-logo ${homeIsSec ? 'matchup-sec-team-logo' : ''}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${homeName}</span>`
+            ? `<img src="${homeLogo}" alt="${homeName}" title="${homeName}" class="matchup-team-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${homeName}</span>`
             : `<span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${homeName}</span>`;
 
           let matchupLabel = `<span class="matchup-logo-row">${awayLogoHtml}<span class="matchup-at-symbol">@</span>${homeLogoHtml}</span>`;
