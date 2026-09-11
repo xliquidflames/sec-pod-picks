@@ -467,20 +467,14 @@
       gap: 0.4rem;
     }
 
-    /* A small white circle behind every logo — this is the actual fix,
-       not the cell background. Logos are designed assuming a white card
-       underneath them; some (like Texas A&M's dark maroon mark) have no
-       real contrast against any dark background, no matter how light we
-       make it. A guaranteed-white chip behind the logo itself works for
-       every team's color palette, not just the ones we happen to test. */
+    /* Back to a plain logo, no white backing circle — TAMU is the one
+       team where this is genuinely hard to read, and that's an accepted
+       tradeoff rather than something to keep re-engineering around.
+       Sized ~10% larger than the original 30px. */
     .matchup-team-logo {
-      height: 26px;
-      width: 26px;
+      height: 33px;
+      width: 33px;
       object-fit: contain;
-      border-radius: 50%;
-      background: #ffffff;
-      padding: 3px;
-      box-sizing: content-box;
     }
 
     .matchup-at-symbol {
@@ -1323,9 +1317,6 @@
             : `<span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${homeName}</span>`;
 
           let matchupLabel = `<span class="matchup-logo-row">${awayLogoHtml}<span class="matchup-at-symbol">@</span>${homeLogoHtml}</span>`;
-          if (isNeutralSite) {
-            matchupLabel += `<span class="matchup-subdetail" style="margin-top: 0.1rem;">${city ? `in ${city}` : ''} (NS)</span>`;
-          }
 
           let time = "TBD";
           let kickoff = new Date(8640000000000000);
@@ -1344,13 +1335,18 @@
             if (!isNaN(kd.getTime())) kickoff = kd;
           }
 
+          // Location dropped from this line entirely — kept only as a
+          // simple "NS" tag for neutral-site games, appended after the
+          // betting line, instead of spelling out the city.
+          const nsSuffix = isNeutralSite ? ' | NS' : '';
+
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
             kickoff: kickoff,
             rawOdds: rawOdds,
             matchupLabel: matchupLabel,
-            detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
+            detail: (isFinal || isLive) ? `${time}${nsSuffix}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'}${nsSuffix}`,
             winner: winnerName,
             isLive: isLive,
             // ESPN's own event id — stable no matter how ESPN formats a
