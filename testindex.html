@@ -451,6 +451,15 @@
       font-size: 0.75rem;
     }
 
+    /* Lighter than the table's own border color, specifically so a dark
+       logo (like Texas A&M's maroon) doesn't blend into the background.
+       Scoped to just these two cell classes — headers and the day/date
+       divider row aren't touched, since they're separate selectors. */
+    .host-grid-table td.matchup-cell,
+    .host-grid-table td.pick-cell {
+      background: #47597a;
+    }
+
     .matchup-sec-team {
       font-weight: 800;
     }
