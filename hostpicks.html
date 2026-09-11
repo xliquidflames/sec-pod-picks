@@ -431,6 +431,20 @@
       return cleaned;
     }
 
+    // Shortens just these two team names for display on the pick buttons
+    // — South Carolina and Mississippi State are the only two that wrap
+    // to a second line. This ONLY changes the button's visible text; the
+    // real, full name is still what gets stored as the pick, via the
+    // data-team attribute selectTeam() below now reads instead of the
+    // button's own text (see that function for why that distinction
+    // matters here specifically).
+    function shortenPickDisplay(pick) {
+      const canonical = normalizeTeam(pick);
+      if (canonical === 'southcarolina') return 'S Carolina';
+      if (canonical === 'mississippistate') return 'Miss State';
+      return pick;
+    }
+
     const secNormalizedNames = new Set(
       Object.values(secTeamAliases).flat().map(n => normalizeTeam(n))
     );
@@ -649,11 +663,11 @@
           </div>
           ${game.detail ? `<span class="game-detail">${game.detail}</span>` : ''}
           <div class="pick-buttons-grid">
-            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_A" onclick="selectTeam('${game.matchupKey}', '${game.teamA}')">
-              ${game.teamA}
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_A" data-team="${game.teamA}" onclick="selectTeam('${game.matchupKey}', '${game.teamA}')">
+              ${shortenPickDisplay(game.teamA)}
             </button>
-            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_B" onclick="selectTeam('${game.matchupKey}', '${game.teamB}')">
-              ${game.teamB}
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_B" data-team="${game.teamB}" onclick="selectTeam('${game.matchupKey}', '${game.teamB}')">
+              ${shortenPickDisplay(game.teamB)}
             </button>
           </div>
           <div class="score-inputs-grid">
@@ -677,7 +691,12 @@
       const btnB = document.getElementById(`btn_${matchupKey}_B`);
 
       if (btnA && btnB) {
-        if (btnA.textContent.trim() === teamName) {
+        // Matching on data-team (the real, full name) instead of the
+        // button's visible text — the text can now be a shortened display
+        // version (see shortenPickDisplay), so comparing against it
+        // directly would silently fail to highlight the right button,
+        // both on a fresh click and when reopening an existing submission.
+        if (btnA.dataset.team === teamName) {
           btnA.classList.add("selected");
           btnB.classList.remove("selected");
         } else {
