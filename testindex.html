@@ -1513,6 +1513,20 @@
       return { correct, incorrect, pending, lockCorrect, lockIncorrect };
     }
 
+    // Shortens just these two team names where they render as a cousin or
+    // host's pick — South Carolina and Mississippi State were the only two
+    // still wrapping to a second line in the Mike/Shane/Steven columns.
+    // Uses the same canonicalization normalizeTeam() already relies on, so
+    // this only ever changes what text gets printed — the actual pM/pS/pSt
+    // values used for grading (getPickClass) and lock-matching above are
+    // untouched, since this only runs at the point of rendering.
+    function shortenPickDisplay(pick) {
+      const canonical = normalizeTeam(pick);
+      if (canonical === 'southcarolina') return 'S Carolina';
+      if (canonical === 'mississippistate') return 'Miss State';
+      return pick;
+    }
+
     function getPickClass(userPick, game, week) {
       const winner = (window.gameWinners[week] || {})[game.matchupKey] || (window.gameWinners[week] || {})[game.id];
       if (!winner || !userPick || userPick === "-") return "pick-pending";
@@ -1979,17 +1993,17 @@
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
           <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
-            ${pM}
+            ${shortenPickDisplay(pM)}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
             ${isLockM ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
           </td>
           <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
-            ${pS}
+            ${shortenPickDisplay(pS)}
             ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
             ${isLockS ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
           </td>
           <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
-            ${pSt}
+            ${shortenPickDisplay(pSt)}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
             ${isLockSt ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
           </td>
