@@ -482,30 +482,6 @@
       margin-top: 0.15rem;
     }
 
-    .ats-badge {
-      display: inline-block;
-      font-size: 0.56rem;
-      font-weight: 800;
-      padding: 0.05rem 0.2rem;
-      border-radius: 3px;
-      margin-top: 0.2rem;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      white-space: nowrap;
-    }
-
-    .ats-cover {
-      background: rgba(74, 222, 128, 0.18);
-      color: var(--success);
-      border: 1px solid rgba(74, 222, 128, 0.4);
-    }
-
-    .ats-no-cover {
-      background: rgba(248, 113, 113, 0.18);
-      color: var(--danger);
-      border: 1px solid rgba(248, 113, 113, 0.4);
-    }
-
     .pick-correct { color: var(--success) !important; font-weight: 700; }
     .pick-incorrect { color: var(--danger) !important; text-decoration: line-through; opacity: 0.8; }
     .pick-pending { color: var(--text-main); }
@@ -536,6 +512,18 @@
       border-radius: 3px;
       margin-left: 0.3rem;
       vertical-align: middle;
+    }
+
+    /* Used only in the Week Info Hub table — smaller, and placed on its
+       own line above the pick instead of inline after it, so it reads as
+       the first thing in the cell rather than something tacked on below
+       the team name. The Cousins' Picks list keeps the original size. */
+    .lock-badge-compact {
+      display: block;
+      width: fit-content;
+      margin: 0 auto 0.15rem;
+      font-size: 0.55rem;
+      padding: 0.01rem 0.25rem;
     }
 
     .lotw-hit-badge {
@@ -1477,68 +1465,6 @@
       return (uNorm === wNorm) ? "pick-correct" : "pick-incorrect";
     }
 
-    function computeAtsBadge(userPick, scoreObj, game) {
-      if (!userPick || userPick === "-" || !scoreObj || scoreObj.teamA === undefined || scoreObj.teamB === undefined) {
-        return "";
-      }
-
-      const numA = parseInt(scoreObj.teamA, 10);
-      const numB = parseInt(scoreObj.teamB, 10);
-      if (isNaN(numA) || isNaN(numB)) return "";
-
-      const rawOdds = game.rawOdds || "";
-      if (!rawOdds || rawOdds.toLowerCase().includes("even") || rawOdds.toLowerCase().includes("pk")) return "";
-
-      // & included here specifically for "TA&M" — without it, the "&"
-      // broke the match and this fell back on a coincidental single-letter
-      // match ("M") that happened to work but wasn't a real fix.
-      const match = rawOdds.match(/([A-Za-z&\s]+)\s+([+-]?\d+(?:\.\d+)?)/);
-      if (!match) return "";
-
-      const favTeamRaw = match[1].trim();
-      const spreadNum = parseFloat(match[2]);
-      const favNorm = normalizeTeam(favTeamRaw);
-
-      const aNorm = normalizeTeam(game.teamA);
-      const bNorm = normalizeTeam(game.teamB);
-
-      let teamSpreadA = 0;
-      let teamSpreadB = 0;
-
-      if (aNorm.includes(favNorm) || favNorm.includes(aNorm)) {
-        teamSpreadA = spreadNum;
-        teamSpreadB = -spreadNum;
-      } else if (bNorm.includes(favNorm) || favNorm.includes(bNorm)) {
-        teamSpreadB = spreadNum;
-        teamSpreadA = -spreadNum;
-      } else {
-        return "";
-      }
-
-      const uNorm = normalizeTeam(userPick);
-      let pickedMargin = 0;
-      let requiredSpread = 0;
-
-      if (uNorm === aNorm || uNorm.includes(aNorm) || aNorm.includes(uNorm)) {
-        pickedMargin = numA - numB;
-        requiredSpread = teamSpreadA;
-      } else if (uNorm === bNorm || uNorm.includes(bNorm) || bNorm.includes(uNorm)) {
-        pickedMargin = numB - numA;
-        requiredSpread = teamSpreadB;
-      } else {
-        return "";
-      }
-
-      const spreadFormatted = requiredSpread > 0 ? `+${requiredSpread}` : `${requiredSpread}`;
-      if (pickedMargin + requiredSpread > 0) {
-        return `<span class="ats-badge ats-cover">Covers ${spreadFormatted}</span>`;
-      } else if (pickedMargin + requiredSpread < 0) {
-        return `<span class="ats-badge ats-no-cover">Miss ${spreadFormatted}</span>`;
-      } else {
-        return `<span class="ats-badge ats-cover">Push ${spreadFormatted}</span>`;
-      }
-    }
-
     async function loadAllSeasonData() {
       try {
         const { data: rows, error } = await supabaseClient
@@ -1978,10 +1904,6 @@
         const scoreTextS = (sS && sS.teamA !== undefined && sS.teamB !== undefined && sS.teamA !== "") ? `${sS.teamA}-${sS.teamB}` : "";
         const scoreTextSt = (sSt && sSt.teamA !== undefined && sSt.teamB !== undefined && sSt.teamA !== "") ? `${sSt.teamA}-${sSt.teamB}` : "";
 
-        const atsBadgeM = computeAtsBadge(pM, sM, g);
-        const atsBadgeS = computeAtsBadge(pS, sS, g);
-        const atsBadgeSt = computeAtsBadge(pSt, sSt, g);
-
         const isLockM = isLockActiveThisWeek && isLockMatch(mikePicks, g);
         const isLockS = isLockActiveThisWeek && isLockMatch(shanePicks, g);
         const isLockSt = isLockActiveThisWeek && isLockMatch(stevenPicks, g);
@@ -2001,19 +1923,19 @@
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
           <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
-            ${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${isLockM ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+            ${pM}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
-            ${atsBadgeM}
           </td>
           <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
-            ${pS}${isLockS ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${isLockS ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+            ${pS}
             ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
-            ${atsBadgeS}
           </td>
           <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
-            ${pSt}${isLockSt ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${isLockSt ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+            ${pSt}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
-            ${atsBadgeSt}
           </td>
         `;
         hostBody.appendChild(tr);
