@@ -138,7 +138,7 @@
 
     .host-season-strip {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 0.5rem;
       margin-bottom: 1rem;
     }
@@ -445,7 +445,7 @@
 
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
-      width: 37%;
+      width: 28%;
       text-align: center;
       padding: 0.45rem 0.4rem;
       font-size: 0.75rem;
@@ -497,7 +497,7 @@
 
     .host-grid-table th:not(.matchup-header),
     .host-grid-table td.pick-cell {
-      width: 21%;
+      width: 18%;
       padding: 0.45rem 0.2rem;
       font-size: 0.75rem;
       font-weight: 600;
@@ -842,6 +842,10 @@
           <div class="host-season-name">Steven</div>
           <div class="host-season-record" id="seasonSteven">0-0</div>
         </div>
+        <div class="host-season-card">
+          <div class="host-season-name">Cousins</div>
+          <div class="host-season-record" id="seasonCousins">0-0</div>
+        </div>
       </div>
 
       <div id="top5Section" style="margin-top: 0.8rem;">
@@ -918,10 +922,11 @@
                 <th id="thMike">Mike</th>
                 <th id="thShane">Shane</th>
                 <th id="thSteven">Steven</th>
+                <th id="thCousins">Cousins</th>
               </tr>
             </thead>
             <tbody id="hostGridBody">
-              <tr><td colspan="4" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
+              <tr><td colspan="5" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1524,7 +1529,61 @@
       const canonical = normalizeTeam(pick);
       if (canonical === 'southcarolina') return 'S Carolina';
       if (canonical === 'mississippistate') return 'Miss State';
+      if (canonical === 'texasam') return 'TAMU';
       return pick;
+    }
+
+    // TEST: crowd consensus for a single game — whichever team the most
+    // cousins picked, and what percentage of this week's total submitters
+    // that represents. Percentage is out of everyone who submitted this
+    // week (not just people who picked this specific game), matching how
+    // other season-wide stats on this page are already calculated. On an
+    // exact tie, whichever team happened to be tallied first wins — a
+    // known, accepted simplification rather than something this tries to
+    // resolve more precisely.
+    function computeMajorityPick(cousinRows, game) {
+      const tally = {};
+      cousinRows.forEach(c => {
+        const pick = getMatchedUserPick(c.picks, game);
+        if (!pick) return;
+        tally[pick] = (tally[pick] || 0) + 1;
+      });
+
+      const entries = Object.entries(tally);
+      if (entries.length === 0 || cousinRows.length === 0) return null;
+
+      entries.sort((a, b) => b[1] - a[1]);
+      const [topTeam, topCount] = entries[0];
+      const percentage = Math.round((topCount / cousinRows.length) * 100);
+      return { team: topTeam, percentage: percentage };
+    }
+
+    // TEST: grades the crowd's majority pick the same way a host's picks
+    // get graded — walks every decided game this week, checks whether
+    // that game's majority pick (see computeMajorityPick above) matched
+    // the actual winner, and tallies it up. Games with no winner yet, or
+    // no picks yet, are skipped rather than counted as a miss.
+    function gradeCousinsConsensus(cousinRows, games) {
+      const winners = window.gameWinners[activeWeek] || {};
+      let correct = 0, incorrect = 0;
+
+      games.forEach(game => {
+        const winner = winners[game.matchupKey] || winners[game.id];
+        if (!winner) return;
+
+        const majority = computeMajorityPick(cousinRows, game);
+        if (!majority) return;
+
+        const mNorm = normalizeTeam(majority.team);
+        const wNorm = normalizeTeam(winner);
+        if (mNorm && mNorm === wNorm) {
+          correct++;
+        } else {
+          incorrect++;
+        }
+      });
+
+      return { correct, incorrect };
     }
 
     function getPickClass(userPick, game, week) {
@@ -1664,6 +1723,35 @@
       document.getElementById("seasonMike").textContent = `${mikeW}-${mikeL}`;
       document.getElementById("seasonShane").textContent = `${shaneW}-${shaneL}`;
       document.getElementById("seasonSteven").textContent = `${stevenW}-${stevenL}`;
+
+      // TEST: season-long version of the same crowd-consensus idea as the
+      // Week Info Hub's Cousins column — for every game across every
+      // week, find whichever team the most cousins picked (reusing the
+      // weekGameDistributions already built above for the Consensus
+      // Divergence tiebreaker) and check it against the actual winner.
+      let cousinsSeasonW = 0, cousinsSeasonL = 0;
+      Object.keys(weekGameDistributions).forEach(w => {
+        const winners = window.gameWinners[w] || {};
+        Object.keys(weekGameDistributions[w]).forEach(matchupKey => {
+          const dist = weekGameDistributions[w][matchupKey];
+          if (!dist || dist.total === 0) return;
+
+          const winner = winners[matchupKey];
+          if (!winner) return; // not decided yet
+
+          const entries = Object.entries(dist.counts);
+          if (entries.length === 0) return;
+          entries.sort((a, b) => b[1] - a[1]);
+          const topNorm = entries[0][0];
+
+          if (topNorm === normalizeTeam(winner)) {
+            cousinsSeasonW++;
+          } else {
+            cousinsSeasonL++;
+          }
+        });
+      });
+      document.getElementById("seasonCousins").textContent = `${cousinsSeasonW}-${cousinsSeasonL}`;
 
       const top5Container = document.getElementById("top5CousinsList");
       const decisionLog = document.getElementById("tiebreakerDecisionLog");
@@ -1932,9 +2020,16 @@
       const shaneScore = gradePicks(shanePicks, activeWeek);
       const stevenScore = gradePicks(stevenPicks, activeWeek);
 
+      // TEST: treats the crowd's majority pick, game by game, as its own
+      // 4th "picker" for record-keeping purposes — same correct/incorrect
+      // tracking the hosts get, just driven by whichever team most
+      // cousins picked instead of one person's own picks.
+      const cousinsConsensusScore = gradeCousinsConsensus(cousinRows, games);
+
       document.getElementById("thMike").innerHTML = `Mike <span class="host-header-score">${mikeScore.correct}-${mikeScore.incorrect}</span>`;
       document.getElementById("thShane").innerHTML = `Shane <span class="host-header-score">${shaneScore.correct}-${shaneScore.incorrect}</span>`;
       document.getElementById("thSteven").innerHTML = `Steven <span class="host-header-score">${stevenScore.correct}-${stevenScore.incorrect}</span>`;
+      document.getElementById("thCousins").innerHTML = `Cousins <span class="host-header-score">${cousinsConsensusScore.correct}-${cousinsConsensusScore.incorrect}</span>`;
 
       const hostBody = document.getElementById("hostGridBody");
       hostBody.innerHTML = "";
@@ -1954,7 +2049,7 @@
         if (group && group.isFirst) {
           const dividerTr = document.createElement("tr");
           dividerTr.innerHTML = `
-            <td colspan="4" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
+            <td colspan="5" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
               ${group.label} ${group.dateStr}
             </td>
           `;
@@ -1982,6 +2077,12 @@
         const classS = getPickClass(pS, g, activeWeek);
         const classSt = getPickClass(pSt, g, activeWeek);
 
+        // TEST: crowd consensus column — graded the same way as a host's
+        // pick once the game is decided, so it visually shows right/wrong
+        // just like Mike/Shane/Steven's cells do.
+        const majorityPick = computeMajorityPick(cousinRows, g);
+        const classCousins = majorityPick ? getPickClass(majorityPick.team, g, activeWeek) : '';
+
         const isLiveGame = liveMap[g.matchupKey] || liveMap[g.id];
         if (isLiveGame) {
           tr.classList.add('live-game-row');
@@ -2006,6 +2107,10 @@
             ${shortenPickDisplay(pSt)}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
             ${isLockSt ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+          </td>
+          <td class="pick-cell ${classCousins}">
+            ${majorityPick ? shortenPickDisplay(majorityPick.team) : '<span class="matchup-subdetail" style="margin-top:0;">No picks yet</span>'}
+            ${majorityPick ? `<span class="host-predicted-score">${majorityPick.percentage}%</span>` : ''}
           </td>
         `;
         hostBody.appendChild(tr);
@@ -2079,7 +2184,7 @@
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
                   <span class="pick-line-matchup">${g.matchupLabel}</span>
                   <span class="${pClass}">
-                    ${uPick}
+                    ${shortenPickDisplay(uPick)}
                     ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
                   </span>
                 </div>
