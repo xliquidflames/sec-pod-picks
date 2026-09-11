@@ -516,13 +516,13 @@
     }
 
     /* Used only in the Week Info Hub table — smaller, and placed on its
-       own line above the pick instead of inline after it, so it reads as
-       the first thing in the cell rather than something tacked on below
-       the team name. The Cousins' Picks list keeps the original size. */
+       own line at the bottom of the cell (after the pick and score)
+       instead of inline as part of either. The Cousins' Picks list keeps
+       the original size and placement. */
     .lock-badge-compact {
       display: block;
       width: fit-content;
-      margin: 0 auto 0.15rem;
+      margin: 0.15rem auto 0;
       font-size: 0.55rem;
       padding: 0.01rem 0.25rem;
     }
@@ -1924,19 +1924,19 @@
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
           <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
-            ${isLockM ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
             ${pM}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
+            ${isLockM ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
           </td>
           <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
-            ${isLockS ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
             ${pS}
             ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
+            ${isLockS ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
           </td>
           <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
-            ${isLockSt ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
             ${pSt}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
+            ${isLockSt ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
           </td>
         `;
         hostBody.appendChild(tr);
