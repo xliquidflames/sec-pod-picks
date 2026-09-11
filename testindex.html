@@ -451,15 +451,6 @@
       font-size: 0.75rem;
     }
 
-    /* Lighter than the table's own border color, specifically so a dark
-       logo (like Texas A&M's maroon) doesn't blend into the background.
-       Scoped to just these two cell classes — headers and the day/date
-       divider row aren't touched, since they're separate selectors. */
-    .host-grid-table td.matchup-cell,
-    .host-grid-table td.pick-cell {
-      background: #47597a;
-    }
-
     .matchup-sec-team {
       font-weight: 800;
     }
@@ -476,11 +467,20 @@
       gap: 0.4rem;
     }
 
+    /* A small white circle behind every logo — this is the actual fix,
+       not the cell background. Logos are designed assuming a white card
+       underneath them; some (like Texas A&M's dark maroon mark) have no
+       real contrast against any dark background, no matter how light we
+       make it. A guaranteed-white chip behind the logo itself works for
+       every team's color palette, not just the ones we happen to test. */
     .matchup-team-logo {
-      height: 30px;
-      width: 30px;
+      height: 26px;
+      width: 26px;
       object-fit: contain;
-      border-radius: 4px;
+      border-radius: 50%;
+      background: #ffffff;
+      padding: 3px;
+      box-sizing: content-box;
     }
 
     .matchup-at-symbol {
