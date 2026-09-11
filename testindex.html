@@ -459,6 +459,35 @@
       font-weight: 400;
     }
 
+    /* TEST: logo-based matchup display */
+    .matchup-logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    .matchup-team-logo {
+      height: 30px;
+      width: 30px;
+      object-fit: contain;
+      border-radius: 4px;
+    }
+
+    .matchup-sec-team-logo {
+      box-shadow: 0 0 0 2px var(--accent-gold);
+    }
+
+    .matchup-at-symbol {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .matchup-team-fallback {
+      font-size: 0.7rem;
+    }
+
     .matchup-subdetail {
       display: block;
       font-size: 0.65rem;
@@ -1023,38 +1052,6 @@
       vanderbilt: ["Vanderbilt", "VAN"]
     };
 
-    // TEST: shortened display names, keyed by the same canonical id
-    // normalizeTeam() already resolves every spelling variant down to.
-    // This ONLY changes what text gets printed in the matchup label —
-    // awayName/homeName (and therefore teamA/teamB, the matchup key, and
-    // grading) are completely untouched, since this lookup runs after
-    // isSecTeam()/normalizeTeam() have already done their job on the real
-    // name. A team with no entry here just falls back to its full name,
-    // so non-SEC opponents are unaffected.
-    const secShortDisplayNames = {
-      alabama: "Alabama",
-      arkansas: "Arkansas",
-      auburn: "Auburn",
-      florida: "Florida",
-      georgia: "Georgia",
-      kentucky: "Kentucky",
-      lsu: "LSU",
-      olemiss: "Ole Miss",
-      mississippistate: "MS State",
-      missouri: "MIZ",
-      oklahoma: "Oklahoma",
-      southcarolina: "S Carolina",
-      tennessee: "Tennessee",
-      texas: "Texas",
-      texasam: "TAMU",
-      vanderbilt: "Vandy"
-    };
-
-    function getDisplayName(fullName) {
-      const canonical = normalizeTeam(fullName);
-      return secShortDisplayNames[canonical] || fullName;
-    }
-
     function isSecTeam(teamName) {
       if (!teamName) return false;
       return secNormalizedNames.has(normalizeTeam(teamName));
@@ -1251,6 +1248,14 @@
           const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
           const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
+          // TEST: logo URL, checked defensively across the couple of
+          // shapes ESPN's scoreboard responses commonly use for this
+          // (a direct "logo" string in some cases, a "logos" array with a
+          // .href in others) since this field isn't something I've
+          // confirmed firsthand against a live response for this project.
+          const homeLogo = home.team.logo || (home.team.logos && home.team.logos[0] && home.team.logos[0].href) || '';
+          const awayLogo = away.team.logo || (away.team.logos && away.team.logos[0] && away.team.logos[0].href) || '';
+
           // Team order no longer depends on home/away at all — the SEC
           // team is always teamA, the opponent is always teamB. This keeps
           // every list sorted Alabama-through-Vanderbilt regardless of who
@@ -1293,13 +1298,28 @@
           // unit rather than a left-to-right sentence. This is completely
           // separate from teamA/teamB, which stay SEC-team-first no matter
           // what for the matchup key, sort order, and grading.
-          const awayClass = isSecTeam(awayName) ? 'matchup-sec-team' : 'matchup-other-team';
-          const homeClass = isSecTeam(homeName) ? 'matchup-sec-team' : 'matchup-other-team';
-          // TEST: awayName/homeName themselves are untouched here — only
-          // the text actually printed is shortened, via getDisplayName().
-          let matchupLabel = `<span class="${awayClass}">${getDisplayName(awayName)}</span> @ <span class="${homeClass}">${getDisplayName(homeName)}</span>`;
+          // TEST: logos replace text for every team, not just SEC ones.
+          // The SEC team still gets a visual distinction — a thin gold
+          // ring around its logo — replacing the bold-text treatment,
+          // since font-weight doesn't apply to an image. Each logo has a
+          // text fallback that only appears if the image itself fails to
+          // load (a broken/missing logo for a smaller school, a network
+          // hiccup, etc.) — falls back to the same short name treatment
+          // used everywhere else, never a broken-image icon.
+          const awayIsSec = isSecTeam(awayName);
+          const homeIsSec = isSecTeam(homeName);
+
+          const awayLogoHtml = awayLogo
+            ? `<img src="${awayLogo}" alt="${awayName}" title="${awayName}" class="matchup-team-logo ${awayIsSec ? 'matchup-sec-team-logo' : ''}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${awayName}</span>`
+            : `<span class="matchup-team-fallback ${awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${awayName}</span>`;
+
+          const homeLogoHtml = homeLogo
+            ? `<img src="${homeLogo}" alt="${homeName}" title="${homeName}" class="matchup-team-logo ${homeIsSec ? 'matchup-sec-team-logo' : ''}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${homeName}</span>`
+            : `<span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${homeName}</span>`;
+
+          let matchupLabel = `<span class="matchup-logo-row">${awayLogoHtml}<span class="matchup-at-symbol">@</span>${homeLogoHtml}</span>`;
           if (isNeutralSite) {
-            matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
+            matchupLabel += `<span class="matchup-subdetail" style="margin-top: 0.1rem;">${city ? `in ${city}` : ''} (NS)</span>`;
           }
 
           let time = "TBD";
