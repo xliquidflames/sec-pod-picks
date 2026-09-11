@@ -1015,22 +1015,22 @@
     // thing that causes a matchup key computed here to disagree with a key
     // computed there.
     const secTeamAliases = {
-      alabama: ["Alabama"],
+      alabama: ["Alabama", "ALA"],
       arkansas: ["Arkansas"],
-      auburn: ["Auburn"],
-      florida: ["Florida"],
-      georgia: ["Georgia"],
-      kentucky: ["Kentucky"],
+      auburn: ["Auburn", "AUB"],
+      florida: ["Florida", "FLA"],
+      georgia: ["Georgia", "UGA"],
+      kentucky: ["Kentucky", "UK", "KY"],
       lsu: ["LSU"],
-      olemiss: ["Ole Miss"],
-      mississippistate: ["Mississippi State", "Mississippi St", "Miss State", "Miss St"],
-      missouri: ["Missouri", "Mizzou"],
-      oklahoma: ["Oklahoma"],
-      southcarolina: ["South Carolina"],
-      tennessee: ["Tennessee"],
-      texas: ["Texas"],
-      texasam: ["Texas A&M", "Texas AM"],
-      vanderbilt: ["Vanderbilt"]
+      olemiss: ["Ole Miss", "MISS"],
+      mississippistate: ["Mississippi State", "Mississippi St", "Miss State", "Miss St", "MSST"],
+      missouri: ["Missouri", "Mizzou", "MIZ"],
+      oklahoma: ["Oklahoma", "OU"],
+      southcarolina: ["South Carolina", "SC"],
+      tennessee: ["Tennessee", "TENN"],
+      texas: ["Texas", "TEX"],
+      texasam: ["Texas A&M", "Texas AM", "TA&M", "TAM"],
+      vanderbilt: ["Vanderbilt", "VAN"]
     };
 
     function isSecTeam(teamName) {
@@ -1488,7 +1488,10 @@
       const rawOdds = game.rawOdds || "";
       if (!rawOdds || rawOdds.toLowerCase().includes("even") || rawOdds.toLowerCase().includes("pk")) return "";
 
-      const match = rawOdds.match(/([A-Za-z\s]+)\s+([+-]?\d+(?:\.\d+)?)/);
+      // & included here specifically for "TA&M" — without it, the "&"
+      // broke the match and this fell back on a coincidental single-letter
+      // match ("M") that happened to work but wasn't a real fix.
+      const match = rawOdds.match(/([A-Za-z&\s]+)\s+([+-]?\d+(?:\.\d+)?)/);
       if (!match) return "";
 
       const favTeamRaw = match[1].trim();
