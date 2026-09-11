@@ -419,6 +419,7 @@
       border-bottom: 1px solid var(--border-color);
       border-right: 1px solid var(--border-color);
       line-height: 1.25;
+      vertical-align: top;
     }
     
     .host-grid-table td:first-child {
@@ -456,6 +457,34 @@
 
     .matchup-other-team {
       font-weight: 400;
+    }
+
+    /* TEST: logo-based matchup display */
+    .matchup-logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    /* Back to a plain logo, no white backing circle — TAMU is the one
+       team where this is genuinely hard to read, and that's an accepted
+       tradeoff rather than something to keep re-engineering around.
+       Sized ~10% larger than the original 30px. */
+    .matchup-team-logo {
+      height: 33px;
+      width: 33px;
+      object-fit: contain;
+    }
+
+    .matchup-at-symbol {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .matchup-team-fallback {
+      font-size: 0.7rem;
     }
 
     .matchup-subdetail {
@@ -515,13 +544,13 @@
     }
 
     /* Used only in the Week Info Hub table — smaller, and placed on its
-       own line above the pick instead of inline after it, so it reads as
-       the first thing in the cell rather than something tacked on below
-       the team name. The Cousins' Picks list keeps the original size. */
+       own line at the bottom of the cell (after the pick and score)
+       instead of inline as part of either. The Cousins' Picks list keeps
+       the original size and placement. */
     .lock-badge-compact {
       display: block;
       width: fit-content;
-      margin: 0 auto 0.15rem;
+      margin: 0.15rem auto 0;
       font-size: 0.55rem;
       padding: 0.01rem 0.25rem;
     }
@@ -1218,6 +1247,14 @@
           const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
           const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
+          // TEST: logo URL, checked defensively across the couple of
+          // shapes ESPN's scoreboard responses commonly use for this
+          // (a direct "logo" string in some cases, a "logos" array with a
+          // .href in others) since this field isn't something I've
+          // confirmed firsthand against a live response for this project.
+          const homeLogo = home.team.logo || (home.team.logos && home.team.logos[0] && home.team.logos[0].href) || '';
+          const awayLogo = away.team.logo || (away.team.logos && away.team.logos[0] && away.team.logos[0].href) || '';
+
           // Team order no longer depends on home/away at all — the SEC
           // team is always teamA, the opponent is always teamB. This keeps
           // every list sorted Alabama-through-Vanderbilt regardless of who
@@ -1260,12 +1297,26 @@
           // unit rather than a left-to-right sentence. This is completely
           // separate from teamA/teamB, which stay SEC-team-first no matter
           // what for the matchup key, sort order, and grading.
-          const awayClass = isSecTeam(awayName) ? 'matchup-sec-team' : 'matchup-other-team';
-          const homeClass = isSecTeam(homeName) ? 'matchup-sec-team' : 'matchup-other-team';
-          let matchupLabel = `<span class="${awayClass}">${awayName}</span> @ <span class="${homeClass}">${homeName}</span>`;
-          if (isNeutralSite) {
-            matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
-          }
+          // TEST: logos replace text for every team, not just SEC ones.
+          // The SEC team still gets a visual distinction — a thin gold
+          // ring around its logo — replacing the bold-text treatment,
+          // since font-weight doesn't apply to an image. Each logo has a
+          // text fallback that only appears if the image itself fails to
+          // load (a broken/missing logo for a smaller school, a network
+          // hiccup, etc.) — falls back to the same short name treatment
+          // used everywhere else, never a broken-image icon.
+          const awayIsSec = isSecTeam(awayName);
+          const homeIsSec = isSecTeam(homeName);
+
+          const awayLogoHtml = awayLogo
+            ? `<img src="${awayLogo}" alt="${awayName}" title="${awayName}" class="matchup-team-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${awayName}</span>`
+            : `<span class="matchup-team-fallback ${awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${awayName}</span>`;
+
+          const homeLogoHtml = homeLogo
+            ? `<img src="${homeLogo}" alt="${homeName}" title="${homeName}" class="matchup-team-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${homeName}</span>`
+            : `<span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${homeName}</span>`;
+
+          let matchupLabel = `<span class="matchup-logo-row">${awayLogoHtml}<span class="matchup-at-symbol">@</span>${homeLogoHtml}</span>`;
 
           let time = "TBD";
           let kickoff = new Date(8640000000000000);
@@ -1284,13 +1335,18 @@
             if (!isNaN(kd.getTime())) kickoff = kd;
           }
 
+          // Location dropped from this line entirely — kept only as a
+          // simple "NS" tag for neutral-site games, appended after the
+          // betting line, instead of spelling out the city.
+          const nsSuffix = isNeutralSite ? ' | NS' : '';
+
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
             kickoff: kickoff,
             rawOdds: rawOdds,
             matchupLabel: matchupLabel,
-            detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
+            detail: (isFinal || isLive) ? `${time}${nsSuffix}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'}${nsSuffix}`,
             winner: winnerName,
             isLive: isLive,
             // ESPN's own event id — stable no matter how ESPN formats a
@@ -1455,6 +1511,20 @@
       });
 
       return { correct, incorrect, pending, lockCorrect, lockIncorrect };
+    }
+
+    // Shortens just these two team names where they render as a cousin or
+    // host's pick — South Carolina and Mississippi State were the only two
+    // still wrapping to a second line in the Mike/Shane/Steven columns.
+    // Uses the same canonicalization normalizeTeam() already relies on, so
+    // this only ever changes what text gets printed — the actual pM/pS/pSt
+    // values used for grading (getPickClass) and lock-matching above are
+    // untouched, since this only runs at the point of rendering.
+    function shortenPickDisplay(pick) {
+      const canonical = normalizeTeam(pick);
+      if (canonical === 'southcarolina') return 'S Carolina';
+      if (canonical === 'mississippistate') return 'Miss State';
+      return pick;
     }
 
     function getPickClass(userPick, game, week) {
@@ -1923,19 +1993,19 @@
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
           <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
-            ${isLockM ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
-            ${pM}
+            ${shortenPickDisplay(pM)}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
+            ${isLockM ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
           </td>
           <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
-            ${isLockS ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
-            ${pS}
+            ${shortenPickDisplay(pS)}
             ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
+            ${isLockS ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
           </td>
           <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
-            ${isLockSt ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
-            ${pSt}
+            ${shortenPickDisplay(pSt)}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
+            ${isLockSt ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
           </td>
         `;
         hostBody.appendChild(tr);
