@@ -138,7 +138,7 @@
 
     .host-season-strip {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 0.5rem;
       margin-bottom: 1rem;
     }
@@ -841,6 +841,10 @@
         <div class="host-season-card">
           <div class="host-season-name">Steven</div>
           <div class="host-season-record" id="seasonSteven">0-0</div>
+        </div>
+        <div class="host-season-card">
+          <div class="host-season-name">Cousins</div>
+          <div class="host-season-record" id="seasonCousins">0-0</div>
         </div>
       </div>
 
@@ -1719,6 +1723,35 @@
       document.getElementById("seasonMike").textContent = `${mikeW}-${mikeL}`;
       document.getElementById("seasonShane").textContent = `${shaneW}-${shaneL}`;
       document.getElementById("seasonSteven").textContent = `${stevenW}-${stevenL}`;
+
+      // TEST: season-long version of the same crowd-consensus idea as the
+      // Week Info Hub's Cousins column — for every game across every
+      // week, find whichever team the most cousins picked (reusing the
+      // weekGameDistributions already built above for the Consensus
+      // Divergence tiebreaker) and check it against the actual winner.
+      let cousinsSeasonW = 0, cousinsSeasonL = 0;
+      Object.keys(weekGameDistributions).forEach(w => {
+        const winners = window.gameWinners[w] || {};
+        Object.keys(weekGameDistributions[w]).forEach(matchupKey => {
+          const dist = weekGameDistributions[w][matchupKey];
+          if (!dist || dist.total === 0) return;
+
+          const winner = winners[matchupKey];
+          if (!winner) return; // not decided yet
+
+          const entries = Object.entries(dist.counts);
+          if (entries.length === 0) return;
+          entries.sort((a, b) => b[1] - a[1]);
+          const topNorm = entries[0][0];
+
+          if (topNorm === normalizeTeam(winner)) {
+            cousinsSeasonW++;
+          } else {
+            cousinsSeasonL++;
+          }
+        });
+      });
+      document.getElementById("seasonCousins").textContent = `${cousinsSeasonW}-${cousinsSeasonL}`;
 
       const top5Container = document.getElementById("top5CousinsList");
       const decisionLog = document.getElementById("tiebreakerDecisionLog");
