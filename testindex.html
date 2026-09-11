@@ -419,6 +419,7 @@
       border-bottom: 1px solid var(--border-color);
       border-right: 1px solid var(--border-color);
       line-height: 1.25;
+      vertical-align: top;
     }
     
     .host-grid-table td:first-child {
@@ -444,7 +445,7 @@
 
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
-      width: 30%;
+      width: 37%;
       text-align: center;
       padding: 0.45rem 0.4rem;
       font-size: 0.75rem;
@@ -466,30 +467,9 @@
       font-weight: normal;
     }
 
-    .host-grid-table th.kick-header,
-    .host-grid-table th.line-header {
-      width: auto;
-    }
-
-    .host-grid-table td.kick-cell,
-    .host-grid-table td.line-cell {
-      text-align: center;
-      padding: 0.45rem 0.25rem;
-      font-size: 0.68rem;
-      color: var(--text-muted);
-    }
-
-    .host-grid-table td.kick-cell {
-      width: 16%;
-    }
-
-    .host-grid-table td.line-cell {
-      width: 13%;
-    }
-
-    .host-grid-table th:not(.matchup-header):not(.kick-header):not(.line-header),
+    .host-grid-table th:not(.matchup-header),
     .host-grid-table td.pick-cell {
-      width: 13.67%;
+      width: 21%;
       padding: 0.45rem 0.2rem;
       font-size: 0.75rem;
       font-weight: 600;
@@ -501,29 +481,6 @@
       font-weight: 800;
       color: var(--accent-gold);
       margin-top: 0.15rem;
-    }
-
-    .ats-badge {
-      display: inline-block;
-      font-size: 0.56rem;
-      font-weight: 800;
-      padding: 0.05rem 0.2rem;
-      border-radius: 3px;
-      margin-top: 0.2rem;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-    }
-
-    .ats-cover {
-      background: rgba(74, 222, 128, 0.18);
-      color: var(--success);
-      border: 1px solid rgba(74, 222, 128, 0.4);
-    }
-
-    .ats-no-cover {
-      background: rgba(248, 113, 113, 0.18);
-      color: var(--danger);
-      border: 1px solid rgba(248, 113, 113, 0.4);
     }
 
     .pick-correct { color: var(--success) !important; font-weight: 700; }
@@ -556,6 +513,18 @@
       border-radius: 3px;
       margin-left: 0.3rem;
       vertical-align: middle;
+    }
+
+    /* Used only in the Week Info Hub table — smaller, and placed on its
+       own line above the pick instead of inline after it, so it reads as
+       the first thing in the cell rather than something tacked on below
+       the team name. The Cousins' Picks list keeps the original size. */
+    .lock-badge-compact {
+      display: block;
+      width: fit-content;
+      margin: 0 auto 0.15rem;
+      font-size: 0.55rem;
+      padding: 0.01rem 0.25rem;
     }
 
     .lotw-hit-badge {
@@ -918,15 +887,13 @@
             <thead>
               <tr>
                 <th class="matchup-header">Matchup</th>
-                <th class="kick-header">Kick</th>
-                <th class="line-header">Line</th>
                 <th id="thMike">Mike</th>
                 <th id="thShane">Shane</th>
                 <th id="thSteven">Steven</th>
               </tr>
             </thead>
             <tbody id="hostGridBody">
-              <tr><td colspan="6" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
+              <tr><td colspan="4" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1038,22 +1005,22 @@
     // thing that causes a matchup key computed here to disagree with a key
     // computed there.
     const secTeamAliases = {
-      alabama: ["Alabama"],
+      alabama: ["Alabama", "ALA"],
       arkansas: ["Arkansas"],
-      auburn: ["Auburn"],
-      florida: ["Florida"],
-      georgia: ["Georgia"],
-      kentucky: ["Kentucky"],
+      auburn: ["Auburn", "AUB"],
+      florida: ["Florida", "FLA"],
+      georgia: ["Georgia", "UGA"],
+      kentucky: ["Kentucky", "UK", "KY"],
       lsu: ["LSU"],
-      olemiss: ["Ole Miss"],
-      mississippistate: ["Mississippi State", "Mississippi St", "Miss State", "Miss St"],
-      missouri: ["Missouri", "Mizzou"],
-      oklahoma: ["Oklahoma"],
-      southcarolina: ["South Carolina"],
-      tennessee: ["Tennessee"],
-      texas: ["Texas"],
-      texasam: ["Texas A&M", "Texas AM"],
-      vanderbilt: ["Vanderbilt"]
+      olemiss: ["Ole Miss", "MISS"],
+      mississippistate: ["Mississippi State", "Mississippi St", "Miss State", "Miss St", "MSST"],
+      missouri: ["Missouri", "Mizzou", "MIZ"],
+      oklahoma: ["Oklahoma", "OU"],
+      southcarolina: ["South Carolina", "SC"],
+      tennessee: ["Tennessee", "TENN"],
+      texas: ["Texas", "TEX"],
+      texasam: ["Texas A&M", "Texas AM", "TA&M", "TAM"],
+      vanderbilt: ["Vanderbilt", "VAN"]
     };
 
     function isSecTeam(teamName) {
@@ -1301,30 +1268,22 @@
             matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
           }
 
-          let kickText = "TBD";
+          let time = "TBD";
           let kickoff = new Date(8640000000000000);
           if (isFinal) {
-            kickText = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+            time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
           } else if (isLive) {
             const liveDetail = comp.status.type.detail || `Period ${comp.status.period}`;
-            kickText = `${liveDetail}: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+            time = `${liveDetail}: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
           } else if (comp.date) {
-            // Just the time-of-day here — the date lives in the day
+            // Just the time-of-day here — the date now lives in the day
             // divider row instead of being repeated on every single game.
-            kickText = new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            time = new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
           if (comp.date) {
             const kd = new Date(comp.date);
             if (!isNaN(kd.getTime())) kickoff = kd;
           }
-
-          // Kick/Line now live in their own table columns instead of being
-          // crammed into one subtext line under the matchup. lineText
-          // stays constant regardless of game state; kickText is the one
-          // that changes meaning once a game goes live or final (kickoff
-          // time becomes a live score, then a final score). The Location
-          // column was tried and dropped per feedback.
-          const lineText = rawOdds ? rawOdds : 'Line: TBD';
 
           rawGames.push({
             teamA: teamA,
@@ -1332,8 +1291,7 @@
             kickoff: kickoff,
             rawOdds: rawOdds,
             matchupLabel: matchupLabel,
-            kickText: kickText,
-            lineText: lineText,
+            detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'} | ${venue}`,
             winner: winnerName,
             isLive: isLive,
             // ESPN's own event id — stable no matter how ESPN formats a
@@ -1376,8 +1334,7 @@
             teamB: g.teamB,
             matchupLabel: g.matchupLabel,
             rawOdds: g.rawOdds,
-            kickText: g.kickText,
-            lineText: g.lineText,
+            detail: g.detail,
             isLive: g.isLive,
             kickoff: g.kickoff
           };
@@ -1507,65 +1464,6 @@
       const uNorm = normalizeTeam(userPick);
       const wNorm = normalizeTeam(winner);
       return (uNorm === wNorm) ? "pick-correct" : "pick-incorrect";
-    }
-
-    function computeAtsBadge(userPick, scoreObj, game) {
-      if (!userPick || userPick === "-" || !scoreObj || scoreObj.teamA === undefined || scoreObj.teamB === undefined) {
-        return "";
-      }
-
-      const numA = parseInt(scoreObj.teamA, 10);
-      const numB = parseInt(scoreObj.teamB, 10);
-      if (isNaN(numA) || isNaN(numB)) return "";
-
-      const rawOdds = game.rawOdds || "";
-      if (!rawOdds || rawOdds.toLowerCase().includes("even") || rawOdds.toLowerCase().includes("pk")) return "";
-
-      const match = rawOdds.match(/([A-Za-z\s]+)\s+([+-]?\d+(?:\.\d+)?)/);
-      if (!match) return "";
-
-      const favTeamRaw = match[1].trim();
-      const spreadNum = parseFloat(match[2]);
-      const favNorm = normalizeTeam(favTeamRaw);
-
-      const aNorm = normalizeTeam(game.teamA);
-      const bNorm = normalizeTeam(game.teamB);
-
-      let teamSpreadA = 0;
-      let teamSpreadB = 0;
-
-      if (aNorm.includes(favNorm) || favNorm.includes(aNorm)) {
-        teamSpreadA = spreadNum;
-        teamSpreadB = -spreadNum;
-      } else if (bNorm.includes(favNorm) || favNorm.includes(bNorm)) {
-        teamSpreadB = spreadNum;
-        teamSpreadA = -spreadNum;
-      } else {
-        return "";
-      }
-
-      const uNorm = normalizeTeam(userPick);
-      let pickedMargin = 0;
-      let requiredSpread = 0;
-
-      if (uNorm === aNorm || uNorm.includes(aNorm) || aNorm.includes(uNorm)) {
-        pickedMargin = numA - numB;
-        requiredSpread = teamSpreadA;
-      } else if (uNorm === bNorm || uNorm.includes(bNorm) || bNorm.includes(uNorm)) {
-        pickedMargin = numB - numA;
-        requiredSpread = teamSpreadB;
-      } else {
-        return "";
-      }
-
-      const spreadFormatted = requiredSpread > 0 ? `+${requiredSpread}` : `${requiredSpread}`;
-      if (pickedMargin + requiredSpread > 0) {
-        return `<span class="ats-badge ats-cover">Covers ${spreadFormatted}</span>`;
-      } else if (pickedMargin + requiredSpread < 0) {
-        return `<span class="ats-badge ats-no-cover">No Cover ${spreadFormatted}</span>`;
-      } else {
-        return `<span class="ats-badge ats-cover">Push ${spreadFormatted}</span>`;
-      }
     }
 
     async function loadAllSeasonData() {
@@ -1980,14 +1878,14 @@
         // of each new calendar day — "SATURDAY 9/19" — rather than a tag
         // stuck on one specific game's cell, which read like it was
         // calling that one game out instead of labeling the whole group.
-        // Same background as a normal row, spans all six columns, text in
+        // Same background as a normal row, spans all four columns, text in
         // the same gold used for the other headers rather than a
         // different color per day.
         const group = dayGroupInfo(games, idx, false);
         if (group && group.isFirst) {
           const dividerTr = document.createElement("tr");
           dividerTr.innerHTML = `
-            <td colspan="6" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
+            <td colspan="4" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
               ${group.label} ${group.dateStr}
             </td>
           `;
@@ -2007,10 +1905,6 @@
         const scoreTextS = (sS && sS.teamA !== undefined && sS.teamB !== undefined && sS.teamA !== "") ? `${sS.teamA}-${sS.teamB}` : "";
         const scoreTextSt = (sSt && sSt.teamA !== undefined && sSt.teamB !== undefined && sSt.teamA !== "") ? `${sSt.teamA}-${sSt.teamB}` : "";
 
-        const atsBadgeM = computeAtsBadge(pM, sM, g);
-        const atsBadgeS = computeAtsBadge(pS, sS, g);
-        const atsBadgeSt = computeAtsBadge(pSt, sSt, g);
-
         const isLockM = isLockActiveThisWeek && isLockMatch(mikePicks, g);
         const isLockS = isLockActiveThisWeek && isLockMatch(shanePicks, g);
         const isLockSt = isLockActiveThisWeek && isLockMatch(stevenPicks, g);
@@ -2027,23 +1921,22 @@
         tr.innerHTML = `
           <td class="matchup-cell">
             ${g.matchupLabel}
+            ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
-          <td class="kick-cell">${g.kickText}</td>
-          <td class="line-cell">${g.lineText}</td>
           <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
-            ${pM}${isLockM ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${isLockM ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+            ${pM}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
-            ${atsBadgeM}
           </td>
           <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
-            ${pS}${isLockS ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${isLockS ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+            ${pS}
             ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
-            ${atsBadgeS}
           </td>
           <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
-            ${pSt}${isLockSt ? '<span class="lock-badge">LOCK</span>' : ''}
+            ${isLockSt ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+            ${pSt}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
-            ${atsBadgeSt}
           </td>
         `;
         hostBody.appendChild(tr);
