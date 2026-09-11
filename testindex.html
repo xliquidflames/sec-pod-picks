@@ -918,7 +918,7 @@
                 <th id="thMike">Mike</th>
                 <th id="thShane">Shane</th>
                 <th id="thSteven">Steven</th>
-                <th>Cousins</th>
+                <th id="thCousins">Cousins</th>
               </tr>
             </thead>
             <tbody id="hostGridBody">
@@ -1553,6 +1553,34 @@
       return { team: topTeam, percentage: percentage };
     }
 
+    // TEST: grades the crowd's majority pick the same way a host's picks
+    // get graded — walks every decided game this week, checks whether
+    // that game's majority pick (see computeMajorityPick above) matched
+    // the actual winner, and tallies it up. Games with no winner yet, or
+    // no picks yet, are skipped rather than counted as a miss.
+    function gradeCousinsConsensus(cousinRows, games) {
+      const winners = window.gameWinners[activeWeek] || {};
+      let correct = 0, incorrect = 0;
+
+      games.forEach(game => {
+        const winner = winners[game.matchupKey] || winners[game.id];
+        if (!winner) return;
+
+        const majority = computeMajorityPick(cousinRows, game);
+        if (!majority) return;
+
+        const mNorm = normalizeTeam(majority.team);
+        const wNorm = normalizeTeam(winner);
+        if (mNorm && mNorm === wNorm) {
+          correct++;
+        } else {
+          incorrect++;
+        }
+      });
+
+      return { correct, incorrect };
+    }
+
     function getPickClass(userPick, game, week) {
       const winner = (window.gameWinners[week] || {})[game.matchupKey] || (window.gameWinners[week] || {})[game.id];
       if (!winner || !userPick || userPick === "-") return "pick-pending";
@@ -1958,9 +1986,16 @@
       const shaneScore = gradePicks(shanePicks, activeWeek);
       const stevenScore = gradePicks(stevenPicks, activeWeek);
 
+      // TEST: treats the crowd's majority pick, game by game, as its own
+      // 4th "picker" for record-keeping purposes — same correct/incorrect
+      // tracking the hosts get, just driven by whichever team most
+      // cousins picked instead of one person's own picks.
+      const cousinsConsensusScore = gradeCousinsConsensus(cousinRows, games);
+
       document.getElementById("thMike").innerHTML = `Mike <span class="host-header-score">${mikeScore.correct}-${mikeScore.incorrect}</span>`;
       document.getElementById("thShane").innerHTML = `Shane <span class="host-header-score">${shaneScore.correct}-${shaneScore.incorrect}</span>`;
       document.getElementById("thSteven").innerHTML = `Steven <span class="host-header-score">${stevenScore.correct}-${stevenScore.incorrect}</span>`;
+      document.getElementById("thCousins").innerHTML = `Cousins <span class="host-header-score">${cousinsConsensusScore.correct}-${cousinsConsensusScore.incorrect}</span>`;
 
       const hostBody = document.getElementById("hostGridBody");
       hostBody.innerHTML = "";
