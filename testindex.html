@@ -445,7 +445,7 @@
 
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
-      width: 37%;
+      width: 28%;
       text-align: center;
       padding: 0.45rem 0.4rem;
       font-size: 0.75rem;
@@ -497,7 +497,7 @@
 
     .host-grid-table th:not(.matchup-header),
     .host-grid-table td.pick-cell {
-      width: 21%;
+      width: 18%;
       padding: 0.45rem 0.2rem;
       font-size: 0.75rem;
       font-weight: 600;
@@ -918,10 +918,11 @@
                 <th id="thMike">Mike</th>
                 <th id="thShane">Shane</th>
                 <th id="thSteven">Steven</th>
+                <th>Cousins</th>
               </tr>
             </thead>
             <tbody id="hostGridBody">
-              <tr><td colspan="4" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
+              <tr><td colspan="5" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1527,6 +1528,31 @@
       return pick;
     }
 
+    // TEST: crowd consensus for a single game — whichever team the most
+    // cousins picked, and what percentage of this week's total submitters
+    // that represents. Percentage is out of everyone who submitted this
+    // week (not just people who picked this specific game), matching how
+    // other season-wide stats on this page are already calculated. On an
+    // exact tie, whichever team happened to be tallied first wins — a
+    // known, accepted simplification rather than something this tries to
+    // resolve more precisely.
+    function computeMajorityPick(cousinRows, game) {
+      const tally = {};
+      cousinRows.forEach(c => {
+        const pick = getMatchedUserPick(c.picks, game);
+        if (!pick) return;
+        tally[pick] = (tally[pick] || 0) + 1;
+      });
+
+      const entries = Object.entries(tally);
+      if (entries.length === 0 || cousinRows.length === 0) return null;
+
+      entries.sort((a, b) => b[1] - a[1]);
+      const [topTeam, topCount] = entries[0];
+      const percentage = Math.round((topCount / cousinRows.length) * 100);
+      return { team: topTeam, percentage: percentage };
+    }
+
     function getPickClass(userPick, game, week) {
       const winner = (window.gameWinners[week] || {})[game.matchupKey] || (window.gameWinners[week] || {})[game.id];
       if (!winner || !userPick || userPick === "-") return "pick-pending";
@@ -1954,7 +1980,7 @@
         if (group && group.isFirst) {
           const dividerTr = document.createElement("tr");
           dividerTr.innerHTML = `
-            <td colspan="4" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
+            <td colspan="5" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
               ${group.label} ${group.dateStr}
             </td>
           `;
@@ -1982,6 +2008,12 @@
         const classS = getPickClass(pS, g, activeWeek);
         const classSt = getPickClass(pSt, g, activeWeek);
 
+        // TEST: crowd consensus column — graded the same way as a host's
+        // pick once the game is decided, so it visually shows right/wrong
+        // just like Mike/Shane/Steven's cells do.
+        const majorityPick = computeMajorityPick(cousinRows, g);
+        const classCousins = majorityPick ? getPickClass(majorityPick.team, g, activeWeek) : '';
+
         const isLiveGame = liveMap[g.matchupKey] || liveMap[g.id];
         if (isLiveGame) {
           tr.classList.add('live-game-row');
@@ -2006,6 +2038,10 @@
             ${shortenPickDisplay(pSt)}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
             ${isLockSt ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+          </td>
+          <td class="pick-cell ${classCousins}">
+            ${majorityPick ? shortenPickDisplay(majorityPick.team) : '<span class="matchup-subdetail" style="margin-top:0;">No picks yet</span>'}
+            ${majorityPick ? `<span class="host-predicted-score">${majorityPick.percentage}%</span>` : ''}
           </td>
         `;
         hostBody.appendChild(tr);
@@ -2079,7 +2115,7 @@
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
                   <span class="pick-line-matchup">${g.matchupLabel}</span>
                   <span class="${pClass}">
-                    ${uPick}
+                    ${shortenPickDisplay(uPick)}
                     ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
                   </span>
                 </div>
