@@ -1023,6 +1023,38 @@
       vanderbilt: ["Vanderbilt", "VAN"]
     };
 
+    // TEST: shortened display names, keyed by the same canonical id
+    // normalizeTeam() already resolves every spelling variant down to.
+    // This ONLY changes what text gets printed in the matchup label —
+    // awayName/homeName (and therefore teamA/teamB, the matchup key, and
+    // grading) are completely untouched, since this lookup runs after
+    // isSecTeam()/normalizeTeam() have already done their job on the real
+    // name. A team with no entry here just falls back to its full name,
+    // so non-SEC opponents are unaffected.
+    const secShortDisplayNames = {
+      alabama: "Alabama",
+      arkansas: "Arkansas",
+      auburn: "Auburn",
+      florida: "Florida",
+      georgia: "Georgia",
+      kentucky: "Kentucky",
+      lsu: "LSU",
+      olemiss: "Ole Miss",
+      mississippistate: "MS State",
+      missouri: "MIZ",
+      oklahoma: "Oklahoma",
+      southcarolina: "S Carolina",
+      tennessee: "Tennessee",
+      texas: "Texas",
+      texasam: "TAMU",
+      vanderbilt: "Vandy"
+    };
+
+    function getDisplayName(fullName) {
+      const canonical = normalizeTeam(fullName);
+      return secShortDisplayNames[canonical] || fullName;
+    }
+
     function isSecTeam(teamName) {
       if (!teamName) return false;
       return secNormalizedNames.has(normalizeTeam(teamName));
@@ -1263,7 +1295,9 @@
           // what for the matchup key, sort order, and grading.
           const awayClass = isSecTeam(awayName) ? 'matchup-sec-team' : 'matchup-other-team';
           const homeClass = isSecTeam(homeName) ? 'matchup-sec-team' : 'matchup-other-team';
-          let matchupLabel = `<span class="${awayClass}">${awayName}</span> @ <span class="${homeClass}">${homeName}</span>`;
+          // TEST: awayName/homeName themselves are untouched here — only
+          // the text actually printed is shortened, via getDisplayName().
+          let matchupLabel = `<span class="${awayClass}">${getDisplayName(awayName)}</span> @ <span class="${homeClass}">${getDisplayName(homeName)}</span>`;
           if (isNeutralSite) {
             matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
           }
