@@ -164,6 +164,14 @@
       color: var(--accent-gold);
     }
 
+    .host-season-subtitle {
+      font-size: 0.55rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      line-height: 1.1;
+      margin-bottom: 0.15rem;
+    }
+
     .top3-item {
       display: flex;
       justify-content: space-between;
@@ -443,6 +451,17 @@
       font-weight: 700;
       color: var(--accent-gold);
       margin-top: 0.15rem;
+    }
+
+    .th-cousins-subtitle {
+      display: block;
+      font-size: 0.5rem;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: normal;
+      color: var(--text-muted);
+      line-height: 1.15;
+      margin-top: 0.1rem;
     }
 
     .host-grid-table th.matchup-header,
@@ -846,6 +865,7 @@
         </div>
         <div class="host-season-card">
           <div class="host-season-name">Cousins</div>
+          <div class="host-season-subtitle">Wisdom of the Crowd</div>
           <div class="host-season-record" id="seasonCousins">0-0</div>
         </div>
       </div>
@@ -873,7 +893,7 @@
           </div>
 
           <div style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-            <strong style="color: var(--text-main);">What's up with the Cousins card next to Steven?</strong> It's a season long record for the group's own consensus pick. Every week, the code tallies all the cousins' picks and takes whichever team got the most votes. That becomes the Cousins column you see on the Week Info Hub. For example, if 87% of cousins picked Missouri to win their game, Missouri gets recorded as that week's community pick. This card next to Steven in the season totals is those community picks added up, correct and incorrect, across the whole season.
+            <strong style="color: var(--text-main);">What's up with the Cousins card labeled Wisdom of the Crowd?</strong> It's a season long record for the group's own consensus pick, not a real competitor like Mike, Shane, or Steven. Every week, the code tallies all the cousins' picks and takes whichever team got the most votes. That becomes the Cousins column you see on the Week Info Hub. For example, if 87% of cousins picked Missouri to win their game, Missouri gets recorded as that week's community pick. This card is those community picks added up, correct and incorrect, across the whole season. It's just a fun look at how the crowd as a whole would have done if it were one player.
           </div>
 
           <div id="tiebreakerDecisionLog" class="tiebreaker-decision-log" style="display: none;"></div>
@@ -2007,7 +2027,7 @@
       document.getElementById("thMike").innerHTML = `Mike <span class="host-header-score">${mikeScore.correct}-${mikeScore.incorrect}</span>`;
       document.getElementById("thShane").innerHTML = `Shane <span class="host-header-score">${shaneScore.correct}-${shaneScore.incorrect}</span>`;
       document.getElementById("thSteven").innerHTML = `Steven <span class="host-header-score">${stevenScore.correct}-${stevenScore.incorrect}</span>`;
-      document.getElementById("thCousins").innerHTML = `Cousins <span class="host-header-score">${cousinsConsensusScore.correct}-${cousinsConsensusScore.incorrect}</span>`;
+      document.getElementById("thCousins").innerHTML = `Cousins<span class="th-cousins-subtitle">Wisdom of the Crowd</span><span class="host-header-score">${cousinsConsensusScore.correct}-${cousinsConsensusScore.incorrect}</span>`;
 
       const hostBody = document.getElementById("hostGridBody");
       hostBody.innerHTML = "";
