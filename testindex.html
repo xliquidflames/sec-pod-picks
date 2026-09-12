@@ -1769,35 +1769,68 @@
         return;
       }
 
-      const candidateKey = (c) => `${c.correct}|${c.lockCorrect}|${c.incorrect}|${c.consensusDivergenceWins}|${c.underdogUpsetWins}`;
+      // Podium logic, rebuilt to actually cascade the way it's supposed
+      // to: group everyone by their real win-loss record first (since
+      // that's the one thing that should decide who's even competing for
+      // a given spot), then run the tiebreaker hierarchy one criterion at
+      // a time *within* that group, peeling off only whoever survives
+      // each step. Whoever's left once every criterion is exhausted is a
+      // genuine tie for that spot. Anyone who shared the record but lost
+      // the tiebreaker war does NOT slide down to compete for the next
+      // spot — that spot starts over from whoever has the next-best
+      // distinct record, full stop.
+      const recordGroups = {};
+      allCousins.forEach(c => {
+        const key = `${c.correct}-${c.incorrect}`;
+        if (!recordGroups[key]) recordGroups[key] = { correct: c.correct, incorrect: c.incorrect, members: [] };
+        recordGroups[key].members.push(c);
+      });
 
-      const sortedByStats = [...allCousins].sort((a, b) => {
+      const orderedRecordGroups = Object.values(recordGroups).sort((a, b) => {
         if (b.correct !== a.correct) return b.correct - a.correct;
-        if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
-        if (a.incorrect !== b.incorrect) return a.incorrect - b.incorrect;
-        if (b.consensusDivergenceWins !== a.consensusDivergenceWins) {
-          return b.consensusDivergenceWins - a.consensusDivergenceWins;
-        }
-        return b.underdogUpsetWins - a.underdogUpsetWins;
+        return a.incorrect - b.incorrect;
       });
 
-      // Group cousins into tiers: everyone sharing an identical line across
-      // all five tiebreakers occupies the same tier. Because the sort above is a
-      // total ordering built from those same five fields, cousins with an
-      // identical key always end up adjacent, so a single pass groups them
-      // correctly.
-      const tiers = [];
-      sortedByStats.forEach(c => {
-        const key = candidateKey(c);
-        const lastTier = tiers[tiers.length - 1];
-        if (lastTier && lastTier.key === key) {
-          lastTier.members.push(c);
-        } else {
-          tiers.push({ key, members: [c] });
-        }
-      });
+      // "Fewest Total Losses" is included for fidelity to the full
+      // five-step hierarchy, but since everyone here already shares the
+      // same record (grouping happened first), it can never actually
+      // separate anyone at this stage — every remaining criterion after
+      // Lock Hits inherits whatever's left over from that no-op.
+      const tiebreakerCriteria = [
+        { label: "Lock of the Week Hits", fn: c => c.lockCorrect },
+        { label: "Fewest Total Losses", fn: c => -c.incorrect },
+        { label: "Consensus Divergence", fn: c => c.consensusDivergenceWins },
+        { label: "Underdog Upset Accuracy", fn: c => c.underdogUpsetWins }
+      ];
 
-      const podiumTiers = tiers.slice(0, 3);
+      function narrowByTiebreakers(members) {
+        let current = members;
+        const log = [];
+        for (const { label, fn } of tiebreakerCriteria) {
+          if (current.length <= 1) break;
+          const maxVal = Math.max(...current.map(fn));
+          const narrowed = current.filter(c => fn(c) === maxVal);
+          if (narrowed.length < current.length) {
+            log.push({ label, from: current.length, to: narrowed.length });
+          }
+          current = narrowed;
+        }
+        return { finalMembers: current, log };
+      }
+
+      const podiumTiers = [];
+      for (const group of orderedRecordGroups) {
+        if (podiumTiers.length >= 3) break;
+        const { finalMembers, log } = narrowByTiebreakers(group.members);
+        podiumTiers.push({
+          members: finalMembers,
+          correct: group.correct,
+          incorrect: group.incorrect,
+          startingGroupSize: group.members.length,
+          narrowingLog: log
+        });
+      }
+
       const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
 
       const namesGrid = (members, gridId) => {
@@ -1828,42 +1861,32 @@
       }).join("");
 
       if (decisionLog) {
-        const criteriaOrder = [
-          { field: "correct", label: "Total Correct Wins" },
-          { field: "lockCorrect", label: "Lock of the Week Hits" },
-          { field: "incorrect", label: "Fewest Total Losses" },
-          { field: "consensusDivergenceWins", label: "Consensus Divergence" },
-          { field: "underdogUpsetWins", label: "Underdog Upset Accuracy" }
-        ];
-
-        const firstDifference = (a, b) => {
-          for (const { field, label } of criteriaOrder) {
-            if (a[field] !== b[field]) return { label, aVal: a[field], bVal: b[field] };
-          }
-          return null;
-        };
-
         const placeLabels = ["1st Place", "2nd Place", "3rd Place"];
         const decisions = podiumTiers.map((tier, idx) => {
-          if (tier.members.length > 1) {
+          const recordStr = `${tier.correct}-${tier.incorrect}`;
+
+          if (tier.startingGroupSize === 1) {
             return `
               <div class="tiebreaker-decision-item">
-                <strong>${placeLabels[idx]}:</strong> ${tier.members.length} Cousins are deadlocked with identical records across all five tiebreakers.
+                <strong>${placeLabels[idx]}:</strong> ${tier.members[0].user_name} holds the spot outright at ${recordStr} — nobody else shares that record.
               </div>
             `;
           }
-          const nextTier = tiers[idx + 1];
-          const diff = nextTier ? firstDifference(tier.members[0], nextTier.members[0]) : null;
-          if (diff) {
+
+          const steps = tier.narrowingLog.map(s => `${s.label} (${s.from} &rarr; ${s.to})`).join(", then ");
+
+          if (tier.members.length === 1) {
             return `
               <div class="tiebreaker-decision-item">
-                <strong>${placeLabels[idx]}:</strong> ${tier.members[0].user_name} holds the spot outright, separated by ${diff.label} (${diff.aVal} vs ${diff.bVal}).
+                <strong>${placeLabels[idx]}:</strong> ${tier.startingGroupSize} Cousins started tied at ${recordStr}. ${steps ? `Narrowed by ${steps}, leaving` : 'Every tiebreaker still left'} ${tier.members[0].user_name} holding the spot outright.
               </div>
             `;
           }
+
           return `
             <div class="tiebreaker-decision-item">
-              <strong>${placeLabels[idx]}:</strong> ${tier.members[0].user_name} holds the spot outright.
+              <strong>${placeLabels[idx]}:</strong> ${tier.startingGroupSize} Cousins started tied at ${recordStr}.
+              ${steps ? `Narrowed by ${steps}, but ${tier.members.length} remain deadlocked even after every tiebreaker.` : `All ${tier.members.length} remain deadlocked even after every tiebreaker.`}
             </div>
           `;
         });
