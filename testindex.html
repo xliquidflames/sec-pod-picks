@@ -541,7 +541,7 @@
       background: var(--accent-gold);
       padding: 0.02rem 0.3rem;
       border-radius: 3px;
-      margin-left: 0.3rem;
+      margin-right: 0.3rem;
       vertical-align: middle;
     }
 
@@ -865,11 +865,15 @@
         <div id="tiebreakersInfo" class="tiebreakers-box">
           <div><strong>How the Podium Works:</strong></div>
           <div style="margin-top: 0.3rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-            Ranked purely by cumulative correct and incorrect picks. The cousins with the most correct picks are first, fewest losses breaking that. Anyone sharing the exact same record shares the spot, shown as a tie. You can tap the row to open it and see every name. Ties aren't something this tries to break, especially early in a season.
+            Cousins are ranked purely by their individual correct and incorrect picks added up for the season. The cousins with the most correct picks are first, fewest losses breaking that. Anyone sharing the exact same record shares the spot, shown as a tie. You can tap the row to open it and see every name. Ties aren't something this tries to break, especially early in a season.
           </div>
 
           <div style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-            <strong style="color: var(--text-main);">Why doesn't everyone's win total match the number of games played?</strong> They haven't played every week. We have lives. It doesn't feel right to punish cousins who couldn't play every single week. So, a record only grows once someone actually submits that week's picks. We don't force you to have played every week to have a record at all. For example, someone who only picked one week and is 16-0 at the end of the season has 100% accuracy. But someone who is 183-10 has more correct picks. So we are keeping it purely about the total correct picks, not accuracy.
+            <strong style="color: var(--text-main);">Why doesn't everyone's win total match the number of games played?</strong> They haven't played every week. We don't force you to have played every week to have a record at all but we can't have someone riding a single undefeated week to the end of the season. For example, someone who only picked one week and is 16-0 at the end of the season has 100% accuracy. But someone who is 183-10 has more correct picks. So we are keeping it purely about the total correct picks, not accuracy.
+          </div>
+
+          <div style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+            <strong style="color: var(--text-main);">What's up with the Cousins card next to Steven?</strong> It's a season long record for the group's own consensus pick. Every week, the code tallies all the cousins' picks and takes whichever team got the most votes. That becomes the Cousins column you see on the Week Info Hub. For example, if 87% of cousins picked Missouri to win their game, Missouri gets recorded as that week's community pick. This card next to Steven in the season totals is those community picks added up, correct and incorrect, across the whole season.
           </div>
 
           <div id="tiebreakerDecisionLog" class="tiebreaker-decision-log" style="display: none;"></div>
@@ -2158,8 +2162,8 @@
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
                   <span class="pick-line-matchup">${g.matchupLabel}</span>
                   <span class="${pClass}">
-                    ${shortenPickDisplay(uPick)}
                     ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
+                    ${shortenPickDisplay(uPick)}
                   </span>
                 </div>
               `;
