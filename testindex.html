@@ -863,14 +863,10 @@
           <span id="tiebreakerArrow">&#9662;</span>
         </button>
         <div id="tiebreakersInfo" class="tiebreakers-box">
-          <div><strong>Season Top 3 Podium Tiebreaker Hierarchy:</strong></div>
-          <ol>
-            <li><strong>Total Correct Wins:</strong> Cumulative correct picks across the entire season.</li>
-            <li><strong>Lock of the Week Hits:</strong> Total correct Lock of the Week picks.</li>
-            <li><strong>Fewest Total Losses:</strong> Rewards higher overall win percentage.</li>
-            <li><strong>Consensus Divergence:</strong> Total winning picks that go against the grain of the Cousins.</li>
-            <li><strong>Underdog Upset Accuracy:</strong> Total winning picks made on underdog teams.</li>
-          </ol>
+          <div><strong>How the Podium Works:</strong></div>
+          <div style="margin-top: 0.3rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+            Ranked purely by win-loss record — most correct picks first, fewest losses breaking that. Anyone sharing the exact same record shares the spot, shown as a tie you can tap open to see every name. Ties aren't something this tries to break — especially early in a season, they're just an honest reflection of how close things are.
+          </div>
 
           <div style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
             <strong style="color: var(--text-main);">Why doesn't everyone's win total match the number of games played?</strong> A record only grows once someone actually submits that week's picks — it doesn't force you to have played every week to have a record at all. Someone who went perfect in an earlier week but hasn't submitted the current week yet will show a lower total (like 16-0) than someone who's submitted every week so far (like 17-0), even though both are undefeated in the weeks they've actually played.
@@ -1775,16 +1771,13 @@
         return;
       }
 
-      // Podium logic, rebuilt to actually cascade the way it's supposed
-      // to: group everyone by their real win-loss record first (since
-      // that's the one thing that should decide who's even competing for
-      // a given spot), then run the tiebreaker hierarchy one criterion at
-      // a time *within* that group, peeling off only whoever survives
-      // each step. Whoever's left once every criterion is exhausted is a
-      // genuine tie for that spot. Anyone who shared the record but lost
-      // the tiebreaker war does NOT slide down to compete for the next
-      // spot — that spot starts over from whoever has the next-best
-      // distinct record, full stop.
+      // Podium is ranked purely by win-loss record — nothing else.
+      // Everyone sharing the same correct/incorrect count rides together
+      // as a tie; ties aren't a problem to be broken, especially early in
+      // a season when there just isn't much data yet to separate people
+      // on anything more meaningful than luck. The expandable name list
+      // is what makes a large tie perfectly readable, so there's no need
+      // to force it down to exactly one name per spot.
       const recordGroups = {};
       allCousins.forEach(c => {
         const key = `${c.correct}-${c.incorrect}`;
@@ -1797,45 +1790,11 @@
         return a.incorrect - b.incorrect;
       });
 
-      // "Fewest Total Losses" is included for fidelity to the full
-      // five-step hierarchy, but since everyone here already shares the
-      // same record (grouping happened first), it can never actually
-      // separate anyone at this stage — every remaining criterion after
-      // Lock Hits inherits whatever's left over from that no-op.
-      const tiebreakerCriteria = [
-        { label: "Lock of the Week Hits", fn: c => c.lockCorrect },
-        { label: "Fewest Total Losses", fn: c => -c.incorrect },
-        { label: "Consensus Divergence", fn: c => c.consensusDivergenceWins },
-        { label: "Underdog Upset Accuracy", fn: c => c.underdogUpsetWins }
-      ];
-
-      function narrowByTiebreakers(members) {
-        let current = members;
-        const log = [];
-        for (const { label, fn } of tiebreakerCriteria) {
-          if (current.length <= 1) break;
-          const maxVal = Math.max(...current.map(fn));
-          const narrowed = current.filter(c => fn(c) === maxVal);
-          if (narrowed.length < current.length) {
-            log.push({ label, from: current.length, to: narrowed.length });
-          }
-          current = narrowed;
-        }
-        return { finalMembers: current, log };
-      }
-
-      const podiumTiers = [];
-      for (const group of orderedRecordGroups) {
-        if (podiumTiers.length >= 3) break;
-        const { finalMembers, log } = narrowByTiebreakers(group.members);
-        podiumTiers.push({
-          members: finalMembers,
-          correct: group.correct,
-          incorrect: group.incorrect,
-          startingGroupSize: group.members.length,
-          narrowingLog: log
-        });
-      }
+      const podiumTiers = orderedRecordGroups.slice(0, 3).map(group => ({
+        members: group.members,
+        correct: group.correct,
+        incorrect: group.incorrect
+      }));
 
       const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
 
@@ -1870,35 +1829,21 @@
         const placeLabels = ["1st Place", "2nd Place", "3rd Place"];
         const decisions = podiumTiers.map((tier, idx) => {
           const recordStr = `${tier.correct}-${tier.incorrect}`;
-
-          if (tier.startingGroupSize === 1) {
-            return `
+          return tier.members.length === 1
+            ? `
               <div class="tiebreaker-decision-item">
-                <strong>${placeLabels[idx]}:</strong> ${tier.members[0].user_name} holds the spot outright at ${recordStr} — nobody else shares that record.
+                <strong>${placeLabels[idx]}:</strong> ${tier.members[0].user_name} at ${recordStr} — nobody else shares that record.
+              </div>
+            `
+            : `
+              <div class="tiebreaker-decision-item">
+                <strong>${placeLabels[idx]}:</strong> ${tier.members.length} Cousins share the ${recordStr} record.
               </div>
             `;
-          }
-
-          const steps = tier.narrowingLog.map(s => `${s.label} (${s.from} &rarr; ${s.to})`).join(", then ");
-
-          if (tier.members.length === 1) {
-            return `
-              <div class="tiebreaker-decision-item">
-                <strong>${placeLabels[idx]}:</strong> ${tier.startingGroupSize} Cousins started tied at ${recordStr}. ${steps ? `Narrowed by ${steps}, leaving` : 'Every tiebreaker still left'} ${tier.members[0].user_name} holding the spot outright.
-              </div>
-            `;
-          }
-
-          return `
-            <div class="tiebreaker-decision-item">
-              <strong>${placeLabels[idx]}:</strong> ${tier.startingGroupSize} Cousins started tied at ${recordStr}.
-              ${steps ? `Narrowed by ${steps}, but ${tier.members.length} remain deadlocked even after every tiebreaker.` : `All ${tier.members.length} remain deadlocked even after every tiebreaker.`}
-            </div>
-          `;
         });
 
         decisionLog.innerHTML = `
-          <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Live Podium Decision Logic:</div>
+          <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Current Podium:</div>
           ${decisions.join("")}
         `;
         decisionLog.style.display = "block";
