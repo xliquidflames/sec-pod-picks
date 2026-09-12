@@ -240,10 +240,10 @@
     }
 
     .tiebreakers-toggle {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 0.65rem;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      color: var(--accent-gold);
+      font-size: 0.72rem;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -251,14 +251,16 @@
       text-decoration: none;
       display: inline-flex;
       align-items: center;
-      gap: 0.3rem;
+      gap: 0.4rem;
       margin-top: 0.5rem;
-      padding: 0;
-      transition: color 0.15s ease;
+      padding: 0.4rem 0.75rem;
+      border-radius: 20px;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
 
-    .tiebreakers-toggle:hover {
-      color: var(--text-main);
+    .tiebreakers-toggle:hover, .tiebreakers-toggle:active {
+      background: var(--bg-card);
+      border-color: var(--accent-gold);
     }
 
     .tiebreakers-box {
@@ -857,7 +859,7 @@
         </div>
 
         <button type="button" class="tiebreakers-toggle" onclick="toggleTieBreakers()">
-          <span>Tie Breakers</span>
+          <span>Logic</span>
           <span id="tiebreakerArrow">&#9662;</span>
         </button>
         <div id="tiebreakersInfo" class="tiebreakers-box">
@@ -869,6 +871,10 @@
             <li><strong>Consensus Divergence:</strong> Total winning picks that go against the grain of the Cousins.</li>
             <li><strong>Underdog Upset Accuracy:</strong> Total winning picks made on underdog teams.</li>
           </ol>
+
+          <div style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+            <strong style="color: var(--text-main);">Why doesn't everyone's win total match the number of games played?</strong> A record only grows once someone actually submits that week's picks — it doesn't force you to have played every week to have a record at all. Someone who went perfect in an earlier week but hasn't submitted the current week yet will show a lower total (like 16-0) than someone who's submitted every week so far (like 17-0), even though both are undefeated in the weeks they've actually played.
+          </div>
 
           <div id="tiebreakerDecisionLog" class="tiebreaker-decision-log" style="display: none;"></div>
         </div>
