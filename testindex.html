@@ -975,9 +975,9 @@
             <div class="pulse-desc" id="statLockAccuracyDesc">Cousin Locks Hit</div>
           </div>
           <div class="pulse-card">
-            <div class="pulse-label">Cousins vs Hosts Showdown</div>
+            <div class="pulse-label">Boldest Lock</div>
             <div class="pulse-stat" id="statLockBattle">--</div>
-            <div class="pulse-desc" id="statLockBattleDesc">Lock Win Rates</div>
+            <div class="pulse-desc" id="statLockBattleDesc">Longest Odds</div>
           </div>
         </div>
 
@@ -2322,33 +2322,57 @@
             document.getElementById("statLockAccuracyDesc").textContent = totalLocksPlaced > 0 ? "Awaiting Results" : "No Locks Placed";
           }
 
-          let hostLocksWon = 0;
-          let hostLocksDecided = 0;
-          [hostMike, hostShane, hostSteven].forEach(h => {
-            if (!h) return;
-            const hPicks = parseUserPicks(h.picks);
-            const lockedGame = findLockedGame(hPicks, games);
+          // Boldest Lock: among every team any cousin locked this week,
+          // find whichever one is an SEC team AND was the actual
+          // underdog on the real betting line — then take the one with
+          // the longest odds against them. lockCounts already has each
+          // locked team's raw pick count from the loop above, so this
+          // just needs each team's spread, not a fresh pass over every
+          // cousin's picks again.
+          function getTeamSpread(game, teamName) {
+            const rawOdds = game.rawOdds || '';
+            if (!rawOdds || rawOdds.toLowerCase().includes('even') || rawOdds.toLowerCase().includes('pk')) return null;
 
-            if (lockedGame) {
-              const winner = (window.gameWinners[activeWeek] || {})[lockedGame.matchupKey] || (window.gameWinners[activeWeek] || {})[lockedGame.id];
-              if (winner) {
-                hostLocksDecided++;
-                const uPick = getMatchedUserPick(hPicks, lockedGame);
-                const uNorm = normalizeTeam(uPick);
-                const wNorm = normalizeTeam(winner);
-                if (uNorm === wNorm) {
-                  hostLocksWon++;
-                }
-              }
+            const match = rawOdds.match(/([A-Za-z&\s]+)\s+([+-]?\d+(?:\.\d+)?)/);
+            if (!match) return null;
+
+            const favNorm = normalizeTeam(match[1].trim());
+            const spreadNum = parseFloat(match[2]);
+            const teamNorm = normalizeTeam(teamName);
+            const aNorm = normalizeTeam(game.teamA);
+            const bNorm = normalizeTeam(game.teamB);
+
+            let favoriteNorm = null;
+            if (aNorm === favNorm || favNorm.includes(aNorm) || aNorm.includes(favNorm)) favoriteNorm = aNorm;
+            else if (bNorm === favNorm || favNorm.includes(bNorm) || bNorm.includes(favNorm)) favoriteNorm = bNorm;
+            if (!favoriteNorm) return null;
+
+            // Positive means this team is the underdog getting that many
+            // points; negative would mean they're favored, which isn't
+            // "bold" in the sense this card cares about.
+            return teamNorm === favoriteNorm ? spreadNum : Math.abs(spreadNum);
+          }
+
+          let boldestTeam = null;
+          let boldestSpread = 0;
+          Object.keys(lockCounts).forEach(team => {
+            if (!isSecTeam(team)) return;
+            const game = games.find(g => normalizeTeam(g.teamA) === normalizeTeam(team) || normalizeTeam(g.teamB) === normalizeTeam(team));
+            if (!game) return;
+            const spread = getTeamSpread(game, team);
+            if (spread === null || spread <= 0) return;
+            if (spread > boldestSpread) {
+              boldestSpread = spread;
+              boldestTeam = team;
             }
           });
 
-          if (hostLocksDecided > 0 || decidedLocks > 0) {
-            document.getElementById("statLockBattle").textContent = `C: ${cousinLocksWon}/${decidedLocks} | H: ${hostLocksWon}/${hostLocksDecided}`;
-            document.getElementById("statLockBattleDesc").textContent = "Lock Win Rates";
+          if (boldestTeam) {
+            document.getElementById("statLockBattle").textContent = `${shortenPickDisplay(boldestTeam)} (+${boldestSpread})`;
+            document.getElementById("statLockBattleDesc").textContent = `${lockCounts[boldestTeam]} lock${lockCounts[boldestTeam] === 1 ? '' : 's'}`;
           } else {
-            document.getElementById("statLockBattle").textContent = "Pending";
-            document.getElementById("statLockBattleDesc").textContent = "Awaiting Kickoffs";
+            document.getElementById("statLockBattle").textContent = "--";
+            document.getElementById("statLockBattleDesc").textContent = totalLocksPlaced > 0 ? "No Underdog Locks" : "No Locks Placed";
           }
         }
 
