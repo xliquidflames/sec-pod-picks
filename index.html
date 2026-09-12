@@ -2369,7 +2369,7 @@
 
           if (boldestTeam) {
             document.getElementById("statLockBattle").textContent = `${shortenPickDisplay(boldestTeam)} (+${boldestSpread})`;
-            document.getElementById("statLockBattleDesc").textContent = `${lockCounts[boldestTeam]} Cousin${lockCounts[boldestTeam] === 1 ? '' : 's'} Locked Them`;
+            document.getElementById("statLockBattleDesc").textContent = `${lockCounts[boldestTeam]} lock${lockCounts[boldestTeam] === 1 ? '' : 's'}`;
           } else {
             document.getElementById("statLockBattle").textContent = "--";
             document.getElementById("statLockBattleDesc").textContent = totalLocksPlaced > 0 ? "No Underdog Locks" : "No Locks Placed";
