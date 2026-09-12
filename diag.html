@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diagnostic: Week 1 Grading Comparison</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 1rem;
+      font-size: 0.85rem;
+    }
+    h1 { color: #fbbf24; font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .summary {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.4rem;
+      border-bottom: 1px solid #334155;
+    }
+    th { color: #fbbf24; }
+    .hit { color: #4ade80; font-weight: 700; }
+    .miss { color: #f87171; font-weight: 700; }
+    .loading { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <h1>Week 1 Grading Comparison</h1>
+  <div id="output" class="loading">Loading...</div>
+
+  <script>
+    const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // --- Below here is copied verbatim from the real site's grading logic,
+    // not reimplemented, so this diagnostic can't disagree with production
+    // just because of a subtle difference in how something was rewritten. ---
+
+    const secTeamAliases = {
+      alabama: ["Alabama", "ALA"],
+      arkansas: ["Arkansas"],
+      auburn: ["Auburn", "AUB"],
+      florida: ["Florida", "FLA"],
+      georgia: ["Georgia", "UGA"],
+      kentucky: ["Kentucky", "UK", "KY"],
+      lsu: ["LSU"],
+      olemiss: ["Ole Miss", "MISS"],
+      mississippistate: ["Mississippi State", "Mississippi St", "Miss State", "Miss St", "MSST"],
+      missouri: ["Missouri", "Mizzou", "MIZ"],
+      oklahoma: ["Oklahoma", "OU"],
+      southcarolina: ["South Carolina", "SC"],
+      tennessee: ["Tennessee", "TENN"],
+      texas: ["Texas", "TEX"],
+      texasam: ["Texas A&M", "Texas AM", "TA&M", "TAM"],
+      vanderbilt: ["Vanderbilt", "VAN"]
+    };
+
+    const secNameCanonical = {};
+    Object.entries(secTeamAliases).forEach(([canonicalKey, variants]) => {
+      variants.forEach(variant => {
+        const crude = variant.toLowerCase().replace(/[^a-z0-9]/g, "");
+        secNameCanonical[crude] = canonicalKey;
+      });
+    });
+
+    const secNormalizedNames = new Set(
+      Object.values(secTeamAliases).flat().map(n => normalizeTeam(n))
+    );
+
+    function cleanTeamName(name) {
+      if (!name) return "";
+      const lower = name.toLowerCase().trim();
+      if (lower.includes("pine bluff") || lower === "uapb" || lower.includes("peanut")) {
+        return "Arkansas Peanut Butter (Pine Bluff)";
+      }
+      return name;
+    }
+
+    function normalizeTeam(str) {
+      if (!str) return "";
+      const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned.includes("uapb")) {
+        return "uapb";
+      }
+      if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
+        return "arkansas";
+      }
+      if (secNameCanonical[cleaned]) {
+        return secNameCanonical[cleaned];
+      }
+      return cleaned;
+    }
+
+    function isSecTeam(teamName) {
+      if (!teamName) return false;
+      return secNormalizedNames.has(normalizeTeam(teamName));
+    }
+
+    function buildMatchupKey(teamA, teamB) {
+      return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
+    }
+
+    function parseUserPicks(rawPicks) {
+      if (!rawPicks) return {};
+      if (typeof rawPicks === 'object') return rawPicks;
+      try { return JSON.parse(rawPicks); } catch (e) { return {}; }
+    }
+
+    function getMatchedUserPick(picks, game) {
+      if (!picks || !game) return null;
+
+      if (picks[game.matchupKey]) {
+        return picks[game.matchupKey];
+      }
+
+      const legacyKey = buildMatchupKey(game.teamA, game.teamB);
+      if (picks[legacyKey]) {
+        return picks[legacyKey];
+      }
+
+      const aNorm = normalizeTeam(game.teamA);
+      const bNorm = normalizeTeam(game.teamB);
+
+      const direct = picks[game.id] || picks[String(game.id)];
+      if (direct && typeof direct === 'string') {
+        const directNorm = normalizeTeam(direct);
+        if (directNorm === aNorm || directNorm === bNorm) {
+          return direct;
+        }
+      }
+
+      const matchKey = Object.keys(picks).find(k => {
+        if (k === 'lock_game_id' || k === 'lock_matchup_key' || k === 'scores') return false;
+        const val = picks[k];
+        if (!val || typeof val !== 'string') return false;
+        const valNorm = normalizeTeam(val);
+        return valNorm === aNorm || valNorm === bNorm;
+      });
+
+      if (matchKey) {
+        return picks[matchKey];
+      }
+
+      return null;
+    }
+
+    function isLockMatch(picks, game) {
+      if (!picks || !game) return false;
+      const lockKey = picks.lock_matchup_key || null;
+      const lockId = picks.lock_game_id ? parseInt(picks.lock_game_id, 10) : null;
+      if (lockKey && (lockKey === game.matchupKey || lockKey === buildMatchupKey(game.teamA, game.teamB))) {
+        return true;
+      }
+      if (lockId && lockId === game.id) return true;
+      return false;
+    }
+
+    function gradePicks(rawPicks, week, winners) {
+      const picks = parseUserPicks(rawPicks);
+      let correct = 0, incorrect = 0, pending = 0;
+      let lockCorrect = 0, lockIncorrect = 0;
+      const details = [];
+
+      currentWeekGames.forEach(game => {
+        const winner = winners[game.matchupKey] || winners[game.id];
+        const userPick = getMatchedUserPick(picks, game);
+        const isLockGame = (week !== 1) && isLockMatch(picks, game);
+
+        if (!winner) {
+          pending++;
+        } else {
+          const uNorm = normalizeTeam(userPick);
+          const wNorm = normalizeTeam(winner);
+          const isHit = (uNorm && uNorm === wNorm);
+
+          if (isHit) {
+            correct++;
+            if (isLockGame) lockCorrect++;
+          } else {
+            incorrect++;
+            if (isLockGame) lockIncorrect++;
+          }
+
+          details.push({
+            matchup: `${game.teamA} vs ${game.teamB}`,
+            winner: winner,
+            userPick: userPick || "(no pick found)",
+            isHit: isHit
+          });
+        }
+      });
+
+      return { correct, incorrect, pending, lockCorrect, lockIncorrect, details };
+    }
+
+    // --- Diagnostic-specific code below ---
+
+    let currentWeekGames = [];
+
+    async function fetchWeek1Games() {
+      const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=1&limit=100`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      const winners = {};
+      const games = [];
+
+      data.events.forEach(ev => {
+        const comp = ev.competitions[0];
+        const home = comp.competitors.find(c => c.homeAway === 'home');
+        const away = comp.competitors.find(c => c.homeAway === 'away');
+
+        const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
+        const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
+
+        let teamA, teamB;
+        if (isSecTeam(homeName)) {
+          teamA = homeName; teamB = awayName;
+        } else {
+          teamA = awayName; teamB = homeName;
+        }
+
+        const isFinal = comp.status && comp.status.type && comp.status.type.completed;
+        let winnerName = null;
+        if (isFinal) {
+          const winnerComp = comp.competitors.find(c => c.winner === true);
+          if (winnerComp) winnerName = cleanTeamName(winnerComp.team.shortDisplayName || winnerComp.team.name);
+        }
+
+        const matchupKey = (ev.id !== undefined && ev.id !== null) ? String(ev.id) : buildMatchupKey(teamA, teamB);
+        const game = { id: matchupKey, matchupKey: matchupKey, teamA, teamB };
+        games.push(game);
+
+        if (winnerName) {
+          winners[matchupKey] = winnerName;
+        }
+      });
+
+      currentWeekGames = games;
+      return winners;
+    }
+
+    async function run() {
+      const output = document.getElementById("output");
+      try {
+        const winners = await fetchWeek1Games();
+
+        const { data: rows, error } = await supabaseClient
+          .from("picks")
+          .select("user_name, week_number, picks")
+          .in("user_name", ["@LetsgoMizzou", "OzarkZOU"])
+          .eq("week_number", 1)
+          .eq("is_host", false);
+
+        if (error) throw error;
+
+        const mizzouRow = rows.find(r => r.user_name === "@LetsgoMizzou");
+        const ozarkRow = rows.find(r => r.user_name === "OzarkZOU");
+
+        if (!mizzouRow || !ozarkRow) {
+          output.innerHTML = `<p style="color:#f87171;">Missing a Week 1 row for one of these two users — found: ${rows.map(r => r.user_name).join(", ") || "nobody"}.</p>`;
+          return;
+        }
+
+        const mizzouScore = gradePicks(mizzouRow.picks, 1, winners);
+        const ozarkScore = gradePicks(ozarkRow.picks, 1, winners);
+
+        let html = `
+          <div class="summary">
+            <strong>@LetsgoMizzou Week 1:</strong> ${mizzouScore.correct}-${mizzouScore.incorrect}<br>
+            <strong>OzarkZOU Week 1:</strong> ${ozarkScore.correct}-${ozarkScore.incorrect}
+          </div>
+          <table>
+            <tr><th>Matchup</th><th>Winner</th><th>Mizzou Pick</th><th>Ozark Pick</th></tr>
+        `;
+
+        currentWeekGames.forEach(game => {
+          const winner = winners[game.matchupKey];
+          if (!winner) return;
+          const mPick = getMatchedUserPick(parseUserPicks(mizzouRow.picks), game) || "(none)";
+          const oPick = getMatchedUserPick(parseUserPicks(ozarkRow.picks), game) || "(none)";
+          const mHit = normalizeTeam(mPick) === normalizeTeam(winner);
+          const oHit = normalizeTeam(oPick) === normalizeTeam(winner);
+          html += `
+            <tr>
+              <td>${game.teamA} vs ${game.teamB}</td>
+              <td>${winner}</td>
+              <td class="${mHit ? 'hit' : 'miss'}">${mPick}</td>
+              <td class="${oHit ? 'hit' : 'miss'}">${oPick}</td>
+            </tr>
+          `;
+        });
+
+        html += `</table>`;
+        output.innerHTML = html;
+      } catch (err) {
+        output.innerHTML = `<p style="color:#f87171;">Error: ${err.message}</p>`;
+      }
+    }
+
+    run();
+  </script>
+</body>
+</html>
