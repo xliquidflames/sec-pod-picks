@@ -240,10 +240,10 @@
     }
 
     .tiebreakers-toggle {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 0.65rem;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      color: var(--accent-gold);
+      font-size: 0.72rem;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -251,14 +251,16 @@
       text-decoration: none;
       display: inline-flex;
       align-items: center;
-      gap: 0.3rem;
+      gap: 0.4rem;
       margin-top: 0.5rem;
-      padding: 0;
-      transition: color 0.15s ease;
+      padding: 0.4rem 0.75rem;
+      border-radius: 20px;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
 
-    .tiebreakers-toggle:hover {
-      color: var(--text-main);
+    .tiebreakers-toggle:hover, .tiebreakers-toggle:active {
+      background: var(--bg-card);
+      border-color: var(--accent-gold);
     }
 
     .tiebreakers-box {
@@ -539,7 +541,7 @@
       background: var(--accent-gold);
       padding: 0.02rem 0.3rem;
       border-radius: 3px;
-      margin-left: 0.3rem;
+      margin-right: 0.3rem;
       vertical-align: middle;
     }
 
@@ -857,18 +859,22 @@
         </div>
 
         <button type="button" class="tiebreakers-toggle" onclick="toggleTieBreakers()">
-          <span>Tie Breakers</span>
+          <span>Logic</span>
           <span id="tiebreakerArrow">&#9662;</span>
         </button>
         <div id="tiebreakersInfo" class="tiebreakers-box">
-          <div><strong>Season Top 3 Podium Tiebreaker Hierarchy:</strong></div>
-          <ol>
-            <li><strong>Total Correct Wins:</strong> Cumulative correct picks across the entire season.</li>
-            <li><strong>Lock of the Week Hits:</strong> Total correct Lock of the Week picks.</li>
-            <li><strong>Fewest Total Losses:</strong> Rewards higher overall win percentage.</li>
-            <li><strong>Consensus Divergence:</strong> Total winning picks that go against the grain of the Cousins.</li>
-            <li><strong>Underdog Upset Accuracy:</strong> Total winning picks made on underdog teams.</li>
-          </ol>
+          <div><strong>How the Podium Works:</strong></div>
+          <div style="margin-top: 0.3rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+            Cousins are ranked purely by their individual correct and incorrect picks added up for the season. The cousins with the most correct picks are first, fewest losses breaking that. Anyone sharing the exact same record shares the spot, shown as a tie. You can tap the row to open it and see every name. Ties aren't something this tries to break, especially early in a season.
+          </div>
+
+          <div style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+            <strong style="color: var(--text-main);">Why doesn't everyone's win total match the number of games played?</strong> They haven't played every week. We don't force you to have played every week to have a record at all but we can't have someone riding a single undefeated week to the end of the season. For example, someone who only picked one week and is 16-0 at the end of the season has 100% accuracy. But someone who is 183-10 has more correct picks. So we are keeping it purely about the total correct picks, not accuracy.
+          </div>
+
+          <div style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+            <strong style="color: var(--text-main);">What's up with the Cousins card next to Steven?</strong> It's a season long record for the group's own consensus pick. Every week, the code tallies all the cousins' picks and takes whichever team got the most votes. That becomes the Cousins column you see on the Week Info Hub. For example, if 87% of cousins picked Missouri to win their game, Missouri gets recorded as that week's community pick. This card next to Steven in the season totals is those community picks added up, correct and incorrect, across the whole season.
+          </div>
 
           <div id="tiebreakerDecisionLog" class="tiebreaker-decision-log" style="display: none;"></div>
         </div>
@@ -1769,35 +1775,31 @@
         return;
       }
 
-      const candidateKey = (c) => `${c.correct}|${c.lockCorrect}|${c.incorrect}|${c.consensusDivergenceWins}|${c.underdogUpsetWins}`;
+      // Podium is ranked purely by win-loss record — nothing else.
+      // Everyone sharing the same correct/incorrect count rides together
+      // as a tie; ties aren't a problem to be broken, especially early in
+      // a season when there just isn't much data yet to separate people
+      // on anything more meaningful than luck. The expandable name list
+      // is what makes a large tie perfectly readable, so there's no need
+      // to force it down to exactly one name per spot.
+      const recordGroups = {};
+      allCousins.forEach(c => {
+        const key = `${c.correct}-${c.incorrect}`;
+        if (!recordGroups[key]) recordGroups[key] = { correct: c.correct, incorrect: c.incorrect, members: [] };
+        recordGroups[key].members.push(c);
+      });
 
-      const sortedByStats = [...allCousins].sort((a, b) => {
+      const orderedRecordGroups = Object.values(recordGroups).sort((a, b) => {
         if (b.correct !== a.correct) return b.correct - a.correct;
-        if (b.lockCorrect !== a.lockCorrect) return b.lockCorrect - a.lockCorrect;
-        if (a.incorrect !== b.incorrect) return a.incorrect - b.incorrect;
-        if (b.consensusDivergenceWins !== a.consensusDivergenceWins) {
-          return b.consensusDivergenceWins - a.consensusDivergenceWins;
-        }
-        return b.underdogUpsetWins - a.underdogUpsetWins;
+        return a.incorrect - b.incorrect;
       });
 
-      // Group cousins into tiers: everyone sharing an identical line across
-      // all five tiebreakers occupies the same tier. Because the sort above is a
-      // total ordering built from those same five fields, cousins with an
-      // identical key always end up adjacent, so a single pass groups them
-      // correctly.
-      const tiers = [];
-      sortedByStats.forEach(c => {
-        const key = candidateKey(c);
-        const lastTier = tiers[tiers.length - 1];
-        if (lastTier && lastTier.key === key) {
-          lastTier.members.push(c);
-        } else {
-          tiers.push({ key, members: [c] });
-        }
-      });
+      const podiumTiers = orderedRecordGroups.slice(0, 3).map(group => ({
+        members: group.members,
+        correct: group.correct,
+        incorrect: group.incorrect
+      }));
 
-      const podiumTiers = tiers.slice(0, 3);
       const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
 
       const namesGrid = (members, gridId) => {
@@ -1828,48 +1830,24 @@
       }).join("");
 
       if (decisionLog) {
-        const criteriaOrder = [
-          { field: "correct", label: "Total Correct Wins" },
-          { field: "lockCorrect", label: "Lock of the Week Hits" },
-          { field: "incorrect", label: "Fewest Total Losses" },
-          { field: "consensusDivergenceWins", label: "Consensus Divergence" },
-          { field: "underdogUpsetWins", label: "Underdog Upset Accuracy" }
-        ];
-
-        const firstDifference = (a, b) => {
-          for (const { field, label } of criteriaOrder) {
-            if (a[field] !== b[field]) return { label, aVal: a[field], bVal: b[field] };
-          }
-          return null;
-        };
-
         const placeLabels = ["1st Place", "2nd Place", "3rd Place"];
         const decisions = podiumTiers.map((tier, idx) => {
-          if (tier.members.length > 1) {
-            return `
+          const recordStr = `${tier.correct}-${tier.incorrect}`;
+          return tier.members.length === 1
+            ? `
               <div class="tiebreaker-decision-item">
-                <strong>${placeLabels[idx]}:</strong> ${tier.members.length} Cousins are deadlocked with identical records across all five tiebreakers.
+                <strong>${placeLabels[idx]}:</strong> ${tier.members[0].user_name} at ${recordStr} — nobody else shares that record.
+              </div>
+            `
+            : `
+              <div class="tiebreaker-decision-item">
+                <strong>${placeLabels[idx]}:</strong> ${tier.members.length} Cousins share the ${recordStr} record.
               </div>
             `;
-          }
-          const nextTier = tiers[idx + 1];
-          const diff = nextTier ? firstDifference(tier.members[0], nextTier.members[0]) : null;
-          if (diff) {
-            return `
-              <div class="tiebreaker-decision-item">
-                <strong>${placeLabels[idx]}:</strong> ${tier.members[0].user_name} holds the spot outright, separated by ${diff.label} (${diff.aVal} vs ${diff.bVal}).
-              </div>
-            `;
-          }
-          return `
-            <div class="tiebreaker-decision-item">
-              <strong>${placeLabels[idx]}:</strong> ${tier.members[0].user_name} holds the spot outright.
-            </div>
-          `;
         });
 
         decisionLog.innerHTML = `
-          <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Live Podium Decision Logic:</div>
+          <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">Current Podium:</div>
           ${decisions.join("")}
         `;
         decisionLog.style.display = "block";
@@ -2184,8 +2162,8 @@
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
                   <span class="pick-line-matchup">${g.matchupLabel}</span>
                   <span class="${pClass}">
-                    ${shortenPickDisplay(uPick)}
                     ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
+                    ${shortenPickDisplay(uPick)}
                   </span>
                 </div>
               `;
