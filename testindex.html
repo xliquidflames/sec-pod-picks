@@ -164,14 +164,6 @@
       color: var(--accent-gold);
     }
 
-    .host-season-subtitle {
-      font-size: 0.55rem;
-      font-weight: 400;
-      color: var(--text-muted);
-      line-height: 1.1;
-      margin-bottom: 0.15rem;
-    }
-
     .top3-item {
       display: flex;
       justify-content: space-between;
@@ -451,17 +443,6 @@
       font-weight: 700;
       color: var(--accent-gold);
       margin-top: 0.15rem;
-    }
-
-    .th-cousins-subtitle {
-      display: block;
-      font-size: 0.5rem;
-      font-weight: 400;
-      text-transform: none;
-      letter-spacing: normal;
-      color: var(--text-muted);
-      line-height: 1.15;
-      margin-top: 0.1rem;
     }
 
     .host-grid-table th.matchup-header,
@@ -865,7 +846,6 @@
         </div>
         <div class="host-season-card">
           <div class="host-season-name">Cousins</div>
-          <div class="host-season-subtitle">Wisdom of the Crowd</div>
           <div class="host-season-record" id="seasonCousins">0-0</div>
         </div>
       </div>
@@ -2027,7 +2007,7 @@
       document.getElementById("thMike").innerHTML = `Mike <span class="host-header-score">${mikeScore.correct}-${mikeScore.incorrect}</span>`;
       document.getElementById("thShane").innerHTML = `Shane <span class="host-header-score">${shaneScore.correct}-${shaneScore.incorrect}</span>`;
       document.getElementById("thSteven").innerHTML = `Steven <span class="host-header-score">${stevenScore.correct}-${stevenScore.incorrect}</span>`;
-      document.getElementById("thCousins").innerHTML = `Cousins<span class="th-cousins-subtitle">Wisdom of the Crowd</span><span class="host-header-score">${cousinsConsensusScore.correct}-${cousinsConsensusScore.incorrect}</span>`;
+      document.getElementById("thCousins").innerHTML = `Cousins <span class="host-header-score">${cousinsConsensusScore.correct}-${cousinsConsensusScore.incorrect}</span>`;
 
       const hostBody = document.getElementById("hostGridBody");
       hostBody.innerHTML = "";
