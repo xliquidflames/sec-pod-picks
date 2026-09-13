@@ -523,7 +523,56 @@
       border-bottom: 1px solid rgba(251, 191, 36, 0.4) !important;
     }
 
+    /* Pick, exact score, and lock all hitting on the same game — the
+       rare full sweep. Animating a background gradient directly doesn't
+       fade smoothly in most browsers — gradients aren't reliably
+       interpolated the way a plain color is, so it jumps at the halfway
+       point instead of blending, reading as a hard blink instead of a
+       pulse. Fix: keep the base look completely static, and fade a
+       separate glow layer in and out on top of it using pure opacity,
+       which browsers always interpolate smoothly. */
+    @keyframes triple-perfect-glow {
+      0%, 100% { opacity: 0; }
+      50% { opacity: 1; }
+    }
 
+    .triple-perfect-cell {
+      position: relative;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(30, 41, 59, 0.9)) !important;
+      border: 3px solid var(--accent-gold) !important;
+    }
+
+    .triple-perfect-cell::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(251, 191, 36, 0.55);
+      box-shadow: 0 0 18px 6px rgba(251, 191, 36, 0.8);
+      opacity: 0;
+      animation: triple-perfect-glow 1.8s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* The glow overlay above is a positioned element, which by default
+       paints above plain in-flow text even without a z-index — this
+       pulls the actual pick text back on top of it, so nothing gets
+       washed out at the brightest point of the pulse. */
+    .triple-perfect-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .triple-perfect-badge {
+      display: block;
+      text-align: center;
+      font-size: 0.62rem;
+      font-weight: 900;
+      color: var(--accent-gold);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 0.2rem;
+    }
 
     .lock-badge {
       display: inline-block;
@@ -1278,6 +1327,22 @@
 
           const isFinal = comp.status && comp.status.type && comp.status.type.completed;
           const state = comp.status && comp.status.type && comp.status.type.state;
+
+          // Real final score, kept in the same teamA/teamB order as
+          // everything else (SEC team always A), so it can be compared
+          // directly against a host's predicted score later — separate
+          // from the "Final: ..." display string, which is just text and
+          // not something safe to parse back into real numbers.
+          let finalScoreA = null, finalScoreB = null;
+          if (isFinal) {
+            if (teamA === homeName) {
+              finalScoreA = parseInt(home.score, 10);
+              finalScoreB = parseInt(away.score, 10);
+            } else {
+              finalScoreA = parseInt(away.score, 10);
+              finalScoreB = parseInt(home.score, 10);
+            }
+          }
           const isLive = (state === "in");
 
           let winnerName = null;
@@ -1355,6 +1420,8 @@
             detail: (isFinal || isLive) ? `${time}${nsSuffix}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'}${nsSuffix}`,
             winner: winnerName,
             isLive: isLive,
+            finalScoreA: finalScoreA,
+            finalScoreB: finalScoreB,
             // ESPN's own event id — stable no matter how ESPN formats a
             // team's display name. Building the matchup key from team-name
             // text (the old approach) breaks the moment ESPN shows a name
@@ -1397,7 +1464,9 @@
             rawOdds: g.rawOdds,
             detail: g.detail,
             isLive: g.isLive,
-            kickoff: g.kickoff
+            kickoff: g.kickoff,
+            finalScoreA: g.finalScoreA,
+            finalScoreB: g.finalScoreB
           };
         });
 
@@ -1585,6 +1654,36 @@
       });
 
       return { correct, incorrect };
+    }
+
+    // A host nails the pick, the exact score, AND has this game locked —
+    // the rare "everything went right" case, worth actually standing out
+    // rather than just being another green cell.
+    function isTriplePerfect(scoreObj, pickClass, isLocked, game) {
+      if (pickClass !== 'pick-correct') return false;
+      if (!isLocked) return false;
+      if (!scoreObj || scoreObj.teamA === undefined || scoreObj.teamB === undefined) return false;
+      if (game.finalScoreA === null || game.finalScoreA === undefined) return false;
+      if (game.finalScoreB === null || game.finalScoreB === undefined) return false;
+      const predA = parseInt(scoreObj.teamA, 10);
+      const predB = parseInt(scoreObj.teamB, 10);
+      if (isNaN(predA) || isNaN(predB)) return false;
+      return predA === game.finalScoreA && predB === game.finalScoreB;
+    }
+
+    // Builds a host pick cell's inner content. When it's a triple-perfect
+    // cell, everything gets wrapped in .triple-perfect-content so the
+    // text stays layered above the pulsing glow overlay instead of
+    // getting washed out underneath it — normal cells are left with the
+    // exact same plain structure they always had.
+    function buildPickCellInner(pickText, scoreText, isLocked, isTriple) {
+      const inner = `
+        ${pickText}
+        ${scoreText ? `<span class="host-predicted-score">${scoreText}</span>` : ''}
+        ${isLocked ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+        ${isTriple ? '<span class="triple-perfect-badge">&#10024; Perfect &#10024;</span>' : ''}
+      `;
+      return isTriple ? `<span class="triple-perfect-content">${inner}</span>` : inner;
     }
 
     function getPickClass(userPick, game, week) {
@@ -2050,6 +2149,10 @@
         const classS = getPickClass(pS, g, activeWeek);
         const classSt = getPickClass(pSt, g, activeWeek);
 
+        const tripleM = isTriplePerfect(sM, classM, isLockM, g);
+        const tripleS = isTriplePerfect(sS, classS, isLockS, g);
+        const tripleSt = isTriplePerfect(sSt, classSt, isLockSt, g);
+
         // TEST: crowd consensus column — graded the same way as a host's
         // pick once the game is decided, so it visually shows right/wrong
         // just like Mike/Shane/Steven's cells do.
@@ -2066,20 +2169,14 @@
             ${g.matchupLabel}
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
-          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
-            ${shortenPickDisplay(pM)}
-            ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
-            ${isLockM ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''} ${tripleM ? 'triple-perfect-cell' : ''}">
+            ${buildPickCellInner(shortenPickDisplay(pM), scoreTextM, isLockM, tripleM)}
           </td>
-          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
-            ${shortenPickDisplay(pS)}
-            ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
-            ${isLockS ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''} ${tripleS ? 'triple-perfect-cell' : ''}">
+            ${buildPickCellInner(shortenPickDisplay(pS), scoreTextS, isLockS, tripleS)}
           </td>
-          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
-            ${shortenPickDisplay(pSt)}
-            ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
-            ${isLockSt ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''} ${tripleSt ? 'triple-perfect-cell' : ''}">
+            ${buildPickCellInner(shortenPickDisplay(pSt), scoreTextSt, isLockSt, tripleSt)}
           </td>
           <td class="pick-cell ${classCousins}">
             ${majorityPick ? shortenPickDisplay(majorityPick.team) : '<span class="matchup-subdetail" style="margin-top:0;">No picks yet</span>'}
