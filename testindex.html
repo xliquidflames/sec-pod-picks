@@ -523,7 +523,35 @@
       border-bottom: 1px solid rgba(251, 191, 36, 0.4) !important;
     }
 
+    /* Pick, exact score, and lock all hitting on the same game — the
+       rare full sweep. Pulsing gold glow plus a small starburst label so
+       it's unmistakable at a glance, not just another green cell. */
+    @keyframes triple-perfect-glow {
+      0%, 100% {
+        box-shadow: 0 0 8px 2px rgba(251, 191, 36, 0.55), inset 0 0 14px rgba(251, 191, 36, 0.3);
+      }
+      50% {
+        box-shadow: 0 0 22px 7px rgba(251, 191, 36, 0.9), inset 0 0 22px rgba(251, 191, 36, 0.55);
+      }
+    }
 
+    .triple-perfect-cell {
+      position: relative;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(30, 41, 59, 0.9)) !important;
+      border: 2px solid var(--accent-gold) !important;
+      animation: triple-perfect-glow 1.6s ease-in-out infinite;
+    }
+
+    .triple-perfect-badge {
+      display: block;
+      text-align: center;
+      font-size: 0.62rem;
+      font-weight: 900;
+      color: var(--accent-gold);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 0.2rem;
+    }
 
     .lock-badge {
       display: inline-block;
@@ -1278,6 +1306,22 @@
 
           const isFinal = comp.status && comp.status.type && comp.status.type.completed;
           const state = comp.status && comp.status.type && comp.status.type.state;
+
+          // Real final score, kept in the same teamA/teamB order as
+          // everything else (SEC team always A), so it can be compared
+          // directly against a host's predicted score later — separate
+          // from the "Final: ..." display string, which is just text and
+          // not something safe to parse back into real numbers.
+          let finalScoreA = null, finalScoreB = null;
+          if (isFinal) {
+            if (teamA === homeName) {
+              finalScoreA = parseInt(home.score, 10);
+              finalScoreB = parseInt(away.score, 10);
+            } else {
+              finalScoreA = parseInt(away.score, 10);
+              finalScoreB = parseInt(home.score, 10);
+            }
+          }
           const isLive = (state === "in");
 
           let winnerName = null;
@@ -1355,6 +1399,8 @@
             detail: (isFinal || isLive) ? `${time}${nsSuffix}` : `${time} | ${rawOdds ? rawOdds : 'Line: TBD'}${nsSuffix}`,
             winner: winnerName,
             isLive: isLive,
+            finalScoreA: finalScoreA,
+            finalScoreB: finalScoreB,
             // ESPN's own event id — stable no matter how ESPN formats a
             // team's display name. Building the matchup key from team-name
             // text (the old approach) breaks the moment ESPN shows a name
@@ -1397,7 +1443,9 @@
             rawOdds: g.rawOdds,
             detail: g.detail,
             isLive: g.isLive,
-            kickoff: g.kickoff
+            kickoff: g.kickoff,
+            finalScoreA: g.finalScoreA,
+            finalScoreB: g.finalScoreB
           };
         });
 
@@ -1585,6 +1633,21 @@
       });
 
       return { correct, incorrect };
+    }
+
+    // A host nails the pick, the exact score, AND has this game locked —
+    // the rare "everything went right" case, worth actually standing out
+    // rather than just being another green cell.
+    function isTriplePerfect(scoreObj, pickClass, isLocked, game) {
+      if (pickClass !== 'pick-correct') return false;
+      if (!isLocked) return false;
+      if (!scoreObj || scoreObj.teamA === undefined || scoreObj.teamB === undefined) return false;
+      if (game.finalScoreA === null || game.finalScoreA === undefined) return false;
+      if (game.finalScoreB === null || game.finalScoreB === undefined) return false;
+      const predA = parseInt(scoreObj.teamA, 10);
+      const predB = parseInt(scoreObj.teamB, 10);
+      if (isNaN(predA) || isNaN(predB)) return false;
+      return predA === game.finalScoreA && predB === game.finalScoreB;
     }
 
     function getPickClass(userPick, game, week) {
@@ -2050,6 +2113,10 @@
         const classS = getPickClass(pS, g, activeWeek);
         const classSt = getPickClass(pSt, g, activeWeek);
 
+        const tripleM = isTriplePerfect(sM, classM, isLockM, g);
+        const tripleS = isTriplePerfect(sS, classS, isLockS, g);
+        const tripleSt = isTriplePerfect(sSt, classSt, isLockSt, g);
+
         // TEST: crowd consensus column — graded the same way as a host's
         // pick once the game is decided, so it visually shows right/wrong
         // just like Mike/Shane/Steven's cells do.
@@ -2066,20 +2133,23 @@
             ${g.matchupLabel}
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
           </td>
-          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''}">
+          <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''} ${tripleM ? 'triple-perfect-cell' : ''}">
             ${shortenPickDisplay(pM)}
             ${scoreTextM ? `<span class="host-predicted-score">${scoreTextM}</span>` : ''}
             ${isLockM ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+            ${tripleM ? '<span class="triple-perfect-badge">&#10024; Perfect &#10024;</span>' : ''}
           </td>
-          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''}">
+          <td class="pick-cell ${classS} ${isLockS ? 'host-lock-cell' : ''} ${tripleS ? 'triple-perfect-cell' : ''}">
             ${shortenPickDisplay(pS)}
             ${scoreTextS ? `<span class="host-predicted-score">${scoreTextS}</span>` : ''}
             ${isLockS ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+            ${tripleS ? '<span class="triple-perfect-badge">&#10024; Perfect &#10024;</span>' : ''}
           </td>
-          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''}">
+          <td class="pick-cell ${classSt} ${isLockSt ? 'host-lock-cell' : ''} ${tripleSt ? 'triple-perfect-cell' : ''}">
             ${shortenPickDisplay(pSt)}
             ${scoreTextSt ? `<span class="host-predicted-score">${scoreTextSt}</span>` : ''}
             ${isLockSt ? '<span class="lock-badge lock-badge-compact">LOCK</span>' : ''}
+            ${tripleSt ? '<span class="triple-perfect-badge">&#10024; Perfect &#10024;</span>' : ''}
           </td>
           <td class="pick-cell ${classCousins}">
             ${majorityPick ? shortenPickDisplay(majorityPick.team) : '<span class="matchup-subdetail" style="margin-top:0;">No picks yet</span>'}
