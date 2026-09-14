@@ -795,6 +795,67 @@
       color: var(--bg-main);
     }
 
+    /* TEST: persistent header — stays pinned to the top of the screen
+       through the whole page, not just sitting at the top and scrolling
+       away. That's a deliberate tradeoff: permanent screen space spent on
+       every load, in exchange for the season leader and site navigation
+       always being one glance away, never buried by scrolling. */
+    .site-sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: var(--bg-main);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+    }
+
+    .site-sticky-header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .site-sticky-leader {
+      font-size: 0.75rem;
+      color: var(--text-main);
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .site-sticky-leader .leader-trophy {
+      margin-right: 0.2rem;
+    }
+
+    .site-sticky-links {
+      display: flex;
+      gap: 0.4rem;
+      flex-shrink: 0;
+    }
+
+    .site-sticky-link {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: var(--accent-gold);
+      border: 1px solid var(--accent-gold);
+      border-radius: 20px;
+      padding: 0.28rem 0.6rem;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .site-sticky-link:hover, .site-sticky-link:active {
+      background: var(--accent-gold);
+      color: var(--bg-main);
+    }
+
     .site-footer {
       margin-top: 2.5rem;
       padding: 1.5rem 1rem 0;
@@ -857,6 +918,16 @@
   </style>
 </head>
 <body>
+
+  <div class="site-sticky-header">
+    <div class="site-sticky-header-inner">
+      <div class="site-sticky-leader" id="headerLeaderSummary">Loading standings...</div>
+      <div class="site-sticky-links">
+        <a href="teamschedules.html" class="site-sticky-link">Teams</a>
+        <a href="nflindex.html" class="site-sticky-link">NFL</a>
+      </div>
+    </div>
+  </div>
 
   <div class="container" id="pageTop">
 
@@ -1044,7 +1115,6 @@
     </div>
 
     <a href="#pageTop" class="btn-float-top">&uarr; Top</a>
-    <a href="nflindex.html" class="btn-float-sport">NFL</a>
 
     <footer class="site-footer" id="pageBottom">
       <div class="footer-container">
@@ -1895,6 +1965,23 @@
       }));
 
       const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
+
+      // TEST: quick leader summary for the persistent header — reuses the
+      // podium tiers already computed above rather than recalculating
+      // anything, so this can never disagree with the actual Season
+      // Standings section further down the page.
+      const headerLeaderEl = document.getElementById("headerLeaderSummary");
+      if (headerLeaderEl) {
+        if (podiumTiers.length === 0) {
+          headerLeaderEl.textContent = "No picks yet this season";
+        } else {
+          const leader = podiumTiers[0];
+          const leaderText = leader.members.length === 1
+            ? `${leader.members[0].user_name} leads (${leader.correct}-${leader.incorrect})`
+            : `${leader.members.length}-way tie leads (${leader.correct}-${leader.incorrect})`;
+          headerLeaderEl.innerHTML = `<span class="leader-trophy">&#127942;</span>${leaderText}`;
+        }
+      }
 
       const namesGrid = (members, gridId) => {
         const sorted = [...members].sort((a, b) => a.user_name.localeCompare(b.user_name));
