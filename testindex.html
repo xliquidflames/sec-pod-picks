@@ -817,19 +817,27 @@
 
     .site-sticky-header-inner {
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
       gap: 0.35rem;
       max-width: 700px;
       margin: 0 auto;
+      flex-wrap: nowrap;
     }
 
+    /* This is the one section allowed to shrink and truncate if space
+       runs out — the leader summary and the buttons matter more to
+       always show in full than three host records do. */
     .site-sticky-scores {
       display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 0.15rem 0.7rem;
-      font-size: 0.68rem;
+      gap: 0.5rem;
+      font-size: 0.62rem;
       color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex: 1 1 auto;
     }
 
     .site-sticky-scores strong {
@@ -838,13 +846,11 @@
     }
 
     .site-sticky-leader {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-main);
       font-weight: 700;
-      text-align: center;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      flex-shrink: 0;
     }
 
     .site-sticky-leader .leader-trophy {
@@ -853,9 +859,9 @@
 
     .site-sticky-links {
       display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 0.4rem;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
+      gap: 0.35rem;
     }
 
     .site-sticky-link {
@@ -966,7 +972,7 @@
       <div class="site-sticky-links">
         <a href="teamschedules.html" class="site-sticky-link">Teams</a>
         <a href="nflindex.html" class="site-sticky-link">NFL</a>
-        <a href="makepicks.html" id="headerSubmitLink" class="site-sticky-link site-sticky-link-submit">Submit Picks</a>
+        <a href="makepicks.html" id="headerSubmitLink" class="site-sticky-link site-sticky-link-submit">Submit</a>
       </div>
     </div>
   </div>
@@ -2029,8 +2035,8 @@
         } else {
           const leader = podiumTiers[0];
           const leaderText = leader.members.length === 1
-            ? `${leader.members[0].user_name} leads (${leader.correct}-${leader.incorrect})`
-            : `${leader.members.length}-way tie leads (${leader.correct}-${leader.incorrect})`;
+            ? `${leader.members[0].user_name}`
+            : `${leader.members.length}-way tie`;
           headerLeaderEl.innerHTML = `<span class="leader-trophy">&#127942;</span>${leaderText}`;
         }
       }
