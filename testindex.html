@@ -817,22 +817,34 @@
 
     .site-sticky-header-inner {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
+      flex-direction: column;
+      gap: 0.35rem;
       max-width: 700px;
       margin: 0 auto;
+    }
+
+    .site-sticky-scores {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.15rem 0.7rem;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    .site-sticky-scores strong {
+      color: var(--accent-gold);
+      font-weight: 800;
     }
 
     .site-sticky-leader {
       font-size: 0.75rem;
       color: var(--text-main);
       font-weight: 700;
+      text-align: center;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      min-width: 0;
-      flex: 1 1 auto;
     }
 
     .site-sticky-leader .leader-trophy {
@@ -841,8 +853,9 @@
 
     .site-sticky-links {
       display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
       gap: 0.4rem;
-      flex-shrink: 0;
     }
 
     .site-sticky-link {
@@ -863,6 +876,21 @@
       background: var(--accent-gold);
       color: var(--bg-main);
     }
+
+    /* Submit Picks is the one action someone's actually here to take,
+       versus Teams/NFL which are just browsing links — filled instead of
+       outlined so it reads as the primary action, not just another nav
+       item sitting next to it. */
+    .site-sticky-link-submit {
+      background: var(--accent-gold);
+      color: var(--bg-main);
+    }
+
+    .site-sticky-link-submit:hover, .site-sticky-link-submit:active {
+      background: var(--accent-gold-hover);
+      color: var(--bg-main);
+    }
+
 
     .site-footer {
       margin-top: 2.5rem;
@@ -929,10 +957,16 @@
 
   <div class="site-sticky-header">
     <div class="site-sticky-header-inner">
+      <div class="site-sticky-scores">
+        <span>Mike <strong id="headerMikeScore">0-0</strong></span>
+        <span>Shane <strong id="headerShaneScore">0-0</strong></span>
+        <span>Steven <strong id="headerStevenScore">0-0</strong></span>
+      </div>
       <div class="site-sticky-leader" id="headerLeaderSummary">Loading standings...</div>
       <div class="site-sticky-links">
         <a href="teamschedules.html" class="site-sticky-link">Teams</a>
         <a href="nflindex.html" class="site-sticky-link">NFL</a>
+        <a href="makepicks.html" id="headerSubmitLink" class="site-sticky-link site-sticky-link-submit">Submit Picks</a>
       </div>
     </div>
   </div>
@@ -1902,6 +1936,16 @@
       document.getElementById("seasonShane").textContent = `${shaneW}-${shaneL}`;
       document.getElementById("seasonSteven").textContent = `${stevenW}-${stevenL}`;
 
+      // TEST: mirrors the same season totals into the persistent header
+      // — reads from the exact same mikeW/mikeL etc. computed just above,
+      // so it can never disagree with the Season Standings section.
+      const headerMikeEl = document.getElementById("headerMikeScore");
+      const headerShaneEl = document.getElementById("headerShaneScore");
+      const headerStevenEl = document.getElementById("headerStevenScore");
+      if (headerMikeEl) headerMikeEl.textContent = `${mikeW}-${mikeL}`;
+      if (headerShaneEl) headerShaneEl.textContent = `${shaneW}-${shaneL}`;
+      if (headerStevenEl) headerStevenEl.textContent = `${stevenW}-${stevenL}`;
+
       // TEST: season-long version of the same crowd-consensus idea as the
       // Week Info Hub's Cousins column — for every game across every
       // week, find whichever team the most cousins picked (reusing the
@@ -2590,7 +2634,14 @@
       const dynamic = await determineDynamicWeeks();
       activeWeek = dynamic.activeWeek;
       CURRENT_OPEN_WEEK = dynamic.openWeek;
-      
+
+      // TEST: points the header's Submit Picks button at whichever week
+      // is actually still open for new submissions — not just always
+      // Week 1, and not necessarily the same as whatever week happens to
+      // be showing on screen right now.
+      const headerSubmitLinkEl = document.getElementById("headerSubmitLink");
+      if (headerSubmitLinkEl) headerSubmitLinkEl.href = `makepicks.html?week=${CURRENT_OPEN_WEEK}`;
+
       const weekNums = Array.from({length: 14}, (_, i) => i + 1);
       await Promise.all(weekNums.map(w => fetchEspnSchedule(w)));
 
