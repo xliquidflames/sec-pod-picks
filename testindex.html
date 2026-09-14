@@ -38,13 +38,14 @@
     body {
       padding: 1.5rem 1rem 3rem;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       scroll-behavior: smooth;
     }
 
     .container {
       width: 100%;
       max-width: 750px;
+      margin: 0 auto;
     }
 
     header {
@@ -807,6 +808,11 @@
       background: var(--bg-main);
       border-bottom: 1px solid var(--border-color);
       padding: 0.5rem 1rem;
+      /* Escapes the body's own side/top padding so this actually reaches
+         the true edges of the screen like real app navigation, instead
+         of floating with a visible gap on either side. */
+      margin: -1.5rem -1rem 0;
+      width: calc(100% + 2rem);
     }
 
     .site-sticky-header-inner {
@@ -825,6 +831,8 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      min-width: 0;
+      flex: 1 1 auto;
     }
 
     .site-sticky-leader .leader-trophy {
