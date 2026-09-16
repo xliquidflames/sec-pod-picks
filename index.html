@@ -482,10 +482,8 @@
     }
 
     .per-team-header {
+      position: relative;
       padding: 0.7rem 0.9rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       cursor: pointer;
     }
 
@@ -501,42 +499,71 @@
 
     .per-team-columns {
       display: grid;
-      grid-template-columns: 1fr auto 1fr;
+      grid-template-columns: 1fr 1fr;
       align-items: start;
       gap: 0.3rem;
-      padding-top: 0.65rem;
+      padding-top: 0.5rem;
     }
 
     .per-team-col {
       text-align: center;
     }
 
-    /* The "AT" column is deliberately unstyled — no border, no
-       background — just the word sitting between the two sides the same
-       way "@" does in the compact header above it. */
-    .per-team-at-col {
+    .per-team-col:first-child {
+      border-right: 1px solid var(--border-color);
+    }
+
+    .per-team-header-side {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding-top: 1.4rem;
+      flex-wrap: wrap;
+      gap: 0.3rem;
     }
 
-    .per-team-at-text {
-      font-size: 0.62rem;
-      font-weight: 800;
-      color: var(--text-muted);
+    /* Same three-column shape as .per-team-columns below it (equal outer
+       columns, narrow auto middle), specifically so the AT column's
+       center lands exactly on the divider line splitting the two name
+       lists underneath — same side padding on both, no flex fighting
+       this one for space against a "+" icon, so the two grids actually
+       line up instead of just approximately looking close. */
+    .per-team-header-matchup {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .per-team-header-at {
+      font-size: 0.7rem;
+      font-weight: 900;
+      color: var(--accent-gold);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
-    .per-team-team-label {
-      display: block;
-      font-size: 0.68rem;
+    .per-team-header-expand-icon {
+      position: absolute;
+      top: 50%;
+      right: 0.9rem;
+      transform: translateY(-50%);
+      color: var(--accent-gold);
+      font-weight: bold;
+      pointer-events: none;
+    }
+
+    .per-team-header-name {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    .per-team-header-count {
+      font-size: 0.72rem;
       font-weight: 800;
       color: var(--accent-gold);
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      margin-bottom: 0.3rem;
+      white-space: nowrap;
     }
 
     .per-team-names {
@@ -2636,22 +2663,27 @@
         return `
           <div class="per-team-game">
             <div class="per-team-header" onclick="this.nextElementSibling.classList.toggle('open')">
-              ${g.matchupLabel}
-              <span style="color: var(--accent-gold); font-weight: bold;">+</span>
+              <div class="per-team-header-matchup">
+                <span class="per-team-header-side">
+                  ${awayLogoHtml}
+                  <span class="per-team-header-name">${shortenPickDisplay(g.awayName)}</span>
+                  <span class="per-team-header-count">(${awayPickers.length})</span>
+                </span>
+                <span class="per-team-header-at">AT</span>
+                <span class="per-team-header-side">
+                  ${homeLogoHtml}
+                  <span class="per-team-header-name">${shortenPickDisplay(g.homeName)}</span>
+                  <span class="per-team-header-count">(${homePickers.length})</span>
+                </span>
+              </div>
+              <span class="per-team-header-expand-icon">+</span>
             </div>
             <div class="per-team-body">
               <div class="per-team-columns">
                 <div class="per-team-col">
-                  <span class="per-team-team-label">${g.awayName}</span>
-                  ${awayLogoHtml}
                   <div class="per-team-names">${awayPickers.length ? awayPickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
                 </div>
-                <div class="per-team-at-col">
-                  <span class="per-team-at-text">AT</span>
-                </div>
                 <div class="per-team-col">
-                  <span class="per-team-team-label">${g.homeName}</span>
-                  ${homeLogoHtml}
                   <div class="per-team-names">${homePickers.length ? homePickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
                 </div>
               </div>
