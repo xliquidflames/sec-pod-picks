@@ -501,32 +501,18 @@
 
     .per-team-columns {
       display: grid;
-      grid-template-columns: 1fr auto 1fr;
+      grid-template-columns: 1fr 1fr;
       align-items: start;
       gap: 0.3rem;
-      padding-top: 0.65rem;
+      padding-top: 0.5rem;
     }
 
     .per-team-col {
       text-align: center;
     }
 
-    /* The "AT" column is deliberately unstyled — no border, no
-       background — just the word sitting between the two sides the same
-       way "@" does in the compact header above it. */
-    .per-team-at-col {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding-top: 1.4rem;
-    }
-
-    .per-team-at-text {
-      font-size: 0.62rem;
-      font-weight: 800;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    .per-team-col:first-child {
+      border-right: 1px solid var(--border-color);
     }
 
     .per-team-header-side {
@@ -562,16 +548,6 @@
       font-weight: 800;
       color: var(--accent-gold);
       white-space: nowrap;
-    }
-
-    .per-team-team-label {
-      display: block;
-      font-size: 0.68rem;
-      font-weight: 800;
-      color: var(--accent-gold);
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      margin-bottom: 0.3rem;
     }
 
     .per-team-names {
@@ -2689,16 +2665,9 @@
             <div class="per-team-body">
               <div class="per-team-columns">
                 <div class="per-team-col">
-                  <span class="per-team-team-label">${g.awayName}</span>
-                  ${awayLogoHtml}
                   <div class="per-team-names">${awayPickers.length ? awayPickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
                 </div>
-                <div class="per-team-at-col">
-                  <span class="per-team-at-text">AT</span>
-                </div>
                 <div class="per-team-col">
-                  <span class="per-team-team-label">${g.homeName}</span>
-                  ${homeLogoHtml}
                   <div class="per-team-names">${homePickers.length ? homePickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
                 </div>
               </div>
