@@ -469,6 +469,83 @@
       gap: 0.4rem;
     }
 
+    /* Per Team view — same visual language as the matchup logos above
+       (same logo size, same bold-if-SEC treatment), just restructured
+       into two real columns since names need to sit under each specific
+       team, not under the row as a whole. */
+    .per-team-game {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 0.6rem;
+      overflow: hidden;
+    }
+
+    .per-team-header {
+      padding: 0.7rem 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .per-team-body {
+      padding: 0.2rem 0.9rem 0.85rem;
+      border-top: 1px solid var(--border-color);
+      display: none;
+    }
+
+    .per-team-body.open {
+      display: block;
+    }
+
+    .per-team-columns {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: start;
+      gap: 0.3rem;
+      padding-top: 0.65rem;
+    }
+
+    .per-team-col {
+      text-align: center;
+    }
+
+    /* The "AT" column is deliberately unstyled — no border, no
+       background — just the word sitting between the two sides the same
+       way "@" does in the compact header above it. */
+    .per-team-at-col {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-top: 1.4rem;
+    }
+
+    .per-team-at-text {
+      font-size: 0.62rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .per-team-team-label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: var(--accent-gold);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 0.3rem;
+    }
+
+    .per-team-names {
+      margin-top: 0.35rem;
+      font-size: 0.72rem;
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+
     /* Back to a plain logo, no white backing circle — TAMU is the one
        team where this is genuinely hard to read, and that's an accepted
        tradeoff rather than something to keep re-engineering around.
@@ -1030,9 +1107,15 @@
         </p>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-          <div style="display: flex; gap: 0.4rem;">
+          <div style="display: flex; gap: 0.4rem;" id="cousinViewControls">
             <button type="button" class="btn-ctrl" onclick="toggleAllCards(true)">Expand All</button>
             <button type="button" class="btn-ctrl" onclick="toggleAllCards(false)">Collapse All</button>
+            <button type="button" class="btn-ctrl" onclick="togglePicksView()">Per Team</button>
+          </div>
+          <div style="display: none; gap: 0.4rem;" id="teamViewControls">
+            <button type="button" class="btn-ctrl" onclick="toggleAllPerTeamCards(true)">Expand All</button>
+            <button type="button" class="btn-ctrl" onclick="toggleAllPerTeamCards(false)">Collapse All</button>
+            <button type="button" class="btn-ctrl" onclick="togglePicksView()">Per Cousin</button>
           </div>
           <a href="#pageBottom" class="btn-ctrl">&darr; To Bottom</a>
         </div>
@@ -1040,6 +1123,8 @@
         <div id="cousinsList">
           <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">Loading community picks...</div>
         </div>
+
+        <div id="perTeamList" style="display: none;"></div>
       </div>
     </div>
 
@@ -1422,6 +1507,16 @@
             isLive: isLive,
             finalScoreA: finalScoreA,
             finalScoreB: finalScoreB,
+            // Kept alongside matchupLabel specifically for the Per Team
+            // view — that one needs the away/home logos and names as
+            // separate pieces to build two columns, not one pre-combined
+            // row like matchupLabel already is.
+            awayName: awayName,
+            homeName: homeName,
+            awayLogo: awayLogo,
+            homeLogo: homeLogo,
+            awayIsSec: awayIsSec,
+            homeIsSec: homeIsSec,
             // ESPN's own event id — stable no matter how ESPN formats a
             // team's display name. Building the matchup key from team-name
             // text (the old approach) breaks the moment ESPN shows a name
@@ -1466,7 +1561,13 @@
             isLive: g.isLive,
             kickoff: g.kickoff,
             finalScoreA: g.finalScoreA,
-            finalScoreB: g.finalScoreB
+            finalScoreB: g.finalScoreB,
+            awayName: g.awayName,
+            homeName: g.homeName,
+            awayLogo: g.awayLogo,
+            homeLogo: g.homeLogo,
+            awayIsSec: g.awayIsSec,
+            homeIsSec: g.homeIsSec
           };
         });
 
@@ -2265,6 +2366,8 @@
         listContainer.appendChild(item);
       });
 
+      renderPerTeamView(games, cousinRows);
+
       if (cousinRows.length > 0 && games.length > 0) {
         let secSweepCount = 0;
         const upsetTracker = {};
@@ -2489,6 +2592,99 @@
 
     function toggleAllCards(expand) {
       document.querySelectorAll(".cousin-picks-body").forEach(b => b.classList.toggle("open", expand));
+    }
+
+    // Same underlying pick data as the per-cousin list above, just
+    // grouped by game and team instead of by person — reuses the exact
+    // same matching logic (getMatchedUserPick/normalizeTeam) so it can
+    // never disagree with what that view or the real grading shows.
+    function renderPerTeamView(games, cousinRows) {
+      const container = document.getElementById("perTeamList");
+      if (!container) return;
+
+      if (games.length === 0) {
+        container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No games scheduled for Week ${activeWeek} yet.</div>`;
+        return;
+      }
+
+      container.innerHTML = games.map(g => {
+        const awayPickers = [];
+        const homePickers = [];
+        const awayNorm = normalizeTeam(g.awayName);
+        const homeNorm = normalizeTeam(g.homeName);
+
+        cousinRows.forEach(c => {
+          const picks = parseUserPicks(c.picks);
+          const pick = getMatchedUserPick(picks, g);
+          if (!pick) return;
+          const pickNorm = normalizeTeam(pick);
+          if (pickNorm === awayNorm) awayPickers.push(c.user_name);
+          else if (pickNorm === homeNorm) homePickers.push(c.user_name);
+        });
+
+        awayPickers.sort((a, b) => a.localeCompare(b));
+        homePickers.sort((a, b) => a.localeCompare(b));
+
+        const awayLogoHtml = g.awayLogo
+          ? `<img src="${g.awayLogo}" alt="${g.awayName}" title="${g.awayName}" class="matchup-team-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${g.awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${g.awayName}</span>`
+          : `<span class="matchup-team-fallback ${g.awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${g.awayName}</span>`;
+
+        const homeLogoHtml = g.homeLogo
+          ? `<img src="${g.homeLogo}" alt="${g.homeName}" title="${g.homeName}" class="matchup-team-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${g.homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${g.homeName}</span>`
+          : `<span class="matchup-team-fallback ${g.homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${g.homeName}</span>`;
+
+        return `
+          <div class="per-team-game">
+            <div class="per-team-header" onclick="this.nextElementSibling.classList.toggle('open')">
+              ${g.matchupLabel}
+              <span style="color: var(--accent-gold); font-weight: bold;">+</span>
+            </div>
+            <div class="per-team-body">
+              <div class="per-team-columns">
+                <div class="per-team-col">
+                  <span class="per-team-team-label">${g.awayName}</span>
+                  ${awayLogoHtml}
+                  <div class="per-team-names">${awayPickers.length ? awayPickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
+                </div>
+                <div class="per-team-at-col">
+                  <span class="per-team-at-text">AT</span>
+                </div>
+                <div class="per-team-col">
+                  <span class="per-team-team-label">${g.homeName}</span>
+                  ${homeLogoHtml}
+                  <div class="per-team-names">${homePickers.length ? homePickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function toggleAllPerTeamCards(expand) {
+      document.querySelectorAll(".per-team-body").forEach(b => b.classList.toggle("open", expand));
+    }
+
+    let picksViewMode = "cousin";
+    function togglePicksView() {
+      const cousinsListEl = document.getElementById("cousinsList");
+      const perTeamListEl = document.getElementById("perTeamList");
+      const cousinControls = document.getElementById("cousinViewControls");
+      const teamControls = document.getElementById("teamViewControls");
+
+      if (picksViewMode === "cousin") {
+        picksViewMode = "team";
+        cousinsListEl.style.display = "none";
+        perTeamListEl.style.display = "block";
+        cousinControls.style.display = "none";
+        teamControls.style.display = "flex";
+      } else {
+        picksViewMode = "cousin";
+        cousinsListEl.style.display = "block";
+        perTeamListEl.style.display = "none";
+        cousinControls.style.display = "flex";
+        teamControls.style.display = "none";
+      }
     }
 
     async function initApp() {
