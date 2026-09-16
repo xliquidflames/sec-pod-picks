@@ -223,6 +223,106 @@
       text-align: center;
       padding: 1.5rem 0;
     }
+
+    /* --- Collapsible cards, default collapsed for everything except
+       Duplicate Names --- */
+    .collapsible-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .collapsible-header .section-title {
+      margin-bottom: 0;
+    }
+
+    .collapsible-arrow {
+      color: var(--accent-gold);
+      font-size: 0.9rem;
+      flex-shrink: 0;
+      margin-left: 0.5rem;
+    }
+
+    .collapsible-content {
+      display: none;
+      margin-top: 0.7rem;
+    }
+
+    .collapsible-content.open {
+      display: block;
+    }
+
+    /* --- Read-only SQL query box --- */
+    #sqlQueryInput {
+      width: 100%;
+      background: #0d1527;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 8px;
+      padding: 0.7rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.82rem;
+      resize: vertical;
+      margin-bottom: 0.6rem;
+    }
+
+    #sqlQueryInput:focus {
+      outline: none;
+      border-color: var(--accent-gold);
+    }
+
+    .btn-run-query {
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #0f172a;
+      font-weight: 900;
+      padding: 0.6rem 1.1rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 0.82rem;
+    }
+
+    #sqlQueryResults {
+      margin-top: 0.85rem;
+      overflow-x: auto;
+    }
+
+    /* --- Who Picked What grid --- */
+    .pick-breakdown-game {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 0.7rem;
+      overflow: hidden;
+    }
+
+    .pick-breakdown-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .pick-breakdown-col {
+      padding: 0.6rem 0.7rem;
+    }
+
+    .pick-breakdown-col:first-child {
+      border-right: 1px solid var(--border-color);
+    }
+
+    .pick-breakdown-team {
+      font-weight: 800;
+      color: var(--accent-gold);
+      font-size: 0.85rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .pick-breakdown-names {
+      font-size: 0.78rem;
+      color: var(--text-main);
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -238,19 +338,36 @@
     </div>
 
     <div id="adminContent">
-      <div class="card">
-        <div class="section-title">Site Traffic</div>
-        <div class="section-desc">Full analytics — visits, referrers, trends over time — live on GoatCounter.</div>
-        <a href="https://liquidflames.goatcounter.com" target="_blank" rel="noopener noreferrer" class="traffic-link">Open GoatCounter Dashboard &rarr;</a>
-      </div>
-
       <div class="sport-toggle">
         <button type="button" class="sport-btn active" id="btnSecTab" onclick="switchSport('sec')">SEC</button>
         <button type="button" class="sport-btn" id="btnNflTab" onclick="switchSport('nfl')">NFL</button>
       </div>
 
+      <div id="duplicatesContainer">
+        <div class="loading-note">Loading season data...</div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Run a Query</div>
+        <div class="section-desc">Read-only, enforced by the database itself — no matter what gets typed here, only a SELECT can ever actually run. Requires the <code>admin_readonly_query</code> function to already be set up in Supabase.</div>
+        <textarea id="sqlQueryInput" rows="4" placeholder="select user_name, week_number from picks where user_name = '...' order by week_number;"></textarea>
+        <button type="button" class="btn-run-query" onclick="runReadonlyQuery()">Run</button>
+        <div id="sqlQueryResults"></div>
+      </div>
+
       <div id="reportsContainer">
         <div class="loading-note">Loading season data...</div>
+      </div>
+
+      <div class="card">
+        <div class="collapsible-header" onclick="toggleCollapsible('trafficContent')">
+          <div class="section-title">Site Traffic</div>
+          <span class="collapsible-arrow" id="trafficContent_arrow">&#9662;</span>
+        </div>
+        <div class="collapsible-content" id="trafficContent">
+          <div class="section-desc">Full analytics — visits, referrers, trends over time — live on GoatCounter.</div>
+          <a href="https://liquidflames.goatcounter.com" target="_blank" rel="noopener noreferrer" class="traffic-link">Open GoatCounter Dashboard &rarr;</a>
+        </div>
       </div>
     </div>
   </div>
@@ -370,6 +487,146 @@
       return { openWeek, firstKickoffByWeek };
     }
 
+    // --- Team-matching utilities, copied verbatim from the main site's
+    // logic so this can't disagree with how a pick actually gets graded
+    // there. Only used for the "Who Picked What" breakdown below. ---
+    const secTeamAliases = {
+      alabama: ["Alabama", "ALA"],
+      arkansas: ["Arkansas"],
+      auburn: ["Auburn", "AUB"],
+      florida: ["Florida", "FLA"],
+      georgia: ["Georgia", "UGA"],
+      kentucky: ["Kentucky", "UK", "KY"],
+      lsu: ["LSU"],
+      olemiss: ["Ole Miss", "MISS"],
+      mississippistate: ["Mississippi State", "Mississippi St", "Miss State", "Miss St", "MSST"],
+      missouri: ["Missouri", "Mizzou", "MIZ"],
+      oklahoma: ["Oklahoma", "OU"],
+      southcarolina: ["South Carolina", "SC"],
+      tennessee: ["Tennessee", "TENN"],
+      texas: ["Texas", "TEX"],
+      texasam: ["Texas A&M", "Texas AM", "TA&M", "TAM"],
+      vanderbilt: ["Vanderbilt", "VAN"]
+    };
+
+    const secNameCanonical = {};
+    Object.entries(secTeamAliases).forEach(([canonicalKey, variants]) => {
+      variants.forEach(variant => {
+        const crude = variant.toLowerCase().replace(/[^a-z0-9]/g, "");
+        secNameCanonical[crude] = canonicalKey;
+      });
+    });
+
+    function cleanTeamName(name) {
+      if (!name) return "";
+      const lower = name.toLowerCase().trim();
+      if (lower.includes("pine bluff") || lower === "uapb" || lower.includes("peanut")) {
+        return "Arkansas Peanut Butter (Pine Bluff)";
+      }
+      return name;
+    }
+
+    function normalizeTeam(str) {
+      if (!str) return "";
+      const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned.includes("uapb")) {
+        return "uapb";
+      }
+      if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
+        return "arkansas";
+      }
+      if (secNameCanonical[cleaned]) {
+        return secNameCanonical[cleaned];
+      }
+      return cleaned;
+    }
+
+    function buildMatchupKey(teamA, teamB) {
+      return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
+    }
+
+    function parseUserPicks(rawPicks) {
+      if (!rawPicks) return {};
+      if (typeof rawPicks === 'object') return rawPicks;
+      try { return JSON.parse(rawPicks); } catch (e) { return {}; }
+    }
+
+    function getMatchedUserPick(picks, game) {
+      if (!picks || !game) return null;
+
+      if (picks[game.matchupKey]) return picks[game.matchupKey];
+
+      const legacyKey = buildMatchupKey(game.teamA, game.teamB);
+      if (picks[legacyKey]) return picks[legacyKey];
+
+      const aNorm = normalizeTeam(game.teamA);
+      const bNorm = normalizeTeam(game.teamB);
+
+      const direct = picks[game.id] || picks[String(game.id)];
+      if (direct && typeof direct === 'string') {
+        const directNorm = normalizeTeam(direct);
+        if (directNorm === aNorm || directNorm === bNorm) return direct;
+      }
+
+      const matchKey = Object.keys(picks).find(k => {
+        if (k === 'lock_game_id' || k === 'lock_matchup_key' || k === 'scores') return false;
+        const val = picks[k];
+        if (!val || typeof val !== 'string') return false;
+        const valNorm = normalizeTeam(val);
+        return valNorm === aNorm || valNorm === bNorm;
+      });
+
+      return matchKey ? picks[matchKey] : null;
+    }
+
+    // Pulls this week's games straight out of the same ESPN data already
+    // cached for the other reports — no extra network calls.
+    function extractWeekGames(sportPath, week) {
+      const cached = espnRawCache[`${sportPath}_${week}`];
+      if (!cached || !cached.data || !cached.data.events) return [];
+
+      return cached.data.events.map(ev => {
+        const comp = ev.competitions[0];
+        const home = comp.competitors.find(c => c.homeAway === 'home');
+        const away = comp.competitors.find(c => c.homeAway === 'away');
+        const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
+        const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
+        const matchupKey = (ev.id !== undefined && ev.id !== null) ? String(ev.id) : buildMatchupKey(awayName, homeName);
+        const kickoff = new Date(comp.date);
+        return {
+          id: matchupKey,
+          matchupKey: matchupKey,
+          teamA: awayName,
+          teamB: homeName,
+          kickoff: isNaN(kickoff.getTime()) ? new Date(8640000000000000) : kickoff
+        };
+      }).sort((a, b) => a.kickoff - b.kickoff);
+    }
+
+    // For every game this week, who picked which side — the actual
+    // question this section exists to answer.
+    function computePickBreakdown(weekRows, games) {
+      return games.map(game => {
+        const teamAPickers = [];
+        const teamBPickers = [];
+        const aNorm = normalizeTeam(game.teamA);
+        const bNorm = normalizeTeam(game.teamB);
+
+        weekRows.forEach(row => {
+          const pick = getMatchedUserPick(parseUserPicks(row.picks), game);
+          if (!pick) return;
+          const pickNorm = normalizeTeam(pick);
+          if (pickNorm === aNorm) teamAPickers.push(row.user_name);
+          else if (pickNorm === bNorm) teamBPickers.push(row.user_name);
+        });
+
+        teamAPickers.sort((a, b) => a.localeCompare(b));
+        teamBPickers.sort((a, b) => a.localeCompare(b));
+
+        return { teamA: game.teamA, teamB: game.teamB, teamAPickers, teamBPickers };
+      });
+    }
+
     function normalizeNameForDupeCheck(name) {
       return (name || "").trim().toLowerCase().replace(/^@/, "").replace(/[^a-z0-9]/g, "");
     }
@@ -469,14 +726,14 @@
       if (tableName === "picks") {
         const { data, error } = await supabaseClient
           .from("picks")
-          .select("user_name, week_number, created_at")
+          .select("user_name, week_number, created_at, picks")
           .eq("is_host", false);
         if (error) throw error;
         cousinRows = data || [];
       } else {
         const { data, error } = await supabaseClient
           .from("nfl_picks")
-          .select("user_name, week_number, created_at");
+          .select("user_name, week_number, created_at, picks");
         if (error) throw error;
         cousinRows = data || [];
       }
@@ -490,7 +747,14 @@
       const trend = computeParticipationTrend(cousinRows);
       const newPlayers = computeNewPlayersByWeek(cousinRows);
 
-      return { openWeek, attendance, duplicates, timing, trend, newPlayers };
+      // "This week" for the pick-breakdown grid means whichever week is
+      // actually open right now — the ESPN data for it is already cached
+      // from analyzeSeasonWeeks above, so this doesn't cost a new fetch.
+      const currentWeekGames = extractWeekGames(sportPath, openWeek);
+      const currentWeekRows = cousinRows.filter(r => r.week_number === openWeek);
+      const pickBreakdown = computePickBreakdown(currentWeekRows, currentWeekGames);
+
+      return { openWeek, attendance, duplicates, timing, trend, newPlayers, pickBreakdown };
     }
 
     async function loadEverything() {
@@ -503,9 +767,35 @@
         seasonData.nfl = nfl;
         renderReports();
       } catch (err) {
-        document.getElementById("reportsContainer").innerHTML =
-          `<div class="card"><div class="empty-note" style="color: var(--danger);">Error loading data: ${err.message}</div></div>`;
+        const errorHtml = `<div class="card"><div class="empty-note" style="color: var(--danger);">Error loading data: ${err.message}</div></div>`;
+        document.getElementById("duplicatesContainer").innerHTML = errorHtml;
+        document.getElementById("reportsContainer").innerHTML = "";
       }
+    }
+
+    function toggleCollapsible(id) {
+      const content = document.getElementById(id);
+      const arrow = document.getElementById(id + "_arrow");
+      if (!content) return;
+      const isOpen = content.classList.toggle("open");
+      if (arrow) arrow.innerHTML = isOpen ? "&#9652;" : "&#9662;";
+    }
+
+    // Every report except Duplicate Names gets built through this, so
+    // they're all collapsed by default with zero repeated markup.
+    function buildCollapsibleCard(id, title, desc, innerHtml) {
+      return `
+        <div class="card">
+          <div class="collapsible-header" onclick="toggleCollapsible('${id}')">
+            <div class="section-title">${title}</div>
+            <span class="collapsible-arrow" id="${id}_arrow">&#9662;</span>
+          </div>
+          <div class="collapsible-content" id="${id}">
+            <div class="section-desc">${desc}</div>
+            ${innerHtml}
+          </div>
+        </div>
+      `;
     }
 
     function switchSport(sport) {
@@ -518,7 +808,37 @@
     function renderReports() {
       const d = seasonData[activeSport];
       if (!d) return;
+      const duplicatesContainer = document.getElementById("duplicatesContainer");
       const container = document.getElementById("reportsContainer");
+
+      const dupeHtml = d.duplicates.length === 0
+        ? `<div class="empty-note">No suspiciously similar names found.</div>`
+        : d.duplicates.map(group => `<div class="dupe-group">${group.join(" &nbsp;&harr;&nbsp; ")}</div>`).join("");
+
+      duplicatesContainer.innerHTML = `
+        <div class="card">
+          <div class="section-title">Possible Duplicate Names</div>
+          <div class="section-desc">Names that are identical once you ignore capitalization, spacing, and a leading "@" — the exact pattern that's bitten this pool before.</div>
+          ${dupeHtml}
+        </div>
+      `;
+
+      const pickBreakdownHtml = (!d.pickBreakdown || d.pickBreakdown.length === 0)
+        ? `<div class="empty-note">No games found for the current week yet.</div>`
+        : d.pickBreakdown.map(g => `
+            <div class="pick-breakdown-game">
+              <div class="pick-breakdown-columns">
+                <div class="pick-breakdown-col">
+                  <div class="pick-breakdown-team">${g.teamA}</div>
+                  <div class="pick-breakdown-names">${g.teamAPickers.length ? g.teamAPickers.join(", ") : '<span class="muted-cell">Nobody</span>'}</div>
+                </div>
+                <div class="pick-breakdown-col">
+                  <div class="pick-breakdown-team">${g.teamB}</div>
+                  <div class="pick-breakdown-names">${g.teamBPickers.length ? g.teamBPickers.join(", ") : '<span class="muted-cell">Nobody</span>'}</div>
+                </div>
+              </div>
+            </div>
+          `).join("");
 
       const missedHtml = d.attendance.missed.length === 0
         ? `<div class="empty-note">Nobody's missed a week since they joined — clean sheet.</div>`
@@ -531,10 +851,6 @@
         : `<table class="report-table"><tbody>
             ${d.attendance.perfect.map(n => `<tr><td>${n}</td></tr>`).join("")}
           </tbody></table>`;
-
-      const dupeHtml = d.duplicates.length === 0
-        ? `<div class="empty-note">No suspiciously similar names found.</div>`
-        : d.duplicates.map(group => `<div class="dupe-group">${group.join(" &nbsp;&harr;&nbsp; ")}</div>`).join("");
 
       const timingHtml = d.timing.length === 0
         ? `<div class="empty-note">Not enough data yet.</div>`
@@ -555,43 +871,76 @@
             ${newPlayerWeeks.map(w => `<tr><td>Week ${w}</td><td class="muted-cell">${d.newPlayers[w].join(", ")}</td></tr>`).join("")}
           </tbody></table>`;
 
-      container.innerHTML = `
-        <div class="card">
-          <div class="section-title">Missed Weeks</div>
-          <div class="section-desc">Anyone who's submitted before but skipped a week since then (only counts weeks after their own first submission).</div>
-          ${missedHtml}
-        </div>
+      container.innerHTML = [
+        buildCollapsibleCard(
+          "pickBreakdownContent",
+          `Who Picked What — Week ${d.openWeek}`,
+          "Every game this week, split into the two teams, with everyone who picked each side listed underneath.",
+          pickBreakdownHtml
+        ),
+        buildCollapsibleCard(
+          "missedWeeksContent",
+          "Missed Weeks",
+          "Anyone who's submitted before but skipped a week since then (only counts weeks after their own first submission).",
+          missedHtml
+        ),
+        buildCollapsibleCard(
+          "perfectAttendanceContent",
+          "Perfect Attendance",
+          "Submitted every eligible week with zero gaps.",
+          perfectHtml
+        ),
+        buildCollapsibleCard(
+          "submissionTimingContent",
+          "Submission Timing",
+          "Average time before the week's first kickoff that each person submits. Sorted closest-to-the-wire first.",
+          timingHtml
+        ),
+        buildCollapsibleCard(
+          "participationTrendContent",
+          "Participation Trend",
+          "Total unique submitters per week.",
+          trendHtml
+        ),
+        buildCollapsibleCard(
+          "newPlayersContent",
+          "New Players By Week",
+          "Whoever's earliest submission this season falls in that week.",
+          newPlayersHtml
+        )
+      ].join("");
+    }
 
-        <div class="card">
-          <div class="section-title">Perfect Attendance</div>
-          <div class="section-desc">Submitted every eligible week with zero gaps.</div>
-          ${perfectHtml}
-        </div>
+    async function runReadonlyQuery() {
+      const query = document.getElementById("sqlQueryInput").value.trim();
+      const resultsEl = document.getElementById("sqlQueryResults");
+      if (!query) return;
 
-        <div class="card">
-          <div class="section-title">Possible Duplicate Names</div>
-          <div class="section-desc">Names that are identical once you ignore capitalization, spacing, and a leading "@" — the exact pattern that's bitten this pool before.</div>
-          ${dupeHtml}
-        </div>
+      resultsEl.innerHTML = `<div class="loading-note">Running...</div>`;
+      try {
+        const { data, error } = await supabaseClient.rpc("admin_readonly_query", { query_text: query });
+        if (error) throw error;
 
-        <div class="card">
-          <div class="section-title">Submission Timing</div>
-          <div class="section-desc">Average time before the week's first kickoff that each person submits. Sorted closest-to-the-wire first.</div>
-          ${timingHtml}
-        </div>
+        if (!data || data.length === 0) {
+          resultsEl.innerHTML = `<div class="empty-note">Query ran fine — no rows returned.</div>`;
+          return;
+        }
 
-        <div class="card">
-          <div class="section-title">Participation Trend</div>
-          <div class="section-desc">Total unique submitters per week.</div>
-          ${trendHtml}
-        </div>
-
-        <div class="card">
-          <div class="section-title">New Players By Week</div>
-          <div class="section-desc">Whoever's earliest submission this season falls in that week.</div>
-          ${newPlayersHtml}
-        </div>
-      `;
+        const columns = Object.keys(data[0]);
+        let html = `<table class="report-table"><thead><tr>${columns.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>`;
+        data.forEach(row => {
+          html += "<tr>";
+          columns.forEach(c => {
+            const val = row[c];
+            html += `<td>${val === null || val === undefined ? '<span class="muted-cell">null</span>' : String(val)}</td>`;
+          });
+          html += "</tr>";
+        });
+        html += "</tbody></table>";
+        resultsEl.innerHTML = html;
+      } catch (err) {
+        resultsEl.innerHTML = `<div class="empty-note" style="color: var(--danger);">Error: ${err.message}</div>`;
+      }
     }
   </script>
 </body>
