@@ -529,6 +529,41 @@
       letter-spacing: 0.5px;
     }
 
+    .per-team-header-side {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    /* Deliberately its own class rather than reusing .matchup-logo-row —
+       this row now carries a lot more content (logo, name, and count on
+       both sides) than the other places that class is used elsewhere on
+       the page, so it gets its own wrapping behavior instead of risking
+       a change to those established, already-working layouts. */
+    .per-team-header-matchup {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .per-team-header-name {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    .per-team-header-count {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--accent-gold);
+      white-space: nowrap;
+    }
+
     .per-team-team-label {
       display: block;
       font-size: 0.68rem;
@@ -2636,8 +2671,20 @@
         return `
           <div class="per-team-game">
             <div class="per-team-header" onclick="this.nextElementSibling.classList.toggle('open')">
-              ${g.matchupLabel}
-              <span style="color: var(--accent-gold); font-weight: bold;">+</span>
+              <span class="per-team-header-matchup">
+                <span class="per-team-header-side">
+                  ${awayLogoHtml}
+                  <span class="per-team-header-name">${shortenPickDisplay(g.awayName)}</span>
+                  <span class="per-team-header-count">(${awayPickers.length})</span>
+                </span>
+                <span class="matchup-at-symbol">@</span>
+                <span class="per-team-header-side">
+                  ${homeLogoHtml}
+                  <span class="per-team-header-name">${shortenPickDisplay(g.homeName)}</span>
+                  <span class="per-team-header-count">(${homePickers.length})</span>
+                </span>
+              </span>
+              <span style="color: var(--accent-gold); font-weight: bold; flex-shrink: 0; margin-left: 0.4rem;">+</span>
             </div>
             <div class="per-team-body">
               <div class="per-team-columns">
