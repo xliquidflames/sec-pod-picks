@@ -478,26 +478,65 @@
       border: 1px solid var(--border-color);
       border-radius: 8px;
       margin-bottom: 0.6rem;
-      padding: 0.65rem;
+      overflow: hidden;
+    }
+
+    .per-team-header {
+      padding: 0.7rem 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .per-team-body {
+      padding: 0.2rem 0.9rem 0.85rem;
+      border-top: 1px solid var(--border-color);
+      display: none;
+    }
+
+    .per-team-body.open {
+      display: block;
     }
 
     .per-team-columns {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: start;
+      gap: 0.3rem;
+      padding-top: 0.65rem;
     }
 
     .per-team-col {
       text-align: center;
     }
 
-    .per-team-col:first-child {
-      border-right: 1px solid var(--border-color);
+    /* The "AT" column is deliberately unstyled — no border, no
+       background — just the word sitting between the two sides the same
+       way "@" does in the compact header above it. */
+    .per-team-at-col {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-top: 1.4rem;
     }
 
-    .per-team-team-name {
-      margin-top: 0.3rem;
-      font-size: 0.72rem;
+    .per-team-at-text {
+      font-size: 0.62rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .per-team-team-label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: var(--accent-gold);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 0.3rem;
     }
 
     .per-team-names {
@@ -1068,10 +1107,15 @@
         </p>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-          <div style="display: flex; gap: 0.4rem;">
+          <div style="display: flex; gap: 0.4rem;" id="cousinViewControls">
             <button type="button" class="btn-ctrl" onclick="toggleAllCards(true)">Expand All</button>
             <button type="button" class="btn-ctrl" onclick="toggleAllCards(false)">Collapse All</button>
-            <button type="button" class="btn-ctrl" id="viewToggleBtn" onclick="togglePicksView()">Per Team</button>
+            <button type="button" class="btn-ctrl" onclick="togglePicksView()">Per Team</button>
+          </div>
+          <div style="display: none; gap: 0.4rem;" id="teamViewControls">
+            <button type="button" class="btn-ctrl" onclick="toggleAllPerTeamCards(true)">Expand All</button>
+            <button type="button" class="btn-ctrl" onclick="toggleAllPerTeamCards(false)">Collapse All</button>
+            <button type="button" class="btn-ctrl" onclick="togglePicksView()">Per Cousin</button>
           </div>
           <a href="#pageBottom" class="btn-ctrl">&darr; To Bottom</a>
         </div>
@@ -2591,14 +2635,25 @@
 
         return `
           <div class="per-team-game">
-            <div class="per-team-columns">
-              <div class="per-team-col">
-                ${awayLogoHtml}
-                <div class="per-team-names">${awayPickers.length ? awayPickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
-              </div>
-              <div class="per-team-col">
-                ${homeLogoHtml}
-                <div class="per-team-names">${homePickers.length ? homePickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
+            <div class="per-team-header" onclick="this.nextElementSibling.classList.toggle('open')">
+              ${g.matchupLabel}
+              <span style="color: var(--accent-gold); font-weight: bold;">+</span>
+            </div>
+            <div class="per-team-body">
+              <div class="per-team-columns">
+                <div class="per-team-col">
+                  <span class="per-team-team-label">${g.awayName}</span>
+                  ${awayLogoHtml}
+                  <div class="per-team-names">${awayPickers.length ? awayPickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
+                </div>
+                <div class="per-team-at-col">
+                  <span class="per-team-at-text">AT</span>
+                </div>
+                <div class="per-team-col">
+                  <span class="per-team-team-label">${g.homeName}</span>
+                  ${homeLogoHtml}
+                  <div class="per-team-names">${homePickers.length ? homePickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -2606,25 +2661,29 @@
       }).join("");
     }
 
+    function toggleAllPerTeamCards(expand) {
+      document.querySelectorAll(".per-team-body").forEach(b => b.classList.toggle("open", expand));
+    }
+
     let picksViewMode = "cousin";
     function togglePicksView() {
       const cousinsListEl = document.getElementById("cousinsList");
       const perTeamListEl = document.getElementById("perTeamList");
-      const btn = document.getElementById("viewToggleBtn");
-      const expandCollapseBtns = document.querySelectorAll('[onclick^="toggleAllCards"]');
+      const cousinControls = document.getElementById("cousinViewControls");
+      const teamControls = document.getElementById("teamViewControls");
 
       if (picksViewMode === "cousin") {
         picksViewMode = "team";
         cousinsListEl.style.display = "none";
         perTeamListEl.style.display = "block";
-        btn.textContent = "Per Cousin";
-        expandCollapseBtns.forEach(b => b.style.display = "none");
+        cousinControls.style.display = "none";
+        teamControls.style.display = "flex";
       } else {
         picksViewMode = "cousin";
         cousinsListEl.style.display = "block";
         perTeamListEl.style.display = "none";
-        btn.textContent = "Per Team";
-        expandCollapseBtns.forEach(b => b.style.display = "");
+        cousinControls.style.display = "flex";
+        teamControls.style.display = "none";
       }
     }
 
