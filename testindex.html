@@ -469,6 +469,44 @@
       gap: 0.4rem;
     }
 
+    /* Per Team view — same visual language as the matchup logos above
+       (same logo size, same bold-if-SEC treatment), just restructured
+       into two real columns since names need to sit under each specific
+       team, not under the row as a whole. */
+    .per-team-game {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 0.6rem;
+      padding: 0.65rem;
+    }
+
+    .per-team-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .per-team-col {
+      text-align: center;
+    }
+
+    .per-team-col:first-child {
+      border-right: 1px solid var(--border-color);
+    }
+
+    .per-team-team-name {
+      margin-top: 0.3rem;
+      font-size: 0.72rem;
+    }
+
+    .per-team-names {
+      margin-top: 0.35rem;
+      font-size: 0.72rem;
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+
     /* Back to a plain logo, no white backing circle — TAMU is the one
        team where this is genuinely hard to read, and that's an accepted
        tradeoff rather than something to keep re-engineering around.
@@ -1033,6 +1071,7 @@
           <div style="display: flex; gap: 0.4rem;">
             <button type="button" class="btn-ctrl" onclick="toggleAllCards(true)">Expand All</button>
             <button type="button" class="btn-ctrl" onclick="toggleAllCards(false)">Collapse All</button>
+            <button type="button" class="btn-ctrl" id="viewToggleBtn" onclick="togglePicksView()">Per Team</button>
           </div>
           <a href="#pageBottom" class="btn-ctrl">&darr; To Bottom</a>
         </div>
@@ -1040,6 +1079,8 @@
         <div id="cousinsList">
           <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">Loading community picks...</div>
         </div>
+
+        <div id="perTeamList" style="display: none;"></div>
       </div>
     </div>
 
@@ -1237,44 +1278,9 @@
     // and the two callers below that need the raw data can request all 14
     // weeks in parallel instead of waiting on each other.
     window.espnRawCache = {};
-    const ESPN_CACHE_TTL = 1000 * 60 * 60 * 6; // 6h
 
-    function loadEspnFromLS(week) {
-      try {
-        const raw = localStorage.getItem(`espn_raw_${week}_2026`);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!parsed || !parsed.fetchedAt) return null;
-        if (Date.now() - parsed.fetchedAt > ESPN_CACHE_TTL) {
-          localStorage.removeItem(`espn_raw_${week}_2026`);
-          return null;
-        }
-        // rehydrate Dates
-        if (parsed.result && parsed.result.currentTime) {
-          parsed.result.currentTime = new Date(parsed.result.currentTime);
-        }
-        return parsed.result;
-      } catch { return null; }
-    }
-
-    function saveEspnToLS(week, result) {
-      try {
-        localStorage.setItem(`espn_raw_${week}_2026`, JSON.stringify({
-          fetchedAt: Date.now(),
-          result: { data: result.data, currentTime: result.currentTime.toISOString() }
-        }));
-      } catch {}
-    }
-
-    async function fetchEspnRaw(week, { force = false } = {}) {
-      if (!force && window.espnRawCache[week]) return window.espnRawCache[week];
-      if (!force) {
-        const ls = loadEspnFromLS(week);
-        if (ls) {
-          window.espnRawCache[week] = ls;
-          return ls;
-        }
-      }
+    async function fetchEspnRaw(week) {
+      if (window.espnRawCache[week]) return window.espnRawCache[week];
       try {
         const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
         const res = await fetch(url);
@@ -1283,7 +1289,6 @@
         const data = await res.json();
         const result = { data, currentTime };
         window.espnRawCache[week] = result;
-        saveEspnToLS(week, result);
         return result;
       } catch (err) {
         console.error(`ESPN fetch failed for week ${week}:`, err);
@@ -1458,6 +1463,16 @@
             isLive: isLive,
             finalScoreA: finalScoreA,
             finalScoreB: finalScoreB,
+            // Kept alongside matchupLabel specifically for the Per Team
+            // view — that one needs the away/home logos and names as
+            // separate pieces to build two columns, not one pre-combined
+            // row like matchupLabel already is.
+            awayName: awayName,
+            homeName: homeName,
+            awayLogo: awayLogo,
+            homeLogo: homeLogo,
+            awayIsSec: awayIsSec,
+            homeIsSec: homeIsSec,
             // ESPN's own event id — stable no matter how ESPN formats a
             // team's display name. Building the matchup key from team-name
             // text (the old approach) breaks the moment ESPN shows a name
@@ -1502,7 +1517,13 @@
             isLive: g.isLive,
             kickoff: g.kickoff,
             finalScoreA: g.finalScoreA,
-            finalScoreB: g.finalScoreB
+            finalScoreB: g.finalScoreB,
+            awayName: g.awayName,
+            homeName: g.homeName,
+            awayLogo: g.awayLogo,
+            homeLogo: g.homeLogo,
+            awayIsSec: g.awayIsSec,
+            homeIsSec: g.homeIsSec
           };
         });
 
@@ -1994,13 +2015,17 @@
     let CURRENT_OPEN_WEEK = 2;
 
     async function determineDynamicWeeks() {
-      // PERFORMANCE: Don't fetch all 14 weeks upfront on cold cache.
-      // We find openWeek by scanning forward until first unlocked week.
-      // Active week is based on current time vs kickoffs.
       let openW = 1;
       let activeW = 1;
 
-      // First pass: find open week (first not locked) - sequential but stops early
+      // Kick off all 14 weeks' fetches in parallel right away. Both loops
+      // below used to each fire their own sequential fetch per week — up
+      // to 28 network round-trips, one after another, before this function
+      // could even return. Now every week is already cached (or in
+      // flight) by the time either loop asks for it.
+      const weekNums = Array.from({length: 14}, (_, i) => i + 1);
+      await Promise.all(weekNums.map(w => fetchEspnRaw(w)));
+
       for (let w = 1; w <= 14; w++) {
         const locked = await isWeekLocked(w);
         if (!locked) {
@@ -2010,9 +2035,7 @@
         if (w === 14) openW = 14;
       }
 
-      // Second pass: find active week, but only up to openW (no need to look ahead)
-      // Use cached results from isWeekLocked pass - fetchEspnRaw cache hits
-      for (let w = 1; w <= openW; w++) {
+      for (let w = 1; w <= 14; w++) {
         try {
           const { data, currentTime } = await fetchEspnRaw(w);
           if (!data || !data.events || data.events.length === 0) continue;
@@ -2028,7 +2051,17 @@
           const lastKickoff = gameDates[gameDates.length - 1];
           const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
 
-          const TRANSITION_WEEKDAY = 2;
+          // Find the next Tuesday strictly after the last game ends. Using
+          // "next occurrence of a fixed weekday" (rather than "days until
+          // Sunday") avoids the bug where a week's last game falls ON that
+          // target weekday (as Week 1's Sunday game does) — the old
+          // (7 - day) % 7 math collapsed to 0 in that case and reset the
+          // transition point to the START of that same day, before the game
+          // had even been played. This also builds in the Mon/Tue buffer
+          // requested: the new week won't start loading until Tuesday,
+          // regardless of whether the prior week's finale was Saturday or
+          // (Week 1 only) Sunday. Change TRANSITION_WEEKDAY to 1 for Monday.
+          const TRANSITION_WEEKDAY = 2; // 0=Sun, 1=Mon, 2=Tue, ...
           const transitionDay = new Date(lastGameEnd);
           transitionDay.setHours(0, 0, 0, 0);
           do {
@@ -2050,15 +2083,6 @@
     }
 
     async function switchWeek(weekNum) {
-      // On-demand fetch - only load week if not cached
-      if (!window.weekSchedules[weekNum] || window.weekSchedules[weekNum].length === 0) {
-        const container = document.getElementById("cousinsPicksContainer");
-        if (container) {
-          container.innerHTML = `<div class="top3-pending">Loading Week ${weekNum}...</div>`;
-        }
-        try { await fetchEspnSchedule(weekNum); } catch {}
-      }
-
       activeWeek = weekNum;
 
       const dropdown = document.getElementById("mainWeekSelect");
@@ -2298,6 +2322,8 @@
         listContainer.appendChild(item);
       });
 
+      renderPerTeamView(games, cousinRows);
+
       if (cousinRows.length > 0 && games.length > 0) {
         let secSweepCount = 0;
         const upsetTracker = {};
@@ -2524,45 +2550,104 @@
       document.querySelectorAll(".cousin-picks-body").forEach(b => b.classList.toggle("open", expand));
     }
 
+    // Same underlying pick data as the per-cousin list above, just
+    // grouped by game and team instead of by person — reuses the exact
+    // same matching logic (getMatchedUserPick/normalizeTeam) so it can
+    // never disagree with what that view or the real grading shows.
+    function renderPerTeamView(games, cousinRows) {
+      const container = document.getElementById("perTeamList");
+      if (!container) return;
+
+      if (games.length === 0) {
+        container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No games scheduled for Week ${activeWeek} yet.</div>`;
+        return;
+      }
+
+      container.innerHTML = games.map(g => {
+        const awayPickers = [];
+        const homePickers = [];
+        const awayNorm = normalizeTeam(g.awayName);
+        const homeNorm = normalizeTeam(g.homeName);
+
+        cousinRows.forEach(c => {
+          const picks = parseUserPicks(c.picks);
+          const pick = getMatchedUserPick(picks, g);
+          if (!pick) return;
+          const pickNorm = normalizeTeam(pick);
+          if (pickNorm === awayNorm) awayPickers.push(c.user_name);
+          else if (pickNorm === homeNorm) homePickers.push(c.user_name);
+        });
+
+        awayPickers.sort((a, b) => a.localeCompare(b));
+        homePickers.sort((a, b) => a.localeCompare(b));
+
+        const awayLogoHtml = g.awayLogo
+          ? `<img src="${g.awayLogo}" alt="${g.awayName}" title="${g.awayName}" class="matchup-team-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${g.awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${g.awayName}</span>`
+          : `<span class="matchup-team-fallback ${g.awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${g.awayName}</span>`;
+
+        const homeLogoHtml = g.homeLogo
+          ? `<img src="${g.homeLogo}" alt="${g.homeName}" title="${g.homeName}" class="matchup-team-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${g.homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${g.homeName}</span>`
+          : `<span class="matchup-team-fallback ${g.homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${g.homeName}</span>`;
+
+        return `
+          <div class="per-team-game">
+            <div class="per-team-columns">
+              <div class="per-team-col">
+                ${awayLogoHtml}
+                <div class="per-team-names">${awayPickers.length ? awayPickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
+              </div>
+              <div class="per-team-col">
+                ${homeLogoHtml}
+                <div class="per-team-names">${homePickers.length ? homePickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    let picksViewMode = "cousin";
+    function togglePicksView() {
+      const cousinsListEl = document.getElementById("cousinsList");
+      const perTeamListEl = document.getElementById("perTeamList");
+      const btn = document.getElementById("viewToggleBtn");
+      const expandCollapseBtns = document.querySelectorAll('[onclick^="toggleAllCards"]');
+
+      if (picksViewMode === "cousin") {
+        picksViewMode = "team";
+        cousinsListEl.style.display = "none";
+        perTeamListEl.style.display = "block";
+        btn.textContent = "Per Cousin";
+        expandCollapseBtns.forEach(b => b.style.display = "none");
+      } else {
+        picksViewMode = "cousin";
+        cousinsListEl.style.display = "block";
+        perTeamListEl.style.display = "none";
+        btn.textContent = "Per Team";
+        expandCollapseBtns.forEach(b => b.style.display = "");
+      }
+    }
+
     async function initApp() {
-      // PERFORMANCE OPTIMIZED: Load only what we need for first paint
       const dynamic = await determineDynamicWeeks();
       activeWeek = dynamic.activeWeek;
       CURRENT_OPEN_WEEK = dynamic.openWeek;
       
-      // Show instant skeleton so user isn't staring at blank
-      const weekSelect = document.getElementById("mainWeekSelect");
-      if (weekSelect) weekSelect.value = activeWeek;
+      const weekNums = Array.from({length: 14}, (_, i) => i + 1);
+      await Promise.all(weekNums.map(w => fetchEspnSchedule(w)));
 
-      // Load ONLY active week schedule + all picks (picks are needed for season totals)
-      // This is 1 ESPN call + 1 Supabase call, vs 14 ESPN calls before
-      await Promise.all([
-        fetchEspnSchedule(activeWeek),
-        loadAllSeasonData()
-      ]);
+      await loadAllSeasonData();
 
-      // Background prefetch: idle time load adjacent weeks then rest
-      const prefetch = async () => {
-        const toPrefetch = [];
-        // Prioritize neighbors
-        if (activeWeek > 1) toPrefetch.push(activeWeek - 1);
-        if (activeWeek < 14) toPrefetch.push(activeWeek + 1);
-        // Then rest
-        for (let w = 1; w <= 14; w++) {
-          if (!toPrefetch.includes(w) && w !== activeWeek) toPrefetch.push(w);
-        }
-        for (const w of toPrefetch) {
-          try { await fetchEspnSchedule(w); } catch {}
-          // small breath to not hammer ESPN
-          await new Promise(r => setTimeout(r, 150));
-        }
-      };
+      // loadAllSeasonData() already calls switchWeek() internally at the
+      // end — it was being called a second time here immediately after,
+      // which meant renderActiveWeek() (a full DOM rebuild of the picks
+      // list and season stats) ran twice on every single page load for no
+      // benefit. Removed the duplicate call.
 
-      if ('requestIdleCallback' in window) {
-        requestIdleCallback(() => prefetch(), { timeout: 3000 });
-      } else {
-        setTimeout(prefetch, 2000);
-      }
+      // Live scores are pulled once here, at page load. We deliberately do
+      // NOT auto-refresh on a timer anymore — it was wiping out expanded
+      // cousin cards and scroll position every 60 seconds. If someone wants
+      // updated scores, a manual browser refresh re-runs this same load.
     }
 
     initApp();
