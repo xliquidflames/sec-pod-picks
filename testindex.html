@@ -447,10 +447,24 @@
 
     .host-grid-table th.matchup-header,
     .host-grid-table td.matchup-cell {
-      width: 28%;
+      width: 20%;
       text-align: center;
-      padding: 0.45rem 0.4rem;
+      padding: 0.45rem 0.3rem;
       font-size: 0.75rem;
+    }
+
+    /* TEST: kickoff time / line / live status, split out of the Matchup
+       column into its own dedicated column instead of sitting as small
+       text underneath the logos. */
+    .host-grid-table th.details-header,
+    .host-grid-table td.matchup-details-cell {
+      width: 15%;
+      text-align: center;
+      padding: 0.45rem 0.3rem;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-weight: normal;
+      line-height: 1.35;
     }
 
     .matchup-sec-team {
@@ -601,9 +615,9 @@
       font-weight: normal;
     }
 
-    .host-grid-table th:not(.matchup-header),
+    .host-grid-table th:not(.matchup-header):not(.details-header),
     .host-grid-table td.pick-cell {
-      width: 18%;
+      width: 16.25%;
       padding: 0.45rem 0.2rem;
       font-size: 0.75rem;
       font-weight: 600;
@@ -1073,6 +1087,7 @@
             <thead>
               <tr>
                 <th class="matchup-header">Matchup</th>
+                <th class="details-header">Details</th>
                 <th id="thMike">Mike</th>
                 <th id="thShane">Shane</th>
                 <th id="thSteven">Steven</th>
@@ -1080,7 +1095,7 @@
               </tr>
             </thead>
             <tbody id="hostGridBody">
-              <tr><td colspan="5" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
+              <tr><td colspan="6" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
             </tbody>
           </table>
         </div>
@@ -2249,7 +2264,7 @@
         if (group && group.isFirst) {
           const dividerTr = document.createElement("tr");
           dividerTr.innerHTML = `
-            <td colspan="5" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
+            <td colspan="6" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
               ${group.label} ${group.dateStr}
             </td>
           `;
@@ -2295,7 +2310,9 @@
         tr.innerHTML = `
           <td class="matchup-cell">
             ${g.matchupLabel}
-            ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
+          </td>
+          <td class="matchup-details-cell">
+            ${g.detail || ''}
           </td>
           <td class="pick-cell ${classM} ${isLockM ? 'host-lock-cell' : ''} ${tripleM ? 'triple-perfect-cell' : ''}">
             ${buildPickCellInner(shortenPickDisplay(pM), scoreTextM, isLockM, tripleM)}
