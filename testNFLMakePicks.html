@@ -200,8 +200,8 @@
        Lock of the Week toggle above (.is-locked) — kept visually and
        semantically distinct so the two can never be confused. */
     .game-card.is-final-locked {
-      opacity: 0.6;
-      background: #0d1522;
+      opacity: 0.85;
+      background: var(--bg-card-inner);
     }
 
     .game-final-message {
@@ -702,6 +702,7 @@
               <span class="game-title">Game ${g.id}</span>
             </div>
             <div class="game-final-message">Game has been played. ${resultText} Picking this game is locked.</div>
+            ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           `;
         } else {
           card.className = "game-card";
