@@ -2073,21 +2073,26 @@
           const lastKickoff = gameDates[gameDates.length - 1];
           const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
 
-          // Rolls to the next week at midnight Sunday rather than Tuesday
-          // now — picks stay open all week on a per-game basis (handled
-          // in makepicks.html), so there's no need for the old Mon/Tue
-          // grading buffer this used to build in. The vast majority of a
-          // college football week's games are done by Saturday night, so
-          // Sunday is a clean, simple cutover for essentially every week;
-          // postseason and the rare outlier with a game actually on
-          // Sunday are accepted exceptions rather than something this
-          // tries to special-case.
-          const TRANSITION_WEEKDAY = 0; // 0=Sun, 1=Mon, 2=Tue, ...
+          // Rolls to the next week the day after the week's last game
+          // ends — for a normal week (last game Saturday), that's simply
+          // Sunday, matching what was asked for. This deliberately does
+          // NOT search for "the next occurrence of Sunday" the way the
+          // old Tuesday-based version searched for Tuesday: that approach
+          // only worked safely because Tuesday is essentially never a
+          // real game day. Sunday isn't as safe a choice — this file's
+          // own history already notes Week 1 had a Sunday game, and
+          // apparently Week 2 does too — so searching for "next Sunday"
+          // from a week whose last game IS on a Sunday skips an entire
+          // extra week before transitioning, rather than just the one day
+          // intended. Using "the very next day" avoids that failure mode
+          // entirely: it lands on Sunday for the vast majority of weeks,
+          // and degrades to Monday (not a lost week) for the rare
+          // exception, which is exactly the "fine for most weeks, not
+          // worth special-casing the outliers" tradeoff that was asked
+          // for.
           const transitionDay = new Date(lastGameEnd);
           transitionDay.setHours(0, 0, 0, 0);
-          do {
-            transitionDay.setDate(transitionDay.getDate() + 1);
-          } while (transitionDay.getDay() !== TRANSITION_WEEKDAY);
+          transitionDay.setDate(transitionDay.getDate() + 1);
 
           if (currentTime >= firstKickoff) {
             activeW = w;
