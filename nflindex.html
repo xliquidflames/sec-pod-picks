@@ -86,19 +86,6 @@
       background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
     }
 
-    .locked-notice-banner {
-      display: none;
-      background: var(--bg-card);
-      border: 1px dashed var(--border-color);
-      border-radius: 12px;
-      padding: 1rem 1.25rem;
-      margin-bottom: 1.5rem;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.88rem;
-      line-height: 1.45;
-    }
-
     .card {
       background: var(--bg-card);
       padding: 1.25rem;
@@ -714,11 +701,6 @@
       <span>Submit Week 1 Picks &rarr;</span>
     </a>
 
-    <!-- Picks Locked Notice Banner -->
-    <div id="lockedNoticeBanner" class="locked-notice-banner">
-      The first game of the week has kicked off so this week's picks are locked. <span style="color: var(--accent-gold); font-weight: 700; display: block; margin-top: 0.25rem;">Come back after Monday Night Football to pick games for next week!</span>
-    </div>
-
     <div id="weekContent">
       <div class="card elevated-card">
         <div class="section-title-bar">
@@ -926,34 +908,6 @@
       }
     }
 
-    async function isWeekLocked(weekNum) {
-      try {
-        const { data, currentTime } = await fetchEspnRaw(weekNum);
-        if (!data || !data.events || data.events.length === 0) return false;
-
-        const anyStartedOrCompleted = data.events.some(ev => {
-          const comp = ev.competitions && ev.competitions[0];
-          const isComp = comp && comp.status && comp.status.type && comp.status.type.completed;
-          const state = comp && comp.status && comp.status.type && comp.status.type.state;
-          return isComp || state === "in" || state === "post";
-        });
-
-        if (anyStartedOrCompleted) return true;
-
-        const kickoffTimes = data.events
-          .map(ev => new Date(ev.competitions[0]?.date || ev.date))
-          .filter(d => !isNaN(d.getTime()))
-          .sort((a, b) => a - b);
-
-        if (kickoffTimes.length === 0) return false;
-
-        return currentTime >= kickoffTimes[0];
-      } catch (err) {
-        console.error("Lockout check error:", err);
-        return false;
-      }
-    }
-
     async function fetchEspnSchedule(week) {
       try {
         const { data } = await fetchEspnRaw(week);
@@ -1146,6 +1100,16 @@
         const isLockGame = isLockMatch(picks, game);
 
         if (!winner) {
+          pending++;
+        } else if (!userPick) {
+          // Winner's known, but there's no pick on record for this one —
+          // under the new per-game locking on nflmakepicks.html, that can
+          // only happen because the game was already final before this
+          // ballot was ever submitted (submitting requires a pick for
+          // every game that was still open at the time). Not a wrong
+          // guess, just a game that was never actually available to
+          // pick, so it shouldn't count against them any more than a
+          // game that hasn't been played yet does.
           pending++;
         } else {
           const uNorm = normalizeTeam(userPick);
@@ -1409,20 +1373,10 @@
     let CURRENT_OPEN_WEEK = 2;
 
     async function determineDynamicWeeks() {
-      let openW = 1;
       let activeW = 1;
 
       const weekNums = Array.from({length: TOTAL_WEEKS}, (_, i) => i + 1);
       await Promise.all(weekNums.map(w => fetchEspnRaw(w)));
-
-      for (let w = 1; w <= TOTAL_WEEKS; w++) {
-        const locked = await isWeekLocked(w);
-        if (!locked) {
-          openW = w;
-          break;
-        }
-        if (w === TOTAL_WEEKS) openW = TOTAL_WEEKS;
-      }
 
       for (let w = 1; w <= TOTAL_WEEKS; w++) {
         try {
@@ -1450,7 +1404,7 @@
           if (currentTime >= firstKickoff) {
             activeW = w;
             if (currentTime >= transitionDay) {
-              activeW = Math.min(w + 1, openW);
+              activeW = Math.min(w + 1, TOTAL_WEEKS);
             }
           }
         } catch (e) {
@@ -1458,7 +1412,13 @@
         }
       }
 
-      return { openWeek: openW, activeWeek: activeW };
+      // Submissions for the current week now stay open through the whole
+      // week — a game going final locks that one game (handled in
+      // nflmakepicks.html), not the whole week's ballot. So "which week
+      // is open for picks" no longer needs to be a separate, earlier-
+      // triggering concept from "which week is currently being shown" —
+      // they're deliberately the same value now.
+      return { openWeek: activeW, activeWeek: activeW };
     }
 
     async function switchWeek(weekNum) {
@@ -1471,22 +1431,18 @@
       document.getElementById("weekPicksTitle").textContent = `Week ${weekNum} Picks`;
 
       const ctaBtn = document.getElementById("ctaBtn");
-      const lockedBanner = document.getElementById("lockedNoticeBanner");
 
+      // The button now stays up all week, even once some games have gone
+      // final — a person can still submit picks for whatever's left, so
+      // there's no point hiding the door to a room that's still partly
+      // open. It only ever hides for a week that isn't the current one to
+      // submit for at all (a past week, or one too far in the future).
       if (weekNum === CURRENT_OPEN_WEEK) {
-        const isLocked = await isWeekLocked(weekNum);
-        if (!isLocked) {
-          ctaBtn.style.display = "flex";
-          ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
-          ctaBtn.href = `nflmakepicks.html?week=${weekNum}`;
-          if (lockedBanner) lockedBanner.style.display = "none";
-        } else {
-          ctaBtn.style.display = "none";
-          if (lockedBanner) lockedBanner.style.display = "block";
-        }
+        ctaBtn.style.display = "flex";
+        ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
+        ctaBtn.href = `nflmakepicks.html?week=${weekNum}`;
       } else {
         ctaBtn.style.display = "none";
-        if (lockedBanner) lockedBanner.style.display = "none";
       }
 
       await renderActiveWeek();
