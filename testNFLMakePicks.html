@@ -528,7 +528,13 @@
             // a whole has started — the entire point of this redesign is
             // that one game going final doesn't take the rest of the
             // week's ballot down with it.
-            const isFinal = comp.status && comp.status.type && comp.status.type.completed;
+            // Locks on "started" as well as "done" — matching the SEC
+            // side now — a game already in progress isn't something
+            // anyone should still be able to pick the outcome of, not
+            // just one that's fully over.
+            const compState = comp.status && comp.status.type && comp.status.type.state;
+            const isCompleted = comp.status && comp.status.type && comp.status.type.completed;
+            const isFinal = !!(isCompleted || compState === "in" || compState === "post");
             let winnerName = null;
             let loserName = null;
             let winnerScore = null;
