@@ -102,19 +102,6 @@
       background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
     }
 
-    .locked-notice-banner {
-      display: none;
-      background: var(--bg-card);
-      border: 1px dashed var(--border-color);
-      border-radius: 12px;
-      padding: 1rem 1.25rem;
-      margin-bottom: 1.5rem;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.88rem;
-      line-height: 1.45;
-    }
-
     .card {
       background: var(--bg-card);
       padding: 1.25rem;
@@ -1056,11 +1043,6 @@
       <span>Submit Week 1 Picks &rarr;</span>
     </a>
 
-    <!-- Picks Locked Notice Banner -->
-    <div id="lockedNoticeBanner" class="locked-notice-banner">
-      The first game of the week has kicked off so this week's picks are locked. <span style="color: var(--accent-gold); font-weight: 700; display: block; margin-top: 0.25rem;">Come back Sunday to pick games for next week!</span>
-    </div>
-
     <div id="weekContent">
       <div class="card elevated-card">
         <div class="host-header-toggle" onclick="toggleHostGrid()">
@@ -1339,15 +1321,12 @@
       }
     }
 
-    // Every ESPN scoreboard fetch for a given week used to happen up to
-    // THREE separate times on a single page load: once (sequentially) in
-    // isWeekLocked's loop, once more (also sequentially) in
-    // determineDynamicWeeks' second loop, and again in fetchEspnSchedule.
-    // That's why refreshing felt slow — up to 28 network round-trips fired
-    // one after another before anything could render. This cache means
-    // each week is fetched from the network exactly once per page load,
-    // and the two callers below that need the raw data can request all 14
-    // weeks in parallel instead of waiting on each other.
+    // Every ESPN scoreboard fetch for a given week used to happen more
+    // than once on a single page load — once inside the old week-lockout
+    // check, and again in fetchEspnSchedule. This cache means each week
+    // is fetched from the network exactly once per page load, and the
+    // callers below that need the raw data can request all 14 weeks in
+    // parallel instead of waiting on each other.
     window.espnRawCache = {};
 
     async function fetchEspnRaw(week) {
@@ -1364,34 +1343,6 @@
       } catch (err) {
         console.error(`ESPN fetch failed for week ${week}:`, err);
         return { data: null, currentTime: new Date() };
-      }
-    }
-
-    async function isWeekLocked(weekNum) {
-      try {
-        const { data, currentTime } = await fetchEspnRaw(weekNum);
-        if (!data || !data.events || data.events.length === 0) return false;
-
-        const anyStartedOrCompleted = data.events.some(ev => {
-          const comp = ev.competitions && ev.competitions[0];
-          const isComp = comp && comp.status && comp.status.type && comp.status.type.completed;
-          const state = comp && comp.status && comp.status.type && comp.status.type.state;
-          return isComp || state === "in" || state === "post";
-        });
-
-        if (anyStartedOrCompleted) return true;
-
-        const kickoffTimes = data.events
-          .map(ev => new Date(ev.competitions[0]?.date || ev.date))
-          .filter(d => !isNaN(d.getTime()))
-          .sort((a, b) => a - b);
-
-        if (kickoffTimes.length === 0) return false;
-
-        return currentTime >= kickoffTimes[0];
-      } catch (err) {
-        console.error("Lockout check error:", err);
-        return false;
       }
     }
 
@@ -1697,6 +1648,16 @@
         const isLockGame = (week !== 1) && isLockMatch(picks, game);
 
         if (!winner) {
+          pending++;
+        } else if (!userPick) {
+          // Winner's known, but there's no pick on record — under
+          // per-game locking on makepicks.html, that can only mean the
+          // game was already started or finished before this ballot was
+          // ever submitted (submitting requires a pick for every game
+          // that was still open at the time). Not a wrong guess, just a
+          // game that was never actually available to pick, so it
+          // shouldn't count against them any more than a game that
+          // hasn't been played yet does.
           pending++;
         } else {
           const uNorm = normalizeTeam(userPick);
@@ -2086,7 +2047,6 @@
     let CURRENT_OPEN_WEEK = 2;
 
     async function determineDynamicWeeks() {
-      let openW = 1;
       let activeW = 1;
 
       // Kick off all 14 weeks' fetches in parallel right away. Both loops
@@ -2096,15 +2056,6 @@
       // flight) by the time either loop asks for it.
       const weekNums = Array.from({length: 14}, (_, i) => i + 1);
       await Promise.all(weekNums.map(w => fetchEspnRaw(w)));
-
-      for (let w = 1; w <= 14; w++) {
-        const locked = await isWeekLocked(w);
-        if (!locked) {
-          openW = w;
-          break;
-        }
-        if (w === 14) openW = 14;
-      }
 
       for (let w = 1; w <= 14; w++) {
         try {
@@ -2122,27 +2073,31 @@
           const lastKickoff = gameDates[gameDates.length - 1];
           const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
 
-          // Find the next Tuesday strictly after the last game ends. Using
-          // "next occurrence of a fixed weekday" (rather than "days until
-          // Sunday") avoids the bug where a week's last game falls ON that
-          // target weekday (as Week 1's Sunday game does) — the old
-          // (7 - day) % 7 math collapsed to 0 in that case and reset the
-          // transition point to the START of that same day, before the game
-          // had even been played. This also builds in the Mon/Tue buffer
-          // requested: the new week won't start loading until Tuesday,
-          // regardless of whether the prior week's finale was Saturday or
-          // (Week 1 only) Sunday. Change TRANSITION_WEEKDAY to 1 for Monday.
-          const TRANSITION_WEEKDAY = 2; // 0=Sun, 1=Mon, 2=Tue, ...
+          // Rolls to the next week the day after the week's last game
+          // ends — for a normal week (last game Saturday), that's simply
+          // Sunday, matching what was asked for. This deliberately does
+          // NOT search for "the next occurrence of Sunday" the way the
+          // old Tuesday-based version searched for Tuesday: that approach
+          // only worked safely because Tuesday is essentially never a
+          // real game day. Sunday isn't as safe a choice — this file's
+          // own history already notes Week 1 had a Sunday game, and
+          // apparently Week 2 does too — so searching for "next Sunday"
+          // from a week whose last game IS on a Sunday skips an entire
+          // extra week before transitioning, rather than just the one day
+          // intended. Using "the very next day" avoids that failure mode
+          // entirely: it lands on Sunday for the vast majority of weeks,
+          // and degrades to Monday (not a lost week) for the rare
+          // exception, which is exactly the "fine for most weeks, not
+          // worth special-casing the outliers" tradeoff that was asked
+          // for.
           const transitionDay = new Date(lastGameEnd);
           transitionDay.setHours(0, 0, 0, 0);
-          do {
-            transitionDay.setDate(transitionDay.getDate() + 1);
-          } while (transitionDay.getDay() !== TRANSITION_WEEKDAY);
+          transitionDay.setDate(transitionDay.getDate() + 1);
 
           if (currentTime >= firstKickoff) {
             activeW = w;
             if (currentTime >= transitionDay) {
-              activeW = Math.min(w + 1, openW);
+              activeW = Math.min(w + 1, 14);
             }
           }
         } catch (e) {
@@ -2150,7 +2105,13 @@
         }
       }
 
-      return { openWeek: openW, activeWeek: activeW };
+      // Submissions for the current week now stay open through the whole
+      // week — a game going final (or even just starting) locks that one
+      // game specifically (handled in makepicks.html), not the whole
+      // week's ballot. So "which week is open for picks" no longer needs
+      // to be a separate, earlier-triggering concept from "which week is
+      // currently being shown" — they're deliberately the same value now.
+      return { openWeek: activeW, activeWeek: activeW };
     }
 
     async function switchWeek(weekNum) {
@@ -2170,22 +2131,18 @@
       }
 
       const ctaBtn = document.getElementById("ctaBtn");
-      const lockedBanner = document.getElementById("lockedNoticeBanner");
 
+      // The button now stays up all week, even once games have started or
+      // gone final — a person can still submit picks for whatever's left,
+      // so there's no point hiding the door to a room that's still partly
+      // open. It only ever hides for a week that isn't the current one to
+      // submit for at all (a past week, or one too far in the future).
       if (weekNum === CURRENT_OPEN_WEEK) {
-        const isLocked = await isWeekLocked(weekNum);
-        if (!isLocked) {
-          ctaBtn.style.display = "flex";
-          ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
-          ctaBtn.href = `makepicks.html?week=${weekNum}`;
-          if (lockedBanner) lockedBanner.style.display = "none";
-        } else {
-          ctaBtn.style.display = "none";
-          if (lockedBanner) lockedBanner.style.display = "block";
-        }
+        ctaBtn.style.display = "flex";
+        ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
+        ctaBtn.href = `makepicks.html?week=${weekNum}`;
       } else {
         ctaBtn.style.display = "none";
-        if (lockedBanner) lockedBanner.style.display = "none";
       }
 
       await renderActiveWeek();
