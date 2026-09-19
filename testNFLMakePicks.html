@@ -197,16 +197,16 @@
     }
 
     /* A specific game already being final is not the same state as the
-       Lock of the Week toggle above (.is-locked) — kept visually and
-       semantically distinct so the two can never be confused. */
+       Lock of the Week toggle above (.is-locked) — kept as its own class
+       even though it no longer carries any visual dimming, so the two
+       remain semantically distinct and easy to style differently again
+       later if needed. */
     .game-card.is-final-locked {
-      opacity: 0.85;
-      background: var(--bg-card-inner);
     }
 
     .game-final-message {
       font-size: 0.82rem;
-      color: var(--text-muted);
+      color: var(--text-main);
       line-height: 1.4;
     }
 
@@ -552,6 +552,13 @@
               teamB: teamB,
               kickoff: kickoff,
               detail: `${time} | ${odds} | ${venue}`,
+              // For an already-played game, the betting line is gone or
+              // meaningless (ESPN was rendering it as "Line: TBD" once a
+              // game's decided, which reads as if the line was simply
+              // never set, rather than just no longer relevant), so this
+              // leaves the odds out entirely rather than show something
+              // false.
+              playedDetail: `Played: ${time} | ${venue}`,
               isFinal: !!isFinal,
               winnerName: winnerName,
               loserName: loserName,
@@ -581,6 +588,7 @@
           teamA: g.teamA,
           teamB: g.teamB,
           detail: g.detail,
+          playedDetail: g.playedDetail,
           isFinal: g.isFinal,
           winnerName: g.winnerName,
           loserName: g.loserName,
@@ -702,7 +710,7 @@
               <span class="game-title">Game ${g.id}</span>
             </div>
             <div class="game-final-message">Game has been played. ${resultText} Picking this game is locked.</div>
-            ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
+            ${g.playedDetail ? `<span class="game-detail">${g.playedDetail}</span>` : ""}
           `;
         } else {
           card.className = "game-card";
