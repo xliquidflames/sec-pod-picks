@@ -261,6 +261,19 @@
       box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
     }
 
+    /* A specific game already being started or finished is not the same
+       state as the Lock of the Week toggle above (.is-locked) — kept as
+       its own class, even though it carries no visual dimming, so the
+       two stay semantically distinct. */
+    .game-card.is-final-locked {
+    }
+
+    .game-final-message {
+      font-size: 0.82rem;
+      color: var(--text-main);
+      line-height: 1.4;
+    }
+
     .game-header-row {
       display: flex;
       justify-content: space-between;
@@ -565,36 +578,6 @@
       return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
     }
 
-    async function checkKickoffLockout(weekNum) {
-      try {
-        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${weekNum}&limit=100`;
-        const res = await fetch(url);
-        
-        const serverDateHeader = res.headers.get("date");
-        const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
-
-        const data = await res.json();
-        if (!data.events || data.events.length === 0) return;
-
-        const kickoffTimes = data.events
-          .map(ev => new Date(ev.competitions[0]?.date || ev.date))
-          .filter(d => !isNaN(d.getTime()))
-          .sort((a, b) => a - b);
-
-        if (kickoffTimes.length === 0) return;
-
-        const earliestKickoff = kickoffTimes[0];
-
-        if (currentTime >= earliestKickoff) {
-          const timeStr = earliestKickoff.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZoneName: "short" });
-          alert(`Picks for Week ${weekNum} are now locked! The earliest game kicked off at ${timeStr}. Redirecting to the leaderboard...`);
-          window.location.href = "index.html";
-        }
-      } catch (err) {
-        console.error("Lockout verification error:", err);
-      }
-    }
-
     async function fetchEspnSchedule(week) {
       try {
         const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
@@ -659,12 +642,50 @@
                    d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
           }
 
+          // Locks on "started" as well as "done" — a game already in
+          // progress isn't something anyone should still be able to pick
+          // the outcome of, not just one that's fully over.
+          const compState = comp.status && comp.status.type && comp.status.type.state;
+          const isCompleted = comp.status && comp.status.type && comp.status.type.completed;
+          const isFinal = !!(isCompleted || compState === "in" || compState === "post");
+
+          let winnerName = null;
+          let loserName = null;
+          let winnerScore = null;
+          let loserScore = null;
+          if (isFinal) {
+            const awayWon = away.winner === true;
+            const homeWon = home.winner === true;
+            if (awayWon) {
+              winnerName = awayName; loserName = homeName;
+              winnerScore = away.score; loserScore = home.score;
+            } else if (homeWon) {
+              winnerName = homeName; loserName = awayName;
+              winnerScore = home.score; loserScore = away.score;
+            }
+            // Neither winner flag set means the game just started (no
+            // score to report yet) or ended in a tie — both handled as
+            // "no declared winner yet" at render time.
+          }
+
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
             kickoff: kickoff,
             matchupLabel: matchupLabel,
             detail: `${time} | ${odds} | ${venue}`,
+            // For an already-started or finished game, the betting line
+            // is either gone or meaningless (ESPN renders it as "Line:
+            // TBD" once a game's underway, which reads as if no line was
+            // ever set rather than just no longer relevant) — so this
+            // version leaves it out entirely instead of showing something
+            // false.
+            playedDetail: `Played: ${time} | ${venue}`,
+            isFinal: isFinal,
+            winnerName: winnerName,
+            loserName: loserName,
+            winnerScore: winnerScore,
+            loserScore: loserScore,
             // ESPN's own event id — stable no matter how ESPN formats a
             // team's display name. Building the matchup key from team-name
             // text (the old approach) breaks the moment ESPN shows a name
@@ -689,7 +710,13 @@
           teamA: g.teamA,
           teamB: g.teamB,
           matchupLabel: g.matchupLabel,
-          detail: g.detail
+          detail: g.detail,
+          playedDetail: g.playedDetail,
+          isFinal: g.isFinal,
+          winnerName: g.winnerName,
+          loserName: g.loserName,
+          winnerScore: g.winnerScore,
+          loserScore: g.loserScore
         }));
 
       } catch (e) {
@@ -699,8 +726,6 @@
     }
 
     async function initForm() {
-      await checkKickoffLockout(targetWeek);
-
       document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
       document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
 
@@ -856,22 +881,37 @@
       container.innerHTML = "";
       currentSchedule.forEach(g => {
         const card = document.createElement("div");
-        card.className = "game-card";
         card.id = `card_${g.matchupKey}`;
-        card.innerHTML = `
-          <div class="game-header-row">
-            <span class="game-title"><strong>Game ${g.id}</strong></span>
-            ${isLockAllowed ? `
-              <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">Lock Of\nThe Week</button>
-            ` : ""}
-          </div>
-          <div class="pick-grid">
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${g.teamA}" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${shortenPickDisplay(g.teamA)}</button>
-            <span class="pick-grid-at">@</span>
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${g.teamB}" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${shortenPickDisplay(g.teamB)}</button>
-          </div>
-          ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
-        `;
+
+        if (g.isFinal) {
+          card.className = "game-card is-final-locked";
+          const resultText = g.winnerName
+            ? `${g.winnerName} beat ${g.loserName} ${g.winnerScore}-${g.loserScore}.`
+            : `${g.teamA} and ${g.teamB} tied.`;
+          card.innerHTML = `
+            <div class="game-header-row">
+              <span class="game-title"><strong>Game ${g.id}</strong></span>
+            </div>
+            <div class="game-final-message">Game has been played. ${resultText} Picking this game is locked.</div>
+            ${g.playedDetail ? `<span class="game-detail">${g.playedDetail}</span>` : ""}
+          `;
+        } else {
+          card.className = "game-card";
+          card.innerHTML = `
+            <div class="game-header-row">
+              <span class="game-title"><strong>Game ${g.id}</strong></span>
+              ${isLockAllowed ? `
+                <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">Lock Of\nThe Week</button>
+              ` : ""}
+            </div>
+            <div class="pick-grid">
+              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${g.teamA}" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${shortenPickDisplay(g.teamA)}</button>
+              <span class="pick-grid-at">@</span>
+              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${g.teamB}" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${shortenPickDisplay(g.teamB)}</button>
+            </div>
+            ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
+          `;
+        }
         container.appendChild(card);
       });
     }
@@ -933,10 +973,22 @@
         return;
       }
 
-      const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_game_id" && k !== "lock_matchup_key").length;
-      if (pickedGameCount < currentSchedule.length) {
+      // Only games still open matter here — someone who missed a game
+      // that's already started or finished isn't asked to somehow pick it
+      // retroactively, and shouldn't be blocked from submitting the rest
+      // of the week because of it.
+      const pickableGames = currentSchedule.filter(g => !g.isFinal);
+
+      if (pickableGames.length === 0) {
         statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = `Please make selections for all ${currentSchedule.length} games.`;
+        statusAlert.textContent = "Every game this week has already started or been played — there's nothing left to submit picks for.";
+        return;
+      }
+
+      const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_game_id" && k !== "lock_matchup_key").length;
+      if (pickedGameCount < pickableGames.length) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = `Please make selections for all ${pickableGames.length} remaining games.`;
         return;
       }
 
