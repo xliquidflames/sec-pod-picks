@@ -158,6 +158,71 @@
       color: var(--accent-gold);
     }
 
+    /* "Did you mean" confirmation — catches the case a plain autocomplete
+       can't: someone typing a name that only differs from an existing one
+       by case, spacing, or a leading "@", where the exact string they
+       typed would never have matched the dropdown's filter to begin with. */
+    .name-match-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1.5rem;
+    }
+
+    .name-match-modal {
+      background: var(--bg-card);
+      border: 1px solid var(--accent-gold);
+      border-radius: 12px;
+      padding: 1.5rem;
+      max-width: 380px;
+      width: 100%;
+    }
+
+    .name-match-modal-title {
+      color: var(--accent-gold);
+      font-size: 1.1rem;
+      font-weight: 800;
+      margin-bottom: 0.75rem;
+    }
+
+    .name-match-modal-text {
+      color: var(--text-main);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 1.25rem;
+    }
+
+    .name-match-modal-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .btn-modal-primary {
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #0f172a;
+      font-weight: 900;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .btn-modal-secondary {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.7rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
     label {
       display: block;
       color: var(--text-main);
@@ -194,6 +259,19 @@
     .game-card.is-locked {
       border: 1.5px solid var(--accent-gold);
       box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
+    }
+
+    /* A specific game already being started or finished is not the same
+       state as the Lock of the Week toggle above (.is-locked) — kept as
+       its own class, even though it carries no visual dimming, so the
+       two stay semantically distinct. */
+    .game-card.is-final-locked {
+    }
+
+    .game-final-message {
+      font-size: 0.82rem;
+      color: var(--text-main);
+      line-height: 1.4;
     }
 
     .game-header-row {
@@ -376,6 +454,17 @@
     </div>
   </div>
 
+  <div id="nameMatchModal" class="name-match-modal-overlay">
+    <div class="name-match-modal">
+      <div class="name-match-modal-title">Is this you?</div>
+      <div class="name-match-modal-text" id="nameMatchModalText"></div>
+      <div class="name-match-modal-buttons">
+        <button type="button" class="btn-modal-primary" id="nameMatchModalYes">Yes, that's me</button>
+        <button type="button" class="btn-modal-secondary" id="nameMatchModalNo">No, use what I typed</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
@@ -489,36 +578,6 @@
       return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
     }
 
-    async function checkKickoffLockout(weekNum) {
-      try {
-        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${weekNum}&limit=100`;
-        const res = await fetch(url);
-        
-        const serverDateHeader = res.headers.get("date");
-        const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
-
-        const data = await res.json();
-        if (!data.events || data.events.length === 0) return;
-
-        const kickoffTimes = data.events
-          .map(ev => new Date(ev.competitions[0]?.date || ev.date))
-          .filter(d => !isNaN(d.getTime()))
-          .sort((a, b) => a - b);
-
-        if (kickoffTimes.length === 0) return;
-
-        const earliestKickoff = kickoffTimes[0];
-
-        if (currentTime >= earliestKickoff) {
-          const timeStr = earliestKickoff.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZoneName: "short" });
-          alert(`Picks for Week ${weekNum} are now locked! The earliest game kicked off at ${timeStr}. Redirecting to the leaderboard...`);
-          window.location.href = "index.html";
-        }
-      } catch (err) {
-        console.error("Lockout verification error:", err);
-      }
-    }
-
     async function fetchEspnSchedule(week) {
       try {
         const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
@@ -583,12 +642,50 @@
                    d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
           }
 
+          // Locks on "started" as well as "done" — a game already in
+          // progress isn't something anyone should still be able to pick
+          // the outcome of, not just one that's fully over.
+          const compState = comp.status && comp.status.type && comp.status.type.state;
+          const isCompleted = comp.status && comp.status.type && comp.status.type.completed;
+          const isFinal = !!(isCompleted || compState === "in" || compState === "post");
+
+          let winnerName = null;
+          let loserName = null;
+          let winnerScore = null;
+          let loserScore = null;
+          if (isFinal) {
+            const awayWon = away.winner === true;
+            const homeWon = home.winner === true;
+            if (awayWon) {
+              winnerName = awayName; loserName = homeName;
+              winnerScore = away.score; loserScore = home.score;
+            } else if (homeWon) {
+              winnerName = homeName; loserName = awayName;
+              winnerScore = home.score; loserScore = away.score;
+            }
+            // Neither winner flag set means the game just started (no
+            // score to report yet) or ended in a tie — both handled as
+            // "no declared winner yet" at render time.
+          }
+
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
             kickoff: kickoff,
             matchupLabel: matchupLabel,
             detail: `${time} | ${odds} | ${venue}`,
+            // For an already-started or finished game, the betting line
+            // is either gone or meaningless (ESPN renders it as "Line:
+            // TBD" once a game's underway, which reads as if no line was
+            // ever set rather than just no longer relevant) — so this
+            // version leaves it out entirely instead of showing something
+            // false.
+            playedDetail: `Played: ${time} | ${venue}`,
+            isFinal: isFinal,
+            winnerName: winnerName,
+            loserName: loserName,
+            winnerScore: winnerScore,
+            loserScore: loserScore,
             // ESPN's own event id — stable no matter how ESPN formats a
             // team's display name. Building the matchup key from team-name
             // text (the old approach) breaks the moment ESPN shows a name
@@ -613,7 +710,13 @@
           teamA: g.teamA,
           teamB: g.teamB,
           matchupLabel: g.matchupLabel,
-          detail: g.detail
+          detail: g.detail,
+          playedDetail: g.playedDetail,
+          isFinal: g.isFinal,
+          winnerName: g.winnerName,
+          loserName: g.loserName,
+          winnerScore: g.winnerScore,
+          loserScore: g.loserScore
         }));
 
       } catch (e) {
@@ -623,10 +726,21 @@
     }
 
     async function initForm() {
-      await checkKickoffLockout(targetWeek);
-
       document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
       document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
+
+      // Pre-fills from whatever name was used last time on this device,
+      // so a returning cousin doesn't have to retype it — and can't
+      // introduce a new spelling variant by retyping it slightly
+      // differently than before.
+      try {
+        const savedName = localStorage.getItem("secPickEmUserName");
+        if (savedName) {
+          document.getElementById("userNameInput").value = savedName;
+        }
+      } catch (storageErr) {
+        // Private browsing or storage disabled — just skip the pre-fill.
+      }
 
       loadKnownNames();
       setupNameAutocomplete();
@@ -666,6 +780,52 @@
       } catch (err) {
         console.error("Could not load known names:", err);
       }
+    }
+
+    // Same normalization the admin panel's duplicate-name checker already
+    // uses — case, spacing, and a leading "@" all ignored. Keeping this
+    // identical to that logic on purpose: the whole point is that these
+    // two checks agree with each other, one just catches it before
+    // submission instead of after.
+    function normalizeNameForMatch(name) {
+      return (name || "").trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+    }
+
+    // Finds an existing name that's the same person under that
+    // normalization but not letter-for-letter identical to what was just
+    // typed — an exact match needs no prompt at all, that's just a
+    // returning cousin typing their name correctly.
+    function findPossibleNameMatch(typedName) {
+      const normalizedTyped = normalizeNameForMatch(typedName);
+      return knownNames.find(n => n !== typedName && normalizeNameForMatch(n) === normalizedTyped) || null;
+    }
+
+    // Shows the confirmation modal and resolves with whichever name
+    // should actually be used going forward — the existing one if they
+    // confirm it's them, or their own typed version if not.
+    function confirmNameMatch(typedName, matchedName) {
+      return new Promise(resolve => {
+        const modal = document.getElementById("nameMatchModal");
+        const text = document.getElementById("nameMatchModalText");
+        const yesBtn = document.getElementById("nameMatchModalYes");
+        const noBtn = document.getElementById("nameMatchModalNo");
+
+        text.innerHTML = `You typed <strong>"${typedName}"</strong>, but that looks like it might be the same person as <strong>"${matchedName}"</strong>, who's already submitted picks before. Is that you?`;
+
+        modal.style.display = "flex";
+
+        function cleanup(result) {
+          modal.style.display = "none";
+          yesBtn.removeEventListener("click", onYes);
+          noBtn.removeEventListener("click", onNo);
+          resolve(result);
+        }
+        function onYes() { cleanup(matchedName); }
+        function onNo() { cleanup(typedName); }
+
+        yesBtn.addEventListener("click", onYes);
+        noBtn.addEventListener("click", onNo);
+      });
     }
 
     function setupNameAutocomplete() {
@@ -721,22 +881,37 @@
       container.innerHTML = "";
       currentSchedule.forEach(g => {
         const card = document.createElement("div");
-        card.className = "game-card";
         card.id = `card_${g.matchupKey}`;
-        card.innerHTML = `
-          <div class="game-header-row">
-            <span class="game-title"><strong>Game ${g.id}</strong></span>
-            ${isLockAllowed ? `
-              <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">Lock Of\nThe Week</button>
-            ` : ""}
-          </div>
-          <div class="pick-grid">
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${g.teamA}" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${shortenPickDisplay(g.teamA)}</button>
-            <span class="pick-grid-at">@</span>
-            <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${g.teamB}" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${shortenPickDisplay(g.teamB)}</button>
-          </div>
-          ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
-        `;
+
+        if (g.isFinal) {
+          card.className = "game-card is-final-locked";
+          const resultText = g.winnerName
+            ? `${g.winnerName} beat ${g.loserName} ${g.winnerScore}-${g.loserScore}.`
+            : `${g.teamA} and ${g.teamB} tied.`;
+          card.innerHTML = `
+            <div class="game-header-row">
+              <span class="game-title"><strong>Game ${g.id}</strong></span>
+            </div>
+            <div class="game-final-message">Game has been played. ${resultText} Picking this game is locked.</div>
+            ${g.playedDetail ? `<span class="game-detail">${g.playedDetail}</span>` : ""}
+          `;
+        } else {
+          card.className = "game-card";
+          card.innerHTML = `
+            <div class="game-header-row">
+              <span class="game-title"><strong>Game ${g.id}</strong></span>
+              ${isLockAllowed ? `
+                <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">Lock Of\nThe Week</button>
+              ` : ""}
+            </div>
+            <div class="pick-grid">
+              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${g.teamA}" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${shortenPickDisplay(g.teamA)}</button>
+              <span class="pick-grid-at">@</span>
+              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${g.teamB}" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${shortenPickDisplay(g.teamB)}</button>
+            </div>
+            ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
+          `;
+        }
         container.appendChild(card);
       });
     }
@@ -798,10 +973,22 @@
         return;
       }
 
-      const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_game_id" && k !== "lock_matchup_key").length;
-      if (pickedGameCount < currentSchedule.length) {
+      // Only games still open matter here — someone who missed a game
+      // that's already started or finished isn't asked to somehow pick it
+      // retroactively, and shouldn't be blocked from submitting the rest
+      // of the week because of it.
+      const pickableGames = currentSchedule.filter(g => !g.isFinal);
+
+      if (pickableGames.length === 0) {
         statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = `Please make selections for all ${currentSchedule.length} games.`;
+        statusAlert.textContent = "Every game this week has already started or been played — there's nothing left to submit picks for.";
+        return;
+      }
+
+      const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_game_id" && k !== "lock_matchup_key").length;
+      if (pickedGameCount < pickableGames.length) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = `Please make selections for all ${pickableGames.length} remaining games.`;
         return;
       }
 
@@ -809,6 +996,16 @@
         statusAlert.style.color = "var(--danger)";
         statusAlert.textContent = "Please select your Lock of the Week pick before submitting.";
         return;
+      }
+
+      // Catches the case a dropdown suggestion alone can't: someone who
+      // typed a name that's only different from an existing one by case,
+      // spacing, or a leading "@" — exactly the pattern that's split
+      // people into two entries in the season standings before.
+      let finalUsername = username;
+      const possibleMatch = findPossibleNameMatch(username);
+      if (possibleMatch) {
+        finalUsername = await confirmNameMatch(username, possibleMatch);
       }
 
       if (isLockAllowed && currentLockMatchupKey) {
@@ -829,13 +1026,13 @@
         const { data: existing, error: checkErr } = await supabaseClient
           .from("picks")
           .select("id")
-          .ilike("user_name", username)
+          .ilike("user_name", finalUsername)
           .eq("week_number", targetWeek)
           .limit(1);
 
         if (existing && existing.length > 0) {
           statusAlert.style.color = "var(--danger)";
-          statusAlert.textContent = `An entry under "${username}" has already been submitted for Week ${targetWeek}! Only one submission per Cousin is allowed.`;
+          statusAlert.textContent = `An entry under "${finalUsername}" has already been submitted for Week ${targetWeek}! Only one submission per Cousin is allowed.`;
           if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = "Submit Ballot";
@@ -846,7 +1043,7 @@
         const { error } = await supabaseClient
           .from("picks")
           .insert({
-            user_name: username,
+            user_name: finalUsername,
             week_number: targetWeek,
             is_host: false,
             picks: userSelections,
@@ -856,7 +1053,7 @@
         if (error) {
           if (error.code === "23505" || error.message?.includes("unique")) {
             statusAlert.style.color = "var(--danger)";
-            statusAlert.textContent = `An entry under "${username}" was already submitted for Week ${targetWeek}!`;
+            statusAlert.textContent = `An entry under "${finalUsername}" was already submitted for Week ${targetWeek}!`;
           } else {
             throw error;
           }
@@ -865,6 +1062,16 @@
             submitBtn.textContent = "Submit Ballot";
           }
           return;
+        }
+
+        // Remembered on this device so a returning cousin doesn't have to
+        // retype it next week at all — retyping from scratch is exactly
+        // where a spelling or capitalization slip creeps in.
+        try {
+          localStorage.setItem("secPickEmUserName", finalUsername);
+        } catch (storageErr) {
+          // Private browsing or storage disabled — not worth failing the
+          // submission over.
         }
 
         statusAlert.style.color = "var(--success)";
