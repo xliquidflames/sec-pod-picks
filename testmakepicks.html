@@ -158,6 +158,71 @@
       color: var(--accent-gold);
     }
 
+    /* "Did you mean" confirmation — catches the case a plain autocomplete
+       can't: someone typing a name that only differs from an existing one
+       by case, spacing, or a leading "@", where the exact string they
+       typed would never have matched the dropdown's filter to begin with. */
+    .name-match-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1.5rem;
+    }
+
+    .name-match-modal {
+      background: var(--bg-card);
+      border: 1px solid var(--accent-gold);
+      border-radius: 12px;
+      padding: 1.5rem;
+      max-width: 380px;
+      width: 100%;
+    }
+
+    .name-match-modal-title {
+      color: var(--accent-gold);
+      font-size: 1.1rem;
+      font-weight: 800;
+      margin-bottom: 0.75rem;
+    }
+
+    .name-match-modal-text {
+      color: var(--text-main);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 1.25rem;
+    }
+
+    .name-match-modal-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .btn-modal-primary {
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #0f172a;
+      font-weight: 900;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .btn-modal-secondary {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.7rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
     label {
       display: block;
       color: var(--text-main);
@@ -373,6 +438,17 @@
 
       <button type="button" class="btn-submit" id="submitBtn" onclick="submitBallot()">Submit Ballot</button>
       <div id="statusAlert" class="status-alert"></div>
+    </div>
+  </div>
+
+  <div id="nameMatchModal" class="name-match-modal-overlay">
+    <div class="name-match-modal">
+      <div class="name-match-modal-title">Is this you?</div>
+      <div class="name-match-modal-text" id="nameMatchModalText"></div>
+      <div class="name-match-modal-buttons">
+        <button type="button" class="btn-modal-primary" id="nameMatchModalYes">Yes, that's me</button>
+        <button type="button" class="btn-modal-secondary" id="nameMatchModalNo">No, use what I typed</button>
+      </div>
     </div>
   </div>
 
@@ -628,6 +704,19 @@
       document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
       document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
 
+      // Pre-fills from whatever name was used last time on this device,
+      // so a returning cousin doesn't have to retype it — and can't
+      // introduce a new spelling variant by retyping it slightly
+      // differently than before.
+      try {
+        const savedName = localStorage.getItem("secPickEmUserName");
+        if (savedName) {
+          document.getElementById("userNameInput").value = savedName;
+        }
+      } catch (storageErr) {
+        // Private browsing or storage disabled — just skip the pre-fill.
+      }
+
       loadKnownNames();
       setupNameAutocomplete();
 
@@ -666,6 +755,52 @@
       } catch (err) {
         console.error("Could not load known names:", err);
       }
+    }
+
+    // Same normalization the admin panel's duplicate-name checker already
+    // uses — case, spacing, and a leading "@" all ignored. Keeping this
+    // identical to that logic on purpose: the whole point is that these
+    // two checks agree with each other, one just catches it before
+    // submission instead of after.
+    function normalizeNameForMatch(name) {
+      return (name || "").trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+    }
+
+    // Finds an existing name that's the same person under that
+    // normalization but not letter-for-letter identical to what was just
+    // typed — an exact match needs no prompt at all, that's just a
+    // returning cousin typing their name correctly.
+    function findPossibleNameMatch(typedName) {
+      const normalizedTyped = normalizeNameForMatch(typedName);
+      return knownNames.find(n => n !== typedName && normalizeNameForMatch(n) === normalizedTyped) || null;
+    }
+
+    // Shows the confirmation modal and resolves with whichever name
+    // should actually be used going forward — the existing one if they
+    // confirm it's them, or their own typed version if not.
+    function confirmNameMatch(typedName, matchedName) {
+      return new Promise(resolve => {
+        const modal = document.getElementById("nameMatchModal");
+        const text = document.getElementById("nameMatchModalText");
+        const yesBtn = document.getElementById("nameMatchModalYes");
+        const noBtn = document.getElementById("nameMatchModalNo");
+
+        text.innerHTML = `You typed <strong>"${typedName}"</strong>, but that looks like it might be the same person as <strong>"${matchedName}"</strong>, who's already submitted picks before. Is that you?`;
+
+        modal.style.display = "flex";
+
+        function cleanup(result) {
+          modal.style.display = "none";
+          yesBtn.removeEventListener("click", onYes);
+          noBtn.removeEventListener("click", onNo);
+          resolve(result);
+        }
+        function onYes() { cleanup(matchedName); }
+        function onNo() { cleanup(typedName); }
+
+        yesBtn.addEventListener("click", onYes);
+        noBtn.addEventListener("click", onNo);
+      });
     }
 
     function setupNameAutocomplete() {
@@ -811,6 +946,16 @@
         return;
       }
 
+      // Catches the case a dropdown suggestion alone can't: someone who
+      // typed a name that's only different from an existing one by case,
+      // spacing, or a leading "@" — exactly the pattern that's split
+      // people into two entries in the season standings before.
+      let finalUsername = username;
+      const possibleMatch = findPossibleNameMatch(username);
+      if (possibleMatch) {
+        finalUsername = await confirmNameMatch(username, possibleMatch);
+      }
+
       if (isLockAllowed && currentLockMatchupKey) {
         userSelections.lock_matchup_key = currentLockMatchupKey;
       } else {
@@ -829,13 +974,13 @@
         const { data: existing, error: checkErr } = await supabaseClient
           .from("picks")
           .select("id")
-          .ilike("user_name", username)
+          .ilike("user_name", finalUsername)
           .eq("week_number", targetWeek)
           .limit(1);
 
         if (existing && existing.length > 0) {
           statusAlert.style.color = "var(--danger)";
-          statusAlert.textContent = `An entry under "${username}" has already been submitted for Week ${targetWeek}! Only one submission per Cousin is allowed.`;
+          statusAlert.textContent = `An entry under "${finalUsername}" has already been submitted for Week ${targetWeek}! Only one submission per Cousin is allowed.`;
           if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = "Submit Ballot";
@@ -846,7 +991,7 @@
         const { error } = await supabaseClient
           .from("picks")
           .insert({
-            user_name: username,
+            user_name: finalUsername,
             week_number: targetWeek,
             is_host: false,
             picks: userSelections,
@@ -856,7 +1001,7 @@
         if (error) {
           if (error.code === "23505" || error.message?.includes("unique")) {
             statusAlert.style.color = "var(--danger)";
-            statusAlert.textContent = `An entry under "${username}" was already submitted for Week ${targetWeek}!`;
+            statusAlert.textContent = `An entry under "${finalUsername}" was already submitted for Week ${targetWeek}!`;
           } else {
             throw error;
           }
@@ -865,6 +1010,16 @@
             submitBtn.textContent = "Submit Ballot";
           }
           return;
+        }
+
+        // Remembered on this device so a returning cousin doesn't have to
+        // retype it next week at all — retyping from scratch is exactly
+        // where a spelling or capitalization slip creeps in.
+        try {
+          localStorage.setItem("secPickEmUserName", finalUsername);
+        } catch (storageErr) {
+          // Private browsing or storage disabled — not worth failing the
+          // submission over.
         }
 
         statusAlert.style.color = "var(--success)";
