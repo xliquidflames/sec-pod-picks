@@ -841,7 +841,7 @@
           return;
         }
         const matches = knownNames
-          .filter(n => n.toLowerCase().includes(query))
+          .filter(n => n.toLowerCase().startsWith(query))
           .slice(0, 6);
 
         if (matches.length === 0) {
