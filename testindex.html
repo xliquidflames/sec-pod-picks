@@ -2134,26 +2134,33 @@
 
           const firstKickoff = gameDates[0];
           const lastKickoff = gameDates[gameDates.length - 1];
-          const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
 
           // Rolls to the next week the day after the week's last game
-          // ends — for a normal week (last game Saturday), that's simply
-          // Sunday, matching what was asked for. This deliberately does
-          // NOT search for "the next occurrence of Sunday" the way the
-          // old Tuesday-based version searched for Tuesday: that approach
-          // only worked safely because Tuesday is essentially never a
-          // real game day. Sunday isn't as safe a choice — this file's
-          // own history already notes Week 1 had a Sunday game, and
-          // apparently Week 2 does too — so searching for "next Sunday"
-          // from a week whose last game IS on a Sunday skips an entire
-          // extra week before transitioning, rather than just the one day
-          // intended. Using "the very next day" avoids that failure mode
-          // entirely: it lands on Sunday for the vast majority of weeks,
-          // and degrades to Monday (not a lost week) for the rare
-          // exception, which is exactly the "fine for most weeks, not
-          // worth special-casing the outliers" tradeoff that was asked
-          // for.
-          const transitionDay = new Date(lastGameEnd);
+          // kicks off — for a normal week (last game Saturday), that's
+          // simply Sunday, matching what was asked for. This deliberately
+          // does NOT search for "the next occurrence of Sunday" the way
+          // the old Tuesday-based version searched for Tuesday: that
+          // approach only worked safely because Tuesday is essentially
+          // never a real game day. Sunday isn't as safe a choice — this
+          // file's own history already notes Week 1 had a Sunday game,
+          // and apparently Week 2 does too — so searching for "next
+          // Sunday" from a week whose last game IS on a Sunday skips an
+          // entire extra week before transitioning, rather than just the
+          // one day intended. Using "the very next day" avoids that
+          // failure mode entirely: it lands on Sunday for the vast
+          // majority of weeks, and degrades to Monday (not a lost week)
+          // for the rare exception.
+          //
+          // This is built from lastKickoff directly, NOT from kickoff +
+          // some game-length buffer — an earlier version added 4 hours
+          // first to make sure a game wasn't still live, but that buffer
+          // could itself push a late Saturday night kickoff (11pm+) into
+          // Sunday's calendar date, meaning "the day after" became Monday
+          // instead of Sunday — a real, observed instance of this exact
+          // bug. The buffer isn't needed here at all: this only decides
+          // which day counts as "the day after the last game," it never
+          // checks whether that specific game is currently live.
+          const transitionDay = new Date(lastKickoff);
           transitionDay.setHours(0, 0, 0, 0);
           transitionDay.setDate(transitionDay.getDate() + 1);
 
