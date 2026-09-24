@@ -1392,10 +1392,25 @@
 
           const firstKickoff = gameDates[0];
           const lastKickoff = gameDates[gameDates.length - 1];
-          const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
 
+          // Built from lastKickoff directly, NOT from kickoff + a game-
+          // length buffer. An earlier version added 4 hours first to make
+          // sure the last game wasn't still live — but Monday Night
+          // Football routinely kicks off around 8:15 PM and runs past
+          // 11:30, so that +4 hour buffer regularly pushed lastGameEnd
+          // into Tuesday's calendar date before this search even started.
+          // Since the search below always advances at least one full day
+          // before checking, starting from a date that's already Tuesday
+          // meant it skipped straight past the intended Tuesday and
+          // landed on the following Tuesday instead — a full week late,
+          // every single week, not a rare exception. This exact bug was
+          // found and fixed the same way on the SEC side (index.html)
+          // after Week 3 failed to roll over; NFL has the same root cause
+          // and needed the same fix. The buffer was never actually needed
+          // here: it only decides which day starts the search, not
+          // whether that specific game is still live.
           const TRANSITION_WEEKDAY = 2; // 0=Sun, 1=Mon, 2=Tue, ...
-          const transitionDay = new Date(lastGameEnd);
+          const transitionDay = new Date(lastKickoff);
           transitionDay.setHours(0, 0, 0, 0);
           do {
             transitionDay.setDate(transitionDay.getDate() + 1);
