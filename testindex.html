@@ -579,7 +579,14 @@
       font-size: 0.72rem;
       color: var(--text-main);
       line-height: 1.6;
-      columns: 2;
+      /* A minimum column width instead of a fixed count of 2 — each side
+         here already sits in a half-width cell, so forcing 2 columns
+         inside THAT gave 4 columns total across a phone screen, with the
+         rightmost one running off the edge instead of wrapping. This lets
+         the browser use 2 columns when there's genuinely room for both at
+         a readable width, and fall back to 1 on a narrow screen instead
+         of overflowing. */
+      columns: 90px 2;
       column-gap: 0.6rem;
       text-align: left;
     }
