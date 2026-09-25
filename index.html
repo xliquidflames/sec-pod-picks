@@ -578,7 +578,21 @@
       margin-top: 0.35rem;
       font-size: 0.72rem;
       color: var(--text-main);
-      line-height: 1.5;
+      line-height: 1.6;
+      /* A minimum column width instead of a fixed count of 2 — each side
+         here already sits in a half-width cell, so forcing 2 columns
+         inside THAT gave 4 columns total across a phone screen, with the
+         rightmost one running off the edge instead of wrapping. This lets
+         the browser use 2 columns when there's genuinely room for both at
+         a readable width, and fall back to 1 on a narrow screen instead
+         of overflowing. */
+      columns: 90px 2;
+      column-gap: 0.6rem;
+      text-align: left;
+    }
+
+    .per-team-name-item {
+      break-inside: avoid;
     }
 
     /* Back to a plain logo, no white backing circle — TAMU is the one
@@ -2694,6 +2708,17 @@
       `;
     }
 
+    // Individual name items rather than one joined comma-separated
+    // string — CSS multi-column layout can only balance discrete items
+    // cleanly; handing it one giant wrapped sentence looks the same as
+    // before, just narrower.
+    function buildPerTeamNamesHtml(names) {
+      if (names.length === 0) {
+        return '<span style="color: var(--text-muted);">Nobody</span>';
+      }
+      return names.map(n => `<div class="per-team-name-item">${n}</div>`).join('');
+    }
+
     function renderPerTeamView(games, cousinRows) {
       const container = document.getElementById("perTeamList");
       if (!container) return;
@@ -2748,10 +2773,10 @@
             <div class="per-team-body">
               <div class="per-team-columns">
                 <div class="per-team-col">
-                  <div class="per-team-names">${awayPickers.length ? awayPickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
+                  <div class="per-team-names">${buildPerTeamNamesHtml(awayPickers)}</div>
                 </div>
                 <div class="per-team-col">
-                  <div class="per-team-names">${homePickers.length ? homePickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
+                  <div class="per-team-names">${buildPerTeamNamesHtml(homePickers)}</div>
                 </div>
               </div>
             </div>
