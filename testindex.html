@@ -102,6 +102,19 @@
       background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
     }
 
+    .locked-notice-banner {
+      display: none;
+      background: var(--bg-card);
+      border: 1px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
     .card {
       background: var(--bg-card);
       padding: 1.25rem;
@@ -502,31 +515,10 @@
 
     .per-team-header-side {
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.2rem;
-    }
-
-    .per-team-header-namerow {
-      display: flex;
       align-items: center;
       justify-content: center;
       flex-wrap: wrap;
       gap: 0.3rem;
-    }
-
-    .per-team-score {
-      font-size: 0.8rem;
-      font-weight: 800;
-      color: var(--text-main);
-    }
-
-    .per-team-score.per-team-result-win {
-      color: var(--success);
-    }
-
-    .per-team-score.per-team-result-loss {
-      color: var(--danger);
     }
 
     /* Same three-column shape as .per-team-columns below it (equal outer
@@ -538,7 +530,7 @@
     .per-team-header-matchup {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
-      align-items: start;
+      align-items: center;
       gap: 0.4rem;
     }
 
@@ -578,21 +570,7 @@
       margin-top: 0.35rem;
       font-size: 0.72rem;
       color: var(--text-main);
-      line-height: 1.6;
-      /* A minimum column width instead of a fixed count of 2 — each side
-         here already sits in a half-width cell, so forcing 2 columns
-         inside THAT gave 4 columns total across a phone screen, with the
-         rightmost one running off the edge instead of wrapping. This lets
-         the browser use 2 columns when there's genuinely room for both at
-         a readable width, and fall back to 1 on a narrow screen instead
-         of overflowing. */
-      columns: 90px 2;
-      column-gap: 0.6rem;
-      text-align: left;
-    }
-
-    .per-team-name-item {
-      break-inside: avoid;
+      line-height: 1.5;
     }
 
     /* Back to a plain logo, no white backing circle — TAMU is the one
@@ -879,25 +857,6 @@
       color: var(--accent-gold);
     }
 
-    .cousin-search-input {
-      width: 100%;
-      background: var(--bg-card-alt);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      border-radius: 8px;
-      padding: 0.6rem 0.8rem;
-      font-size: 0.85rem;
-    }
-
-    .cousin-search-input:focus {
-      outline: none;
-      border-color: var(--accent-gold);
-    }
-
-    .cousin-search-input::placeholder {
-      color: var(--text-muted);
-    }
-
     .entry-pill {
       background: var(--bg-card-alt);
       border: 1px solid var(--border-color);
@@ -1097,6 +1056,11 @@
       <span>Submit Week 1 Picks &rarr;</span>
     </a>
 
+    <!-- Picks Locked Notice Banner -->
+    <div id="lockedNoticeBanner" class="locked-notice-banner">
+      The first game of the week has kicked off so this week's picks are locked. <span style="color: var(--accent-gold); font-weight: 700; display: block; margin-top: 0.25rem;">Come back Sunday to pick games for next week!</span>
+    </div>
+
     <div id="weekContent">
       <div class="card elevated-card">
         <div class="host-header-toggle" onclick="toggleHostGrid()">
@@ -1130,15 +1094,14 @@
 
         <div class="pulse-grid">
           <div class="pulse-card">
-            <div class="pulse-label">SEC Loyalty</div>
-            <div class="pulse-stat" id="statSecSweep">--</div>
-            <div class="pulse-desc" id="statSecSweepDesc">Clean Sweeps</div>
+            <div class="pulse-label">Chalk Meter</div>
+            <div class="pulse-stat" id="statChalkMeter">--</div>
+            <div class="pulse-desc" id="statChalkMeterDesc">Picked the Favorite</div>
           </div>
           <div class="pulse-card">
-            <div class="pulse-label">Top Upset</div>
-            <div class="pulse-desc" id="statTopUpsetPre" style="margin-top: 0; margin-bottom: 0.15rem;">Popular Upset</div>
-            <div class="pulse-stat" id="statTopUpset">--</div>
-            <div class="pulse-desc" id="statTopUpsetDesc"></div>
+            <div class="pulse-label">Toss-Up Game</div>
+            <div class="pulse-stat" id="statTossUp">--</div>
+            <div class="pulse-desc" id="statTossUpDesc">Closest Split</div>
           </div>
           <div class="pulse-card">
             <div class="pulse-label">Pick Consensus</div>
@@ -1181,10 +1144,6 @@
             <button type="button" class="btn-ctrl" onclick="togglePicksView()">Per Cousin</button>
           </div>
           <a href="#pageBottom" class="btn-ctrl">&darr; To Bottom</a>
-        </div>
-
-        <div id="cousinSearchWrapper" style="margin-bottom: 0.75rem;">
-          <input type="text" id="cousinSearchInput" class="cousin-search-input" placeholder="Find a name" oninput="filterCousinCards()" />
         </div>
 
         <div id="cousinsList">
@@ -1379,12 +1338,15 @@
       }
     }
 
-    // Every ESPN scoreboard fetch for a given week used to happen more
-    // than once on a single page load — once inside the old week-lockout
-    // check, and again in fetchEspnSchedule. This cache means each week
-    // is fetched from the network exactly once per page load, and the
-    // callers below that need the raw data can request all 14 weeks in
-    // parallel instead of waiting on each other.
+    // Every ESPN scoreboard fetch for a given week used to happen up to
+    // THREE separate times on a single page load: once (sequentially) in
+    // isWeekLocked's loop, once more (also sequentially) in
+    // determineDynamicWeeks' second loop, and again in fetchEspnSchedule.
+    // That's why refreshing felt slow — up to 28 network round-trips fired
+    // one after another before anything could render. This cache means
+    // each week is fetched from the network exactly once per page load,
+    // and the two callers below that need the raw data can request all 14
+    // weeks in parallel instead of waiting on each other.
     window.espnRawCache = {};
 
     async function fetchEspnRaw(week) {
@@ -1401,6 +1363,34 @@
       } catch (err) {
         console.error(`ESPN fetch failed for week ${week}:`, err);
         return { data: null, currentTime: new Date() };
+      }
+    }
+
+    async function isWeekLocked(weekNum) {
+      try {
+        const { data, currentTime } = await fetchEspnRaw(weekNum);
+        if (!data || !data.events || data.events.length === 0) return false;
+
+        const anyStartedOrCompleted = data.events.some(ev => {
+          const comp = ev.competitions && ev.competitions[0];
+          const isComp = comp && comp.status && comp.status.type && comp.status.type.completed;
+          const state = comp && comp.status && comp.status.type && comp.status.type.state;
+          return isComp || state === "in" || state === "post";
+        });
+
+        if (anyStartedOrCompleted) return true;
+
+        const kickoffTimes = data.events
+          .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+          .filter(d => !isNaN(d.getTime()))
+          .sort((a, b) => a - b);
+
+        if (kickoffTimes.length === 0) return false;
+
+        return currentTime >= kickoffTimes[0];
+      } catch (err) {
+        console.error("Lockout check error:", err);
+        return false;
       }
     }
 
@@ -1472,19 +1462,6 @@
             if (winnerComp) {
               winnerName = cleanTeamName(winnerComp.team.shortDisplayName || winnerComp.team.name);
             }
-          }
-
-          // Live or final score in literal away/home order — separate
-          // from finalScoreA/finalScoreB above, which are in SEC-first
-          // teamA/teamB order for the triple-perfect feature. The per
-          // team view splits by actual away/home, matching the compact
-          // matchup header, so it needs the score in that same order.
-          let awayScore = null, homeScore = null;
-          if (isFinal || isLive) {
-            const aScore = parseInt(away.score, 10);
-            const hScore = parseInt(home.score, 10);
-            if (!isNaN(aScore)) awayScore = aScore;
-            if (!isNaN(hScore)) homeScore = hScore;
           }
 
           const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : '';
@@ -1566,9 +1543,6 @@
             homeLogo: homeLogo,
             awayIsSec: awayIsSec,
             homeIsSec: homeIsSec,
-            awayScore: awayScore,
-            homeScore: homeScore,
-            isFinal: isFinal,
             // ESPN's own event id — stable no matter how ESPN formats a
             // team's display name. Building the matchup key from team-name
             // text (the old approach) breaks the moment ESPN shows a name
@@ -1619,10 +1593,7 @@
             awayLogo: g.awayLogo,
             homeLogo: g.homeLogo,
             awayIsSec: g.awayIsSec,
-            homeIsSec: g.homeIsSec,
-            awayScore: g.awayScore,
-            homeScore: g.homeScore,
-            isFinal: g.isFinal
+            homeIsSec: g.homeIsSec
           };
         });
 
@@ -1725,16 +1696,6 @@
         const isLockGame = (week !== 1) && isLockMatch(picks, game);
 
         if (!winner) {
-          pending++;
-        } else if (!userPick) {
-          // Winner's known, but there's no pick on record — under
-          // per-game locking on makepicks.html, that can only mean the
-          // game was already started or finished before this ballot was
-          // ever submitted (submitting requires a pick for every game
-          // that was still open at the time). Not a wrong guess, just a
-          // game that was never actually available to pick, so it
-          // shouldn't count against them any more than a game that
-          // hasn't been played yet does.
           pending++;
         } else {
           const uNorm = normalizeTeam(userPick);
@@ -2124,6 +2085,7 @@
     let CURRENT_OPEN_WEEK = 2;
 
     async function determineDynamicWeeks() {
+      let openW = 1;
       let activeW = 1;
 
       // Kick off all 14 weeks' fetches in parallel right away. Both loops
@@ -2133,6 +2095,15 @@
       // flight) by the time either loop asks for it.
       const weekNums = Array.from({length: 14}, (_, i) => i + 1);
       await Promise.all(weekNums.map(w => fetchEspnRaw(w)));
+
+      for (let w = 1; w <= 14; w++) {
+        const locked = await isWeekLocked(w);
+        if (!locked) {
+          openW = w;
+          break;
+        }
+        if (w === 14) openW = 14;
+      }
 
       for (let w = 1; w <= 14; w++) {
         try {
@@ -2148,40 +2119,29 @@
 
           const firstKickoff = gameDates[0];
           const lastKickoff = gameDates[gameDates.length - 1];
+          const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
 
-          // Rolls to the next week the day after the week's last game
-          // kicks off — for a normal week (last game Saturday), that's
-          // simply Sunday, matching what was asked for. This deliberately
-          // does NOT search for "the next occurrence of Sunday" the way
-          // the old Tuesday-based version searched for Tuesday: that
-          // approach only worked safely because Tuesday is essentially
-          // never a real game day. Sunday isn't as safe a choice — this
-          // file's own history already notes Week 1 had a Sunday game,
-          // and apparently Week 2 does too — so searching for "next
-          // Sunday" from a week whose last game IS on a Sunday skips an
-          // entire extra week before transitioning, rather than just the
-          // one day intended. Using "the very next day" avoids that
-          // failure mode entirely: it lands on Sunday for the vast
-          // majority of weeks, and degrades to Monday (not a lost week)
-          // for the rare exception.
-          //
-          // This is built from lastKickoff directly, NOT from kickoff +
-          // some game-length buffer — an earlier version added 4 hours
-          // first to make sure a game wasn't still live, but that buffer
-          // could itself push a late Saturday night kickoff (11pm+) into
-          // Sunday's calendar date, meaning "the day after" became Monday
-          // instead of Sunday — a real, observed instance of this exact
-          // bug. The buffer isn't needed here at all: this only decides
-          // which day counts as "the day after the last game," it never
-          // checks whether that specific game is currently live.
-          const transitionDay = new Date(lastKickoff);
+          // Find the next Tuesday strictly after the last game ends. Using
+          // "next occurrence of a fixed weekday" (rather than "days until
+          // Sunday") avoids the bug where a week's last game falls ON that
+          // target weekday (as Week 1's Sunday game does) — the old
+          // (7 - day) % 7 math collapsed to 0 in that case and reset the
+          // transition point to the START of that same day, before the game
+          // had even been played. This also builds in the Mon/Tue buffer
+          // requested: the new week won't start loading until Tuesday,
+          // regardless of whether the prior week's finale was Saturday or
+          // (Week 1 only) Sunday. Change TRANSITION_WEEKDAY to 1 for Monday.
+          const TRANSITION_WEEKDAY = 2; // 0=Sun, 1=Mon, 2=Tue, ...
+          const transitionDay = new Date(lastGameEnd);
           transitionDay.setHours(0, 0, 0, 0);
-          transitionDay.setDate(transitionDay.getDate() + 1);
+          do {
+            transitionDay.setDate(transitionDay.getDate() + 1);
+          } while (transitionDay.getDay() !== TRANSITION_WEEKDAY);
 
           if (currentTime >= firstKickoff) {
             activeW = w;
             if (currentTime >= transitionDay) {
-              activeW = Math.min(w + 1, 14);
+              activeW = Math.min(w + 1, openW);
             }
           }
         } catch (e) {
@@ -2189,13 +2149,7 @@
         }
       }
 
-      // Submissions for the current week now stay open through the whole
-      // week — a game going final (or even just starting) locks that one
-      // game specifically (handled in makepicks.html), not the whole
-      // week's ballot. So "which week is open for picks" no longer needs
-      // to be a separate, earlier-triggering concept from "which week is
-      // currently being shown" — they're deliberately the same value now.
-      return { openWeek: activeW, activeWeek: activeW };
+      return { openWeek: openW, activeWeek: activeW };
     }
 
     async function switchWeek(weekNum) {
@@ -2215,18 +2169,22 @@
       }
 
       const ctaBtn = document.getElementById("ctaBtn");
+      const lockedBanner = document.getElementById("lockedNoticeBanner");
 
-      // The button now stays up all week, even once games have started or
-      // gone final — a person can still submit picks for whatever's left,
-      // so there's no point hiding the door to a room that's still partly
-      // open. It only ever hides for a week that isn't the current one to
-      // submit for at all (a past week, or one too far in the future).
       if (weekNum === CURRENT_OPEN_WEEK) {
-        ctaBtn.style.display = "flex";
-        ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
-        ctaBtn.href = `makepicks.html?week=${weekNum}`;
+        const isLocked = await isWeekLocked(weekNum);
+        if (!isLocked) {
+          ctaBtn.style.display = "flex";
+          ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
+          ctaBtn.href = `makepicks.html?week=${weekNum}`;
+          if (lockedBanner) lockedBanner.style.display = "none";
+        } else {
+          ctaBtn.style.display = "none";
+          if (lockedBanner) lockedBanner.style.display = "block";
+        }
       } else {
         ctaBtn.style.display = "none";
+        if (lockedBanner) lockedBanner.style.display = "none";
       }
 
       await renderActiveWeek();
@@ -2401,7 +2359,6 @@
       cousinRows.forEach(c => {
         const item = document.createElement("div");
         item.className = "cousin-item";
-        item.dataset.name = c.user_name;
         const picks = parseUserPicks(c.picks);
         const hitLotw = isLockActiveThisWeek && (c.score.lockCorrect > 0);
 
@@ -2438,8 +2395,6 @@
       renderPerTeamView(games, cousinRows);
 
       if (cousinRows.length > 0 && games.length > 0) {
-        let secSweepCount = 0;
-        const upsetTracker = {};
         const teamPickCounts = {};
 
         const lockCounts = {};
@@ -2448,37 +2403,41 @@
         let cousinLocksLost = 0;
         let cousinLocksPending = 0;
 
+        // Chalk Meter: of every pick made this week that had a real
+        // betting line, what share went with the actual favorite? Games
+        // with no line (or a pick'em/even line) don't count either way.
+        function getFavoriteTeam(game) {
+          const rawOdds = game.rawOdds || '';
+          if (!rawOdds || rawOdds.toLowerCase().includes('even') || rawOdds.toLowerCase().includes('pk')) return null;
+
+          const match = rawOdds.match(/([A-Za-z&\s]+)\s+([+-]?\d+(?:\.\d+)?)/);
+          if (!match) return null;
+
+          const favNorm = normalizeTeam(match[1].trim());
+          const aNorm = normalizeTeam(game.teamA);
+          const bNorm = normalizeTeam(game.teamB);
+
+          if (aNorm === favNorm || favNorm.includes(aNorm) || aNorm.includes(favNorm)) return game.teamA;
+          if (bNorm === favNorm || favNorm.includes(bNorm) || bNorm.includes(favNorm)) return game.teamB;
+          return null;
+        }
+
+        let chalkTotal = 0;
+        let chalkPicks = 0;
+
         cousinRows.forEach(c => {
           const picks = parseUserPicks(c.picks);
-          let pickedNonSec = false;
-          let answeredCount = 0;
 
           games.forEach(g => {
             const pick = getMatchedUserPick(picks, g);
             if (!pick) return;
 
-            answeredCount++;
             teamPickCounts[pick] = (teamPickCounts[pick] || 0) + 1;
 
-            const aIsSec = isSecTeam(g.teamA);
-            const bIsSec = isSecTeam(g.teamB);
-
-            if (aIsSec && !bIsSec) {
-              if (normalizeTeam(pick) === normalizeTeam(g.teamB) || !isSecTeam(pick)) {
-                pickedNonSec = true;
-                if (!upsetTracker[g.teamB]) {
-                  upsetTracker[g.teamB] = { count: 0, opponent: g.teamA };
-                }
-                upsetTracker[g.teamB].count += 1;
-              }
-            } else if (!aIsSec && bIsSec) {
-              if (normalizeTeam(pick) === normalizeTeam(g.teamA) || !isSecTeam(pick)) {
-                pickedNonSec = true;
-                if (!upsetTracker[g.teamA]) {
-                  upsetTracker[g.teamA] = { count: 0, opponent: g.teamB };
-                }
-                upsetTracker[g.teamA].count += 1;
-              }
+            const favorite = getFavoriteTeam(g);
+            if (favorite) {
+              chalkTotal++;
+              if (normalizeTeam(pick) === normalizeTeam(favorite)) chalkPicks++;
             }
 
             const isUserLock = isLockActiveThisWeek && isLockMatch(picks, g);
@@ -2500,35 +2459,15 @@
               }
             }
           });
-
-          if (!pickedNonSec && answeredCount === games.length) {
-            secSweepCount++;
-          }
         });
 
-        document.getElementById("statSecSweep").textContent = `${secSweepCount} / ${cousinRows.length}`;
-        const sweepPct = Math.round((secSweepCount / cousinRows.length) * 100) || 0;
-        document.getElementById("statSecSweepDesc").textContent = `${sweepPct}% Clean SEC Sweeps`;
-
-        let topUpsetTeam = "--";
-        let maxUpsetVotes = 0;
-        let topUpsetOpponent = "";
-        Object.entries(upsetTracker).forEach(([team, data]) => {
-          if (data.count > maxUpsetVotes) {
-            maxUpsetVotes = data.count;
-            topUpsetTeam = team;
-            topUpsetOpponent = data.opponent;
-          }
-        });
-
-        if (maxUpsetVotes > 0) {
-          document.getElementById("statTopUpsetPre").textContent = `${maxUpsetVotes} Cousins Picked`;
-          document.getElementById("statTopUpset").textContent = topUpsetTeam;
-          document.getElementById("statTopUpsetDesc").textContent = `to upset ${topUpsetOpponent}`;
+        if (chalkTotal > 0) {
+          const chalkPct = Math.round((chalkPicks / chalkTotal) * 100);
+          document.getElementById("statChalkMeter").textContent = `${chalkPct}%`;
+          document.getElementById("statChalkMeterDesc").textContent = `${100 - chalkPct}% Picked Upsets`;
         } else {
-          document.getElementById("statTopUpsetPre").textContent = "Popular Upset";
-          document.getElementById("statTopUpset").textContent = "--";
-          document.getElementById("statTopUpsetDesc").textContent = "No Upsets Picked";
+          document.getElementById("statChalkMeter").textContent = "--";
+          document.getElementById("statChalkMeterDesc").textContent = "No Lines Available";
         }
 
         let topConsensusTeam = "--";
@@ -2557,6 +2496,40 @@
 
         document.getElementById("statLock").textContent = topConsensusTeam;
         document.getElementById("statLockDesc").textContent = `${lockPct}% Consensus`;
+
+        // Toss-Up Game: whichever matchup has the closest split between
+        // its two teams' pick counts (reuses teamUniqueVotes, already
+        // built above), i.e. the game the cousins are most divided on.
+        let tossUpGame = null;
+        let tossUpDiff = Infinity;
+        let tossUpCountA = 0;
+        let tossUpCountB = 0;
+
+        games.forEach(g => {
+          const countA = teamUniqueVotes[g.teamA] || 0;
+          const countB = teamUniqueVotes[g.teamB] || 0;
+          const total = countA + countB;
+          if (total === 0) return;
+
+          const diff = Math.abs(countA - countB);
+          if (diff < tossUpDiff) {
+            tossUpDiff = diff;
+            tossUpGame = g;
+            tossUpCountA = countA;
+            tossUpCountB = countB;
+          }
+        });
+
+        if (tossUpGame) {
+          const tossUpTotal = tossUpCountA + tossUpCountB;
+          const pctA = Math.round((tossUpCountA / tossUpTotal) * 100);
+          const pctB = 100 - pctA;
+          document.getElementById("statTossUp").textContent = `${pctA}-${pctB}`;
+          document.getElementById("statTossUpDesc").textContent = `${shortenPickDisplay(tossUpGame.teamA)} vs ${shortenPickDisplay(tossUpGame.teamB)}`;
+        } else {
+          document.getElementById("statTossUp").textContent = "--";
+          document.getElementById("statTossUpDesc").textContent = "Closest Split";
+        }
 
         const lockRow = document.getElementById("lockShowcaseRow");
         if (!isLockActiveThisWeek) {
@@ -2641,11 +2614,10 @@
         }
 
       } else {
-        document.getElementById("statSecSweep").textContent = "--";
-        document.getElementById("statSecSweepDesc").textContent = "Clean Sweeps";
-        document.getElementById("statTopUpsetPre").textContent = "Popular Upset";
-        document.getElementById("statTopUpset").textContent = "--";
-        document.getElementById("statTopUpsetDesc").textContent = "No Upsets Picked";
+        document.getElementById("statChalkMeter").textContent = "--";
+        document.getElementById("statChalkMeterDesc").textContent = "Picked the Favorite";
+        document.getElementById("statTossUp").textContent = "--";
+        document.getElementById("statTossUpDesc").textContent = "Closest Split";
         document.getElementById("statLock").textContent = "--";
         document.getElementById("statLockDesc").textContent = "100% Consensus";
       }
@@ -2663,62 +2635,10 @@
       document.querySelectorAll(".cousin-picks-body").forEach(b => b.classList.toggle("open", expand));
     }
 
-    // Case, spacing, and a leading "@" all ignored — same forgiving match
-    // used for the "did you mean" duplicate check on makepicks.html, so
-    // someone can find themselves whether or not they remember exactly
-    // how their own name is capitalized or punctuated.
-    function filterCousinCards() {
-      const raw = document.getElementById("cousinSearchInput").value;
-      const query = raw.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
-      document.querySelectorAll("#cousinsList .cousin-item").forEach(card => {
-        const name = (card.dataset.name || "").toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
-        card.style.display = (!query || name.includes(query)) ? "" : "none";
-      });
-    }
-
     // Same underlying pick data as the per-cousin list above, just
     // grouped by game and team instead of by person — reuses the exact
     // same matching logic (getMatchedUserPick/normalizeTeam) so it can
     // never disagree with what that view or the real grading shows.
-    // Builds one side of the compact header — logo+name on top, then the
-    // score (once the game has started) with a green checkmark for the
-    // winner or red X for the loser once it's final, then the pick count
-    // moved below everything else instead of crowding the team name.
-    function buildPerTeamSideHtml(logoHtml, teamName, pickerCount, score, isFinal, isWinner) {
-      let scoreHtml = '';
-      if (score !== null && score !== undefined) {
-        if (isFinal) {
-          const resultClass = isWinner ? 'per-team-result-win' : 'per-team-result-loss';
-          const resultIcon = isWinner ? '&#10003;' : '&#10007;';
-          scoreHtml = `<span class="per-team-score ${resultClass}">${score} ${resultIcon}</span>`;
-        } else {
-          scoreHtml = `<span class="per-team-score">${score}</span>`;
-        }
-      }
-
-      return `
-        <span class="per-team-header-side">
-          <span class="per-team-header-namerow">
-            ${logoHtml}
-            <span class="per-team-header-name">${teamName}</span>
-          </span>
-          ${scoreHtml}
-          <span class="per-team-header-count">Picked ${pickerCount} time${pickerCount === 1 ? '' : 's'}</span>
-        </span>
-      `;
-    }
-
-    // Individual name items rather than one joined comma-separated
-    // string — CSS multi-column layout can only balance discrete items
-    // cleanly; handing it one giant wrapped sentence looks the same as
-    // before, just narrower.
-    function buildPerTeamNamesHtml(names) {
-      if (names.length === 0) {
-        return '<span style="color: var(--text-muted);">Nobody</span>';
-      }
-      return names.map(n => `<div class="per-team-name-item">${n}</div>`).join('');
-    }
-
     function renderPerTeamView(games, cousinRows) {
       const container = document.getElementById("perTeamList");
       if (!container) return;
@@ -2754,29 +2674,31 @@
           ? `<img src="${g.homeLogo}" alt="${g.homeName}" title="${g.homeName}" class="matchup-team-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${g.homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${g.homeName}</span>`
           : `<span class="matchup-team-fallback ${g.homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${g.homeName}</span>`;
 
-        const awayIsWinner = g.isFinal && g.awayScore !== null && g.homeScore !== null && g.awayScore > g.homeScore;
-        const homeIsWinner = g.isFinal && g.awayScore !== null && g.homeScore !== null && g.homeScore > g.awayScore;
-
-        const awaySideHtml = buildPerTeamSideHtml(awayLogoHtml, shortenPickDisplay(g.awayName), awayPickers.length, g.awayScore, g.isFinal, awayIsWinner);
-        const homeSideHtml = buildPerTeamSideHtml(homeLogoHtml, shortenPickDisplay(g.homeName), homePickers.length, g.homeScore, g.isFinal, homeIsWinner);
-
         return `
           <div class="per-team-game">
             <div class="per-team-header" onclick="this.nextElementSibling.classList.toggle('open')">
               <div class="per-team-header-matchup">
-                ${awaySideHtml}
+                <span class="per-team-header-side">
+                  ${awayLogoHtml}
+                  <span class="per-team-header-name">${shortenPickDisplay(g.awayName)}</span>
+                  <span class="per-team-header-count">(${awayPickers.length})</span>
+                </span>
                 <span class="per-team-header-at">AT</span>
-                ${homeSideHtml}
+                <span class="per-team-header-side">
+                  ${homeLogoHtml}
+                  <span class="per-team-header-name">${shortenPickDisplay(g.homeName)}</span>
+                  <span class="per-team-header-count">(${homePickers.length})</span>
+                </span>
               </div>
               <span class="per-team-header-expand-icon">+</span>
             </div>
             <div class="per-team-body">
               <div class="per-team-columns">
                 <div class="per-team-col">
-                  <div class="per-team-names">${buildPerTeamNamesHtml(awayPickers)}</div>
+                  <div class="per-team-names">${awayPickers.length ? awayPickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
                 </div>
                 <div class="per-team-col">
-                  <div class="per-team-names">${buildPerTeamNamesHtml(homePickers)}</div>
+                  <div class="per-team-names">${homePickers.length ? homePickers.join(", ") : '<span style="color: var(--text-muted);">Nobody</span>'}</div>
                 </div>
               </div>
             </div>
@@ -2795,7 +2717,6 @@
       const perTeamListEl = document.getElementById("perTeamList");
       const cousinControls = document.getElementById("cousinViewControls");
       const teamControls = document.getElementById("teamViewControls");
-      const searchWrapper = document.getElementById("cousinSearchWrapper");
 
       if (picksViewMode === "cousin") {
         picksViewMode = "team";
@@ -2803,14 +2724,12 @@
         perTeamListEl.style.display = "block";
         cousinControls.style.display = "none";
         teamControls.style.display = "flex";
-        if (searchWrapper) searchWrapper.style.display = "none";
       } else {
         picksViewMode = "cousin";
         cousinsListEl.style.display = "block";
         perTeamListEl.style.display = "none";
         cousinControls.style.display = "flex";
         teamControls.style.display = "none";
-        if (searchWrapper) searchWrapper.style.display = "block";
       }
     }
 
