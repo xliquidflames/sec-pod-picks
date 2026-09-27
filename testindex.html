@@ -2085,7 +2085,6 @@
     let CURRENT_OPEN_WEEK = 2;
 
     async function determineDynamicWeeks() {
-      let openW = 1;
       let activeW = 1;
 
       // Kick off all 14 weeks' fetches in parallel right away. Both loops
@@ -2095,15 +2094,6 @@
       // flight) by the time either loop asks for it.
       const weekNums = Array.from({length: 14}, (_, i) => i + 1);
       await Promise.all(weekNums.map(w => fetchEspnRaw(w)));
-
-      for (let w = 1; w <= 14; w++) {
-        const locked = await isWeekLocked(w);
-        if (!locked) {
-          openW = w;
-          break;
-        }
-        if (w === 14) openW = 14;
-      }
 
       for (let w = 1; w <= 14; w++) {
         try {
@@ -2119,29 +2109,40 @@
 
           const firstKickoff = gameDates[0];
           const lastKickoff = gameDates[gameDates.length - 1];
-          const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
 
-          // Find the next Tuesday strictly after the last game ends. Using
-          // "next occurrence of a fixed weekday" (rather than "days until
-          // Sunday") avoids the bug where a week's last game falls ON that
-          // target weekday (as Week 1's Sunday game does) — the old
-          // (7 - day) % 7 math collapsed to 0 in that case and reset the
-          // transition point to the START of that same day, before the game
-          // had even been played. This also builds in the Mon/Tue buffer
-          // requested: the new week won't start loading until Tuesday,
-          // regardless of whether the prior week's finale was Saturday or
-          // (Week 1 only) Sunday. Change TRANSITION_WEEKDAY to 1 for Monday.
-          const TRANSITION_WEEKDAY = 2; // 0=Sun, 1=Mon, 2=Tue, ...
-          const transitionDay = new Date(lastGameEnd);
+          // Rolls to the next week the day after the week's last game
+          // kicks off — for a normal week (last game Saturday), that's
+          // simply Sunday, matching what was asked for. This deliberately
+          // does NOT search for "the next occurrence of Sunday" the way
+          // the old Tuesday-based version searched for Tuesday: that
+          // approach only worked safely because Tuesday is essentially
+          // never a real game day. Sunday isn't as safe a choice — this
+          // file's own history already notes Week 1 had a Sunday game,
+          // and apparently Week 2 does too — so searching for "next
+          // Sunday" from a week whose last game IS on a Sunday skips an
+          // entire extra week before transitioning, rather than just the
+          // one day intended. Using "the very next day" avoids that
+          // failure mode entirely: it lands on Sunday for the vast
+          // majority of weeks, and degrades to Monday (not a lost week)
+          // for the rare exception.
+          //
+          // This is built from lastKickoff directly, NOT from kickoff +
+          // some game-length buffer — an earlier version added 4 hours
+          // first to make sure a game wasn't still live, but that buffer
+          // could itself push a late Saturday night kickoff (11pm+) into
+          // Sunday's calendar date, meaning "the day after" became Monday
+          // instead of Sunday — a real, observed instance of this exact
+          // bug. The buffer isn't needed here at all: this only decides
+          // which day counts as "the day after the last game," it never
+          // checks whether that specific game is currently live.
+          const transitionDay = new Date(lastKickoff);
           transitionDay.setHours(0, 0, 0, 0);
-          do {
-            transitionDay.setDate(transitionDay.getDate() + 1);
-          } while (transitionDay.getDay() !== TRANSITION_WEEKDAY);
+          transitionDay.setDate(transitionDay.getDate() + 1);
 
           if (currentTime >= firstKickoff) {
             activeW = w;
             if (currentTime >= transitionDay) {
-              activeW = Math.min(w + 1, openW);
+              activeW = Math.min(w + 1, 14);
             }
           }
         } catch (e) {
@@ -2149,7 +2150,13 @@
         }
       }
 
-      return { openWeek: openW, activeWeek: activeW };
+      // Submissions for the current week now stay open through the whole
+      // week — a game going final (or even just starting) locks that one
+      // game specifically (handled in makepicks.html), not the whole
+      // week's ballot. So "which week is open for picks" no longer needs
+      // to be a separate, earlier-triggering concept from "which week is
+      // currently being shown" — they're deliberately the same value now.
+      return { openWeek: activeW, activeWeek: activeW };
     }
 
     async function switchWeek(weekNum) {
