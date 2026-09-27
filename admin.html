@@ -323,6 +323,69 @@
       color: var(--text-main);
       line-height: 1.5;
     }
+
+    /* --- Attendance grid (Wikipedia band-member-chart style) --- */
+    .attendance-grid-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+    }
+
+    .attendance-grid-table {
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+
+    .attendance-grid-table th,
+    .attendance-grid-table td {
+      border-bottom: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
+      padding: 0.3rem 0.4rem;
+      text-align: center;
+    }
+
+    .attendance-grid-table th {
+      color: var(--accent-gold);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      position: sticky;
+      top: 0;
+      background: var(--bg-card);
+      z-index: 1;
+    }
+
+    .attendance-grid-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .attendance-grid-table td:last-child,
+    .attendance-grid-table th:last-child {
+      border-right: none;
+    }
+
+    .grid-name-cell {
+      text-align: left !important;
+      position: sticky;
+      left: 0;
+      background: var(--bg-card);
+      z-index: 1;
+      font-weight: 700;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .grid-cell-filled {
+      color: var(--success);
+      font-weight: 900;
+      background: rgba(74, 222, 128, 0.12);
+    }
+
+    .grid-cell-empty {
+      color: var(--border-color);
+    }
   </style>
 </head>
 <body>
@@ -672,6 +735,25 @@
       return { missed, perfect };
     }
 
+    // Wikipedia band-member-chart style grid: everyone down the left,
+    // every open week across the top, sorted so the people with the
+    // most weeks picked (i.e. the fullest row) sort to the top.
+    function computeAttendanceGrid(rows, weeksToCheck) {
+      const byName = {};
+      rows.forEach(r => {
+        if (!byName[r.user_name]) byName[r.user_name] = new Set();
+        byName[r.user_name].add(r.week_number);
+      });
+
+      const entries = Object.entries(byName).map(([name, weeksSet]) => {
+        const total = weeksToCheck.filter(w => weeksSet.has(w)).length;
+        return { name, weeksSet, total };
+      });
+
+      entries.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+      return { weeks: weeksToCheck, entries };
+    }
+
     function computeSubmissionTiming(rows, firstKickoffByWeek) {
       const byName = {};
       rows.forEach(r => {
@@ -742,6 +824,7 @@
       const weeksToCheck = Array.from({ length: openWeek - 1 }, (_, i) => i + 1);
 
       const attendance = computeAttendance(cousinRows, weeksToCheck);
+      const attendanceGrid = computeAttendanceGrid(cousinRows, weeksToCheck);
       const duplicates = findPossibleDuplicates(cousinRows);
       const timing = computeSubmissionTiming(cousinRows, firstKickoffByWeek);
       const trend = computeParticipationTrend(cousinRows);
@@ -754,7 +837,7 @@
       const currentWeekRows = cousinRows.filter(r => r.week_number === openWeek);
       const pickBreakdown = computePickBreakdown(currentWeekRows, currentWeekGames);
 
-      return { openWeek, attendance, duplicates, timing, trend, newPlayers, pickBreakdown };
+      return { openWeek, attendance, attendanceGrid, duplicates, timing, trend, newPlayers, pickBreakdown };
     }
 
     async function loadEverything() {
@@ -840,6 +923,23 @@
             </div>
           `).join("");
 
+      const attendanceGridHtml = (!d.attendanceGrid || d.attendanceGrid.entries.length === 0)
+        ? `<div class="empty-note">No submissions yet.</div>`
+        : `<div class="attendance-grid-wrap"><table class="attendance-grid-table">
+            <thead><tr><th class="grid-name-cell">Name</th>${d.attendanceGrid.weeks.map(w => `<th>${w}</th>`).join("")}</tr></thead>
+            <tbody>
+              ${d.attendanceGrid.entries.map(e => `
+                <tr>
+                  <td class="grid-name-cell">${e.name} <span class="muted-cell">(${e.total})</span></td>
+                  ${d.attendanceGrid.weeks.map(w => e.weeksSet.has(w)
+                    ? `<td class="grid-cell-filled">&#10003;</td>`
+                    : `<td class="grid-cell-empty">&middot;</td>`
+                  ).join("")}
+                </tr>
+              `).join("")}
+            </tbody>
+          </table></div>`;
+
       const missedHtml = d.attendance.missed.length === 0
         ? `<div class="empty-note">Nobody's missed a week since they joined — clean sheet.</div>`
         : `<table class="report-table"><thead><tr><th>Name</th><th>Missed Weeks</th></tr></thead><tbody>
@@ -872,6 +972,12 @@
           </tbody></table>`;
 
       container.innerHTML = [
+        buildCollapsibleCard(
+          "attendanceGridContent",
+          "Attendance Grid",
+          "Everyone's picking history at a glance — names sorted with the fullest attendance at the top, weeks across the top.",
+          attendanceGridHtml
+        ),
         buildCollapsibleCard(
           "pickBreakdownContent",
           `Who Picked What — Week ${d.openWeek}`,
