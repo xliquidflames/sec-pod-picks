@@ -2063,7 +2063,7 @@
 
       const namesGrid = (members, gridId) => {
         const sorted = [...members].sort((a, b) => a.user_name.localeCompare(b.user_name));
-        return `<div class="tier-names-grid" id="${gridId}">${sorted.map(m => `<span>${m.user_name}</span>`).join("")}</div>`;
+        return `<div class="tier-names-grid open" id="${gridId}">${sorted.map(m => `<span>${m.user_name}</span>`).join("")}</div>`;
       };
 
       top5Container.innerHTML = podiumTiers.map((tier, idx) => {
@@ -2080,7 +2080,7 @@
               </div>
               <div style="display: flex; align-items: center;">
                 <span style="font-weight: 800; color: var(--accent-gold);">${rep.correct}-${rep.incorrect}</span>
-                ${isTie ? `<span class="tier-toggle-arrow">+</span>` : ''}
+                ${isTie ? `<span class="tier-toggle-arrow">&minus;</span>` : ''}
               </div>
             </div>
             ${isTie ? namesGrid(tier.members, gridId) : ''}
@@ -2670,7 +2670,9 @@
     function toggleTierExpand(gridId) {
       const grid = document.getElementById(gridId);
       if (!grid) return;
-      grid.classList.toggle("open");
+      const isOpen = grid.classList.toggle("open");
+      const arrow = grid.parentElement.querySelector(".tier-toggle-arrow");
+      if (arrow) arrow.innerHTML = isOpen ? "&minus;" : "+";
     }
 
     function toggleAllCards(expand) {
