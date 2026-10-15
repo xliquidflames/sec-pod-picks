@@ -739,6 +739,8 @@
             teamBRecord: teamBRecord,
             teamALogo: teamALogo,
             teamBLogo: teamBLogo,
+            awayName: awayName,
+            homeName: homeName,
             kickoff: kickoff,
             matchupLabel: matchupLabel,
             detail: `${time} | ${odds} | ${venue}`,
@@ -781,6 +783,8 @@
           teamBRecord: g.teamBRecord,
           teamALogo: g.teamALogo,
           teamBLogo: g.teamBLogo,
+          awayName: g.awayName,
+          homeName: g.homeName,
           matchupLabel: g.matchupLabel,
           detail: g.detail,
           playedDetail: g.playedDetail,
@@ -969,6 +973,12 @@
           `;
         } else {
           card.className = "game-card";
+          // Shown in the real "Away @ Home" order. teamA/teamB (SEC team
+          // first) are untouched for keys, picks and element ids — only
+          // the on-screen left/right order follows who is actually home.
+          const teamAIsHome = normalizeTeam(g.teamA) === normalizeTeam(g.homeName);
+          const btnAHtml = `<button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${g.teamA}" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${buildLogoHtml(g.teamALogo)}<span class="btn-pick-name">${shortenPickDisplay(g.teamA)}</span>${g.teamARecord ? `<span class="btn-pick-record">${g.teamARecord}</span>` : ""}</button>`;
+          const btnBHtml = `<button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${g.teamB}" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${buildLogoHtml(g.teamBLogo)}<span class="btn-pick-name">${shortenPickDisplay(g.teamB)}</span>${g.teamBRecord ? `<span class="btn-pick-record">${g.teamBRecord}</span>` : ""}</button>`;
           card.innerHTML = `
             <div class="game-header-row">
               <span class="game-title"><strong>Game ${g.id}</strong></span>
@@ -977,9 +987,9 @@
               ` : ""}
             </div>
             <div class="pick-grid">
-              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${g.teamA}" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${buildLogoHtml(g.teamALogo)}<span class="btn-pick-name">${shortenPickDisplay(g.teamA)}</span>${g.teamARecord ? `<span class="btn-pick-record">${g.teamARecord}</span>` : ""}</button>
+              ${teamAIsHome ? btnBHtml : btnAHtml}
               <span class="pick-grid-at">@</span>
-              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${g.teamB}" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${buildLogoHtml(g.teamBLogo)}<span class="btn-pick-name">${shortenPickDisplay(g.teamB)}</span>${g.teamBRecord ? `<span class="btn-pick-record">${g.teamBRecord}</span>` : ""}</button>
+              ${teamAIsHome ? btnAHtml : btnBHtml}
             </div>
             ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           `;
