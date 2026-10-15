@@ -369,9 +369,33 @@
       text-overflow: ellipsis;
     }
 
+    .btn-pick-name {
+      color: var(--text-main);
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-pick-record {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-top: 0.15rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .btn-pick:hover {
       border-color: #3b4d71;
       color: var(--text-main);
+    }
+
+    /* White text would vanish on the gold selected background, so the
+       selected button keeps its dark text. */
+    .btn-pick.selected .btn-pick-name,
+    .btn-pick.selected .btn-pick-record {
+      color: #0a1120;
     }
 
     .btn-pick.selected {
@@ -570,6 +594,18 @@
       return pick;
     }
 
+    // Pulls "4-1 (3-1)" (overall, then conference in parentheses) out of
+    // ESPN's competitor.records. Display only — never part of a pick or a
+    // matchup key. Returns "" when ESPN has no record for the team, so the
+    // button just shows the name like before.
+    function buildRecordText(competitor) {
+      const records = (competitor && competitor.records) || [];
+      const overall = records.find(r => r.type === "total" || (r.name || "").toLowerCase() === "overall");
+      const conf = records.find(r => r.type === "vsconf" || /conf/i.test(r.name || "") || /conf/i.test(r.abbreviation || ""));
+      if (!overall || !overall.summary) return "";
+      return conf && conf.summary ? `${overall.summary} (${conf.summary})` : overall.summary;
+    }
+
     const secNormalizedNames = new Set(
       Object.values(secTeamAliases).flat().map(n => normalizeTeam(n))
     );
@@ -604,13 +640,17 @@
           // hosts, and removes ESPN home/away data as a variable that could
           // ever cause this file's matchup keys to disagree with index.html
           // or hostpicks.html.
-          let teamA, teamB;
+          let teamA, teamB, teamARecord, teamBRecord;
           if (isSecTeam(homeName)) {
             teamA = homeName;
             teamB = awayName;
+            teamARecord = buildRecordText(home);
+            teamBRecord = buildRecordText(away);
           } else {
             teamA = awayName;
             teamB = homeName;
+            teamARecord = buildRecordText(away);
+            teamBRecord = buildRecordText(home);
           }
 
           const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "Line: TBD";
@@ -671,6 +711,8 @@
           rawGames.push({
             teamA: teamA,
             teamB: teamB,
+            teamARecord: teamARecord,
+            teamBRecord: teamBRecord,
             kickoff: kickoff,
             matchupLabel: matchupLabel,
             detail: `${time} | ${odds} | ${venue}`,
@@ -709,6 +751,8 @@
           matchupKey: g.espnId || buildMatchupKey(g.teamA, g.teamB),
           teamA: g.teamA,
           teamB: g.teamB,
+          teamARecord: g.teamARecord,
+          teamBRecord: g.teamBRecord,
           matchupLabel: g.matchupLabel,
           detail: g.detail,
           playedDetail: g.playedDetail,
@@ -905,9 +949,9 @@
               ` : ""}
             </div>
             <div class="pick-grid">
-              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${g.teamA}" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${shortenPickDisplay(g.teamA)}</button>
+              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${g.teamA}" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')"><span class="btn-pick-name">${shortenPickDisplay(g.teamA)}</span>${g.teamARecord ? `<span class="btn-pick-record">${g.teamARecord}</span>` : ""}</button>
               <span class="pick-grid-at">@</span>
-              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${g.teamB}" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${shortenPickDisplay(g.teamB)}</button>
+              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${g.teamB}" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')"><span class="btn-pick-name">${shortenPickDisplay(g.teamB)}</span>${g.teamBRecord ? `<span class="btn-pick-record">${g.teamBRecord}</span>` : ""}</button>
             </div>
             ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           `;
