@@ -749,6 +749,72 @@
       text-align: right;
     }
 
+    /* Top 25 popup: three ranking columns side by side. */
+    .top25-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      font-size: 0.74rem;
+    }
+
+    .top25-table th {
+      position: sticky;
+      top: 0;
+      background: var(--bg-card);
+      color: var(--accent-gold);
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 0.5rem 0.25rem;
+      border-bottom: 1px solid var(--border-color);
+      z-index: 1;
+    }
+
+    .top25-table td {
+      padding: 0.4rem 0.25rem;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
+
+    .top25-table tr:last-child td { border-bottom: none; }
+
+    .top25-rank {
+      width: 1.6rem;
+      text-align: center !important;
+      color: var(--text-muted);
+      font-weight: 800;
+    }
+
+    .top25-team {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      min-width: 0;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .top25-team.sec { color: var(--accent-gold); }
+
+    .top25-team img {
+      height: 18px;
+      width: 18px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .top25-team span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .top25-missing {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
     .info-move-up { color: var(--success); }
     .info-move-down { color: var(--danger); }
 
@@ -3239,6 +3305,8 @@
 
     function showInfoModal(title) {
       document.getElementById("infoTitle").textContent = title;
+      const infoModal = document.querySelector("#infoOverlay .team-sched-modal");
+      if (infoModal) infoModal.style.maxWidth = "";
       document.getElementById("infoTabs").style.display = "none";
       document.getElementById("infoTabs").innerHTML = "";
       document.getElementById("infoBody").innerHTML = `<div class="team-sched-note">Loading...</div>`;
@@ -3264,87 +3332,104 @@
       return `<span class="info-team ${isSec ? "sec" : ""}">${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}<span>${name}</span></span>`;
     }
 
+    // Top 25 popup: one table, three columns side by side — AP, Coaches
+    // Poll, and ESPN's computer ranking (FPI). AP and Coaches come from the
+    // rankings feed; FPI isn't in that feed at all, it lives on ESPN's
+    // separate power-index endpoint, which is why it never showed up as a
+    // tab. Each source fails on its own: if one can't load, its column
+    // just says so and the other two still show.
     async function openRankings() {
       showInfoModal("Top 25");
       const body = document.getElementById("infoBody");
-      const tabs = document.getElementById("infoTabs");
-      try {
+      const modal = document.querySelector("#infoOverlay .team-sched-modal");
+      if (modal) modal.style.maxWidth = "560px";
+
+      const loadPolls = async () => {
         if (!infoCache.rankings) {
           infoCache.rankings = await fetchFirstOk([
             "https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"
           ]);
         }
-        const allPolls = (infoCache.rankings.rankings || []).filter(r => r.ranks && r.ranks.length);
-
-        // Only three tabs, always in this order: AP, Coaches Poll, ESPN.
-        // ESPN's feed also carries FCS / Division II / Division III coaches
-        // polls (and the playoff committee list late in the season) — those
-        // are dropped. Each slot takes the first poll that matches it; a slot
-        // with no match just doesn't get a tab.
-        const pollLabel = p => `${p.name || ""} ${p.shortName || ""}`;
-        const lowerDivision = /fcs|division|div\.|\bd-?i{2,3}\b|naia/i;
-        const pollSlots = [
-          { tab: "AP", match: p => p.type === "ap" || /\bAP\b/.test(pollLabel(p)) },
-          { tab: "Coaches Poll", match: p => /coaches/i.test(pollLabel(p)) && !lowerDivision.test(pollLabel(p)) },
-          { tab: "ESPN", match: p => /espn|fpi|power|computer/i.test(pollLabel(p)) }
-        ];
-        const polls = [];
-        pollSlots.forEach(slot => {
-          const hit = allPolls.find(p => slot.match(p) && !polls.some(x => x.poll === p));
-          if (hit) polls.push({ poll: hit, tab: slot.tab });
-        });
-
-        // ESPN doesn't always put its own name on its computer ranking, so if
-        // nothing matched above, the ESPN tab takes whatever top-division list
-        // is left over once AP, the Coaches Poll, the lower divisions and the
-        // playoff committee are set aside.
-        if (!polls.some(x => x.tab === "ESPN")) {
-          const leftover = allPolls.find(p =>
-            !polls.some(x => x.poll === p) &&
-            !lowerDivision.test(pollLabel(p)) &&
-            !/coaches|playoff|cfp|stats perform/i.test(pollLabel(p)));
-          if (leftover) polls.push({ poll: leftover, tab: "ESPN" });
+        return infoCache.rankings;
+      };
+      const loadFpi = async () => {
+        if (!infoCache.fpi) {
+          infoCache.fpi = await fetchFirstOk([
+            "https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=2026&limit=200",
+            "https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=2026"
+          ]);
         }
+        return infoCache.fpi;
+      };
 
-        // Every list ESPN sent, by name — open the browser console to see
-        // exactly what's in the feed if a tab ever goes missing again.
-        console.log("Rankings feed:", allPolls.map(p => `${p.name} | ${p.shortName} | ${p.type}`));
-        if (polls.length === 0) throw new Error("empty");
+      const [pollRes, fpiRes] = await Promise.allSettled([loadPolls(), loadFpi()]);
 
-        const renderPoll = (idx) => {
-          const poll = polls[idx].poll;
-          tabs.querySelectorAll(".info-tab").forEach((t, i) => t.classList.toggle("active", i === idx));
-          body.innerHTML = poll.ranks.map(r => {
-            const t = r.team || {};
-            const name = t.location || t.name || t.displayName || "";
-            const prev = parseInt(r.previous, 10);
-            const cur = parseInt(r.current, 10);
-            let move = "";
-            if (!isNaN(prev) && !isNaN(cur) && prev > 0 && prev !== cur && prev < 99) {
-              move = cur < prev
-                ? `<span class="info-move-up">&#9650;${prev - cur}</span> `
-                : `<span class="info-move-down">&#9660;${cur - prev}</span> `;
-            }
-            return `
-              <div class="info-row">
-                <span class="info-rank">${r.current}</span>
-                ${infoTeamHtml(name, teamLogoFrom(t), isSecTeam(name))}
-                <span class="info-meta">${move}${r.recordSummary || ""}</span>
-              </div>`;
-          }).join("");
-        };
+      // Each column becomes a plain list of { name, logo } in rank order.
+      const teamName = t => t.location || t.nickname || t.shortDisplayName || t.name || t.displayName || "";
+      const fromPoll = (match) => {
+        if (pollRes.status !== "fulfilled") return null;
+        const polls = (pollRes.value.rankings || []).filter(r => r.ranks && r.ranks.length);
+        const label = p => `${p.name || ""} ${p.shortName || ""}`;
+        const poll = polls.find(p => match(p, label(p)));
+        if (!poll) return null;
+        return poll.ranks
+          .slice()
+          .sort((a, b) => a.current - b.current)
+          .slice(0, 25)
+          .map(r => ({ name: teamName(r.team || {}), logo: teamLogoFrom(r.team) }));
+      };
 
-        tabs.innerHTML = polls.map((p, i) =>
-          `<button type="button" class="info-tab" onclick="window.__renderPoll(${i})">${p.tab}</button>`
-        ).join("");
-        tabs.style.display = "flex";
-        window.__renderPoll = renderPoll;
-        renderPoll(0);
-      } catch (err) {
-        console.error("Rankings error:", err);
-        tabs.style.display = "none";
-        body.innerHTML = `<div class="team-sched-note">Couldn't load the rankings right now.</div>`;
+      const lowerDivision = /fcs|division|div\.|\bd-?i{2,3}\b|naia/i;
+      const apList = fromPoll((p, l) => p.type === "ap" || /\bAP\b/.test(l));
+      const coachesList = fromPoll((p, l) => /coaches/i.test(l) && !lowerDivision.test(l));
+
+      let fpiList = null;
+      if (fpiRes.status === "fulfilled") {
+        // In each team's "fpi" category, values[1] is the FPI rank.
+        const ranked = (fpiRes.value.teams || []).map(entry => {
+          const cat = (entry.categories || []).find(c => c.name === "fpi");
+          const rank = cat && cat.values ? parseInt(cat.values[1], 10) : NaN;
+          return { rank, name: teamName(entry.team || {}), logo: teamLogoFrom(entry.team) };
+        }).filter(x => !isNaN(x.rank) && x.rank >= 1);
+        ranked.sort((a, b) => a.rank - b.rank);
+        if (ranked.length) fpiList = ranked.slice(0, 25);
+      } else {
+        console.error("FPI error:", fpiRes.reason);
       }
+
+      if (!apList && !coachesList && !fpiList) {
+        body.innerHTML = `<div class="team-sched-note">Couldn't load the rankings right now.</div>`;
+        return;
+      }
+
+      const cell = (list, i) => {
+        if (!list) return i === 0 ? `<td class="top25-cell top25-missing">Unavailable</td>` : `<td class="top25-cell"></td>`;
+        const t = list[i];
+        if (!t) return `<td class="top25-cell"></td>`;
+        const sec = isSecTeam(t.name);
+        return `<td class="top25-cell">
+          <span class="top25-team ${sec ? "sec" : ""}">
+            ${t.logo ? `<img src="${t.logo}" alt="" onerror="this.style.display='none'">` : ""}
+            <span>${shortenPickDisplay(t.name)}</span>
+          </span>
+        </td>`;
+      };
+
+      let rowsHtml = "";
+      for (let i = 0; i < 25; i++) {
+        rowsHtml += `<tr>
+          <td class="top25-rank">${i + 1}</td>
+          ${cell(apList, i)}${cell(coachesList, i)}${cell(fpiList, i)}
+        </tr>`;
+      }
+
+      body.innerHTML = `
+        <table class="top25-table">
+          <thead>
+            <tr><th class="top25-rank"></th><th>AP</th><th>Coaches Poll</th><th>ESPN</th></tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>`;
     }
 
     // Walks the whole standings response for any group of team entries, so
