@@ -16,7 +16,7 @@
       --accent-gold: #fbbf24;
       --accent-gold-hover: #f59e0b;
       --text-main: #f8fafc;
-      --text-muted: #94a3b8;
+      --text-muted: #f8fafc;
       --border-color: #334155;
       --success: #4ade80;
       --danger: #f87171;
@@ -605,11 +605,30 @@
       object-fit: contain;
     }
 
+    /* Wraps a logo (and its text fallback) so the rank can sit on the
+       logo's corner as a small badge without taking up any room in the
+       row — the row's alignment is exactly what it was before ranks. */
+    .matchup-logo-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
     .matchup-rank {
-      font-size: 0.62rem;
-      font-weight: 800;
-      color: var(--accent-gold);
-      margin-right: -0.15rem;
+      position: absolute;
+      top: -5px;
+      left: -5px;
+      min-width: 15px;
+      height: 15px;
+      padding: 0 3px;
+      border-radius: 8px;
+      background: var(--accent-gold);
+      color: #0a1120;
+      font-size: 0.58rem;
+      font-weight: 900;
+      line-height: 15px;
+      text-align: center;
+      pointer-events: none;
     }
 
     .hub-action-row {
@@ -1094,8 +1113,8 @@
 
     .btn-ctrl {
       background: var(--bg-card-alt);
-      color: var(--text-muted);
-      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border: 2px solid var(--accent-gold);
       padding: 0.35rem 0.6rem;
       border-radius: 6px;
       font-size: 0.72rem;
@@ -1108,8 +1127,8 @@
     }
 
     .btn-ctrl:hover {
-      border-color: var(--accent-gold);
-      color: var(--accent-gold);
+      background: #22314d;
+      color: var(--text-main);
     }
 
     .cousin-search-input {
@@ -1336,7 +1355,7 @@
           <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Here is this week's schedule, lines, scores, and Mike, Shane, and Steven's picks. Highlighted rows are games currently in progress. <strong style="color: var(--accent-gold);">Click a team to show their schedule.</strong></p>
+        <p style="font-size: 0.8rem; color: var(--text-main); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Click a team logo to see their season schedule and more.</p>
         <div class="hub-action-row">
           <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
           <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
@@ -1570,8 +1589,8 @@
     const DAY_GROUP_COLORS = {
       0: '#4d93a3', // Sunday — muted teal
       1: '#b8748f', // Monday — muted rose
-      2: '#94a3b8', // Tuesday — light gray (rare, but was falling back to a too-dark default before)
-      3: '#94a3b8', // Wednesday — light gray (rare, but was falling back to a too-dark default before)
+      2: '#f8fafc', // Tuesday — light gray (rare, but was falling back to a too-dark default before)
+      3: '#f8fafc', // Wednesday — light gray (rare, but was falling back to a too-dark default before)
       4: '#8c7cc4', // Thursday — muted violet
       5: '#5586b3', // Friday — muted blue
       6: '#5c9973'  // Saturday — muted green
@@ -1779,15 +1798,15 @@
             ? `<img src="${homeLogo}" alt="${homeName}" title="${homeName}" class="matchup-team-logo" data-team-id="${home.team.id || ''}" data-team-name="${homeName}" data-team-logo="${homeLogo}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" data-team-id="${home.team.id || ''}" data-team-name="${homeName}" data-team-logo="${homeLogo}" style="display:none;">${homeName}</span>`
             : `<span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" data-team-id="${home.team.id || ''}" data-team-name="${homeName}" data-team-logo="">${homeName}</span>`;
 
-          // AP rank (1-25 only; ESPN uses 99 for unranked) shown as a tiny
-          // number just before each ranked team's logo. Placed BEFORE the
-          // logo, never between it and its text fallback, since the
-          // logo's onerror handler reveals its next sibling.
+          // AP rank (1-25 only; ESPN uses 99 for unranked) shown as a small
+          // badge on the logo's corner. It goes AFTER the logo and its text
+          // fallback, never between them, since the logo's onerror handler
+          // reveals its next sibling.
           const rankSpan = (r) => (r >= 1 && r <= 25) ? `<span class="matchup-rank">${r}</span>` : '';
           const awayRankHtml = rankSpan(away.curatedRank && away.curatedRank.current);
           const homeRankHtml = rankSpan(home.curatedRank && home.curatedRank.current);
 
-          let matchupLabel = `<span class="matchup-logo-row">${awayRankHtml}${awayLogoHtml}<span class="matchup-at-symbol">@</span>${homeRankHtml}${homeLogoHtml}</span>`;
+          let matchupLabel = `<span class="matchup-logo-row"><span class="matchup-logo-wrap">${awayLogoHtml}${awayRankHtml}</span><span class="matchup-at-symbol">@</span><span class="matchup-logo-wrap">${homeLogoHtml}${homeRankHtml}</span></span>`;
 
           let time = "TBD";
           let kickoff = new Date(8640000000000000);
