@@ -628,6 +628,22 @@
       pointer-events: none;
     }
 
+    .bye-label {
+      display: block;
+      color: var(--text-main);
+      font-size: 0.78rem;
+      font-weight: 800;
+      margin-bottom: 0.35rem;
+    }
+
+    .bye-logos {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
     .hub-action-row {
       display: flex;
       gap: 0.4rem;
@@ -2637,6 +2653,26 @@
         hostBody.appendChild(tr);
       });
 
+      // Final row: SEC teams with no game this week, as tappable logos,
+      // so someone who doesn't see their team can still get to its
+      // schedule. Skipped entirely if the week has no games published yet
+      // (otherwise every team would look like it was on a bye).
+      const byeTeams = getSecByeTeams(games);
+      if (games.length > 0 && byeTeams.length > 0) {
+        const byeTr = document.createElement("tr");
+        byeTr.innerHTML = `
+          <td class="matchup-cell">
+            <span class="bye-label">On A Bye:</span>
+            <span class="bye-logos">${byeTeams.map(buildByeLogoHtml).join("")}</span>
+          </td>
+          <td class="pick-cell"></td>
+          <td class="pick-cell"></td>
+          <td class="pick-cell"></td>
+          <td class="pick-cell"></td>
+        `;
+        hostBody.appendChild(byeTr);
+      }
+
       cousinRows.forEach(c => c.score = gradePicks(c.picks, activeWeek));
 
       cousinRows.sort((a, b) => {
@@ -3111,6 +3147,53 @@
         teamControls.style.display = "none";
         if (searchWrapper) searchWrapper.style.display = "block";
       }
+    }
+
+    // --- Bye week row ---------------------------------------------------
+    // Builds a directory of every SEC team (id, name, logo) from the
+    // scoreboard data already loaded for ALL weeks — every SEC team plays
+    // in some week, so none needs to be hardcoded. A bye team is simply a
+    // directory team that isn't in this week's games.
+    function getSecByeTeams(games) {
+      const directory = {};
+      Object.values(window.espnRawCache || {}).forEach(entry => {
+        const events = (entry && entry.data && entry.data.events) || [];
+        events.forEach(ev => {
+          const comp = (ev.competitions || [])[0];
+          if (!comp) return;
+          (comp.competitors || []).forEach(c => {
+            const t = c.team || {};
+            const name = cleanTeamName(t.shortDisplayName || t.name);
+            if (!name || !isSecTeam(name)) return;
+            const key = normalizeTeam(name);
+            if (!directory[key]) {
+              directory[key] = {
+                id: t.id || "",
+                name: name,
+                logo: t.logo || (t.logos && t.logos[0] && t.logos[0].href) || ""
+              };
+            }
+          });
+        });
+      });
+
+      const playing = new Set();
+      games.forEach(g => {
+        playing.add(normalizeTeam(g.teamA));
+        playing.add(normalizeTeam(g.teamB));
+      });
+
+      return Object.keys(directory)
+        .filter(key => !playing.has(key))
+        .map(key => directory[key])
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    function buildByeLogoHtml(team) {
+      const attrs = `data-team-id="${team.id}" data-team-name="${team.name}" data-team-logo="${team.logo}"`;
+      return team.logo
+        ? `<img src="${team.logo}" alt="${team.name}" title="${team.name}" class="matchup-team-logo" ${attrs} onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback matchup-sec-team" ${attrs} style="display:none;">${team.name}</span>`
+        : `<span class="matchup-team-fallback matchup-sec-team" ${attrs}>${team.name}</span>`;
     }
 
     // --- Top 25 and SEC standings popups -------------------------------
