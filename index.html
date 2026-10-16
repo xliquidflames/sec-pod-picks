@@ -1072,6 +1072,59 @@
       vertical-align: middle;
     }
 
+    /* Path to first — outlined so it never reads as a LOCK (solid gold). */
+    .swing-badge {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+      border: 1px solid var(--accent-gold);
+      padding: 0 0.25rem;
+      border-radius: 3px;
+      margin-right: 0.3rem;
+      vertical-align: middle;
+    }
+
+    .path-chip {
+      font-size: 0.66rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      padding: 0.05rem 0.4rem;
+      margin-left: 0.3rem;
+      white-space: nowrap;
+    }
+
+    .path-chip.leader {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+
+    .path-line {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1.4;
+      padding: 0.5rem 0.6rem;
+      margin-bottom: 0.4rem;
+      border-left: 3px solid var(--accent-gold);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 4px;
+    }
+
+    .path-line-label {
+      display: block;
+      font-size: 0.62rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent-gold);
+      margin-bottom: 0.15rem;
+    }
+
     /* Used only in the Week Info Hub table — smaller, and placed on its
        own line at the bottom of the cell (after the pick and score)
        instead of inline as part of either. The Cousins' Picks list keeps
@@ -2625,6 +2678,147 @@
       await renderActiveWeek();
     }
 
+    // ---- Path to first ------------------------------------------------
+    // For each cousin: how far back of the season leader they are, and
+    // what this week's still-open games can do about it.
+    //
+    // The idea: a game where you and the leader picked the SAME team can't
+    // change the gap — you both win or both lose. Only games where your
+    // picks differ ("swing games") move it, by exactly one each: one of you
+    // is right, the other wrong. So sweeping your swing games is the best
+    // case, and that's what the line describes.
+    //
+    // Season standing uses the podium's rules exactly: most correct picks,
+    // then fewest losses; an identical record is a shared spot.
+    //
+    // Season records are recomputed here from allWeekRows rather than read
+    // from computeSeasonTotals(), which runs after this render and would
+    // otherwise be one refresh behind when new results come in.
+    function computePathsToFirst(games) {
+      const result = {};
+
+      const season = {};
+      allWeekRows.forEach(row => {
+        if (row.is_host) return;
+        const s = gradePicks(row.picks, row.week_number);
+        if (!season[row.user_name]) season[row.user_name] = { name: row.user_name, correct: 0, incorrect: 0 };
+        season[row.user_name].correct += s.correct;
+        season[row.user_name].incorrect += s.incorrect;
+      });
+
+      const everyone = Object.values(season);
+      if (!everyone.some(p => p.correct > 0 || p.incorrect > 0)) return result;
+
+      const better = (a, b) => a.correct !== b.correct ? a.correct > b.correct : a.incorrect < b.incorrect;
+      let top = everyone[0];
+      everyone.forEach(p => { if (better(p, top)) top = p; });
+      const leaders = everyone.filter(p => p.correct === top.correct && p.incorrect === top.incorrect);
+      const leaderNames = new Set(leaders.map(l => l.name));
+
+      // Best record outside the leader group — what "up by" is measured against.
+      const chasers = everyone.filter(p => !leaderNames.has(p.name));
+      let second = null;
+      chasers.forEach(p => { if (!second || better(p, second)) second = p; });
+
+      const winners = window.gameWinners[activeWeek] || {};
+      const openGames = games.filter(g => !(winners[g.matchupKey] || winners[g.id]));
+      const weekPicksFor = (name) => {
+        const row = allWeekRows.find(r => !r.is_host && r.week_number === activeWeek && r.user_name === name);
+        return row ? parseUserPicks(row.picks) : null;
+      };
+
+      // Worst-to-best outcomes of a full swing sweep against one leader.
+      const OUTCOME_RANK = { short: 0, evenWins: 1, tie: 2, pass: 3 };
+
+      everyone.forEach(p => {
+        if (leaderNames.has(p.name)) {
+          if (leaders.length > 1) {
+            result[p.name] = { isLeader: true, chip: "Tied 1st", line: `Tied for first with ${leaders.length - 1} other${leaders.length === 2 ? "" : "s"}.` };
+          } else if (!second) {
+            result[p.name] = { isLeader: true, chip: "1st", line: "In first." };
+          } else {
+            const lead = p.correct - second.correct;
+            result[p.name] = lead > 0
+              ? { isLeader: true, chip: "1st", line: `In first, up by ${lead}.` }
+              : { isLeader: true, chip: "1st", line: "In first on fewer losses." };
+          }
+          return;
+        }
+
+        const myPicks = weekPicksFor(p.name);
+        let worst = null;
+
+        leaders.forEach(L => {
+          const theirPicks = weekPicksFor(L.name);
+          const swingGames = [];
+          let theyTakeLoss = 0;
+
+          if (myPicks) {
+            openGames.forEach(g => {
+              const mine = getMatchedUserPick(myPicks, g);
+              if (!mine) return;
+              const theirs = theirPicks ? getMatchedUserPick(theirPicks, g) : null;
+              if (theirs && normalizeTeam(theirs) === normalizeTeam(mine)) return;
+              swingGames.push(g);
+              if (theirs) theyTakeLoss++;
+            });
+          }
+
+          const winsBack = L.correct - p.correct;
+          const s = swingGames.length;
+          const lossDiff = (p.incorrect) - (L.incorrect + theyTakeLoss);
+          let outcome;
+          if (s > winsBack) outcome = "pass";
+          else if (s < winsBack) outcome = "short";
+          else if (lossDiff < 0) outcome = "pass";
+          else if (lossDiff === 0) outcome = "tie";
+          else outcome = "evenWins";
+
+          const entry = { leader: L, swingGames, winsBack, outcome, leaderPicked: !!theirPicks };
+          if (!worst || OUTCOME_RANK[outcome] < OUTCOME_RANK[worst.outcome] ||
+              (outcome === worst.outcome && s < worst.swingGames.length)) {
+            worst = entry;
+          }
+        });
+
+        const { leader, swingGames, winsBack, outcome, leaderPicked } = worst;
+        const who = leaders.length === 1 ? leader.name
+          : leaders.length === 2 ? `${leaders[0].name} and ${leaders[1].name}`
+          : "first";
+        const s = swingGames.length;
+        const gamesWord = n => `${n} swing game${n === 1 ? "" : "s"}`;
+
+        const chip = winsBack > 0 ? `${winsBack} back` : "Even on wins";
+        const head = winsBack > 0 ? `${winsBack} back of ${who}` : `Even on wins with ${who}`;
+
+        let line;
+        if (!myPicks || openGames.length === 0) {
+          line = winsBack > 0 ? `${head}.` : `${head}, behind on losses.`;
+        } else if (!leaderPicked && leaders.length === 1) {
+          line = `${head}. ${leader.name} hasn't picked this week yet.`;
+        } else if (s === 0) {
+          line = `${head}. No swing games left this week. Your open picks all match.`;
+        } else if (outcome === "pass") {
+          line = `${head} · ${gamesWord(s)} left. Win ${s === 1 ? "it" : s === 2 ? "both" : `all ${s}`} and you take first.`;
+        } else if (outcome === "tie") {
+          line = `${head} · ${gamesWord(s)} left. Win ${s === 1 ? "it" : s === 2 ? "both" : `all ${s}`} and you tie for first.`;
+        } else if (outcome === "evenWins") {
+          line = `${head} · ${gamesWord(s)} left. Win ${s === 1 ? "it" : s === 2 ? "both" : `all ${s}`} and you pull even on wins, but ${leaders.length === 1 ? leader.name : "first"} still has fewer losses.`;
+        } else {
+          line = `${head} · only ${gamesWord(s)} left this week. Best case: ${winsBack - s} back.`;
+        }
+
+        result[p.name] = {
+          isLeader: false,
+          chip,
+          line,
+          swingKeys: new Set(swingGames.map(g => g.matchupKey))
+        };
+      });
+
+      return result;
+    }
+
     async function renderActiveWeek() {
       if (!window.weekSchedules[activeWeek] || window.weekSchedules[activeWeek].length === 0) {
         await fetchEspnSchedule(activeWeek);
@@ -2810,12 +3004,16 @@
         ? `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No picks submitted for Week ${activeWeek} yet.</div>`
         : "";
 
+      const paths = computePathsToFirst(games);
+
       cousinRows.forEach(c => {
         const item = document.createElement("div");
         item.className = "cousin-item";
         item.dataset.name = c.user_name;
         const picks = parseUserPicks(c.picks);
         const hitLotw = isLockActiveThisWeek && (c.score.lockCorrect > 0);
+        const path = paths[c.user_name];
+        const swingKeys = (path && path.swingKeys) || new Set();
 
         item.innerHTML = `
           <div class="cousin-header" onclick="this.nextElementSibling.classList.toggle('open')">
@@ -2824,18 +3022,22 @@
               <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
               ${hitLotw ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
               <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">${c.score.correct}-${c.score.incorrect}</span>
+              ${path ? `<span class="path-chip ${path.isLeader ? 'leader' : ''}">${path.chip}</span>` : ''}
             </div>
             <span style="color: var(--accent-gold); font-weight: bold;">+</span>
           </div>
           <div class="cousin-picks-body">
+            ${path ? `<div class="path-line ${path.isLeader ? 'leader' : ''}"><span class="path-line-label">Path to First</span>${path.line}</div>` : ''}
             ${games.map(g => {
               const uPick = getMatchedUserPick(picks, g) || "No Pick";
               const pClass = getPickClass(uPick, g, activeWeek);
               const isCousinLock = isLockActiveThisWeek && isLockMatch(picks, g);
+              const isSwing = swingKeys.has(g.matchupKey);
               return `
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
                   <span class="pick-line-matchup">${g.matchupLabel}</span>
                   <span class="${pClass}">
+                    ${isSwing ? '<span class="swing-badge">SWING</span>' : ''}
                     ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
                     ${shortenPickDisplay(uPick)}
                   </span>
