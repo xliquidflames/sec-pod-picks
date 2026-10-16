@@ -605,6 +605,105 @@
       object-fit: contain;
     }
 
+    .matchup-rank {
+      font-size: 0.62rem;
+      font-weight: 800;
+      color: var(--accent-gold);
+      margin-right: -0.15rem;
+    }
+
+    .hub-action-row {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .info-tabs {
+      display: flex;
+      gap: 0.4rem;
+      padding: 0.6rem 1rem 0;
+    }
+
+    .info-tab {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      border-radius: 8px;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.78rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .info-tab.active {
+      background: var(--accent-gold);
+      border-color: var(--accent-gold);
+      color: #0a1120;
+    }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: 1.6rem 1fr auto;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.82rem;
+    }
+
+    .info-row:last-child { border-bottom: none; }
+
+    .info-row.standings-row {
+      grid-template-columns: 1.6rem 1fr 3.2rem 3.4rem;
+    }
+
+    .info-row.head {
+      color: var(--accent-gold);
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .info-rank {
+      color: var(--text-muted);
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .info-team {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-width: 0;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .info-team.sec { color: var(--accent-gold); }
+
+    .info-team img {
+      height: 22px;
+      width: 22px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .info-team span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .info-meta {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    .info-move-up { color: var(--success); }
+    .info-move-down { color: var(--danger); }
+
     /* Only logos/names carrying a data-team-id open the schedule popup —
        the Per Team view builds its own logos without it, on purpose, since
        those sit inside a header that already toggles on tap. */
@@ -1238,6 +1337,10 @@
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Here is this week's schedule, lines, scores, and Mike, Shane, and Steven's picks. Highlighted rows are games currently in progress. <strong style="color: var(--accent-gold);">Click a team to show their schedule.</strong></p>
+        <div class="hub-action-row">
+          <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
+          <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
+        </div>
         <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.4rem;">
           <table class="host-grid-table">
             <thead>
@@ -1325,6 +1428,17 @@
         </div>
 
         <div id="perTeamList" style="display: none;"></div>
+      </div>
+    </div>
+
+    <div id="infoOverlay" class="team-sched-overlay" onclick="if (event.target === this) closeInfoModal()">
+      <div class="team-sched-modal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+        <div class="team-sched-header">
+          <div class="team-sched-title" id="infoTitle"></div>
+          <button type="button" class="team-sched-close" onclick="closeInfoModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="info-tabs" id="infoTabs" style="display:none;"></div>
+        <div class="team-sched-body" id="infoBody"></div>
       </div>
     </div>
 
@@ -1665,7 +1779,15 @@
             ? `<img src="${homeLogo}" alt="${homeName}" title="${homeName}" class="matchup-team-logo" data-team-id="${home.team.id || ''}" data-team-name="${homeName}" data-team-logo="${homeLogo}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" data-team-id="${home.team.id || ''}" data-team-name="${homeName}" data-team-logo="${homeLogo}" style="display:none;">${homeName}</span>`
             : `<span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" data-team-id="${home.team.id || ''}" data-team-name="${homeName}" data-team-logo="">${homeName}</span>`;
 
-          let matchupLabel = `<span class="matchup-logo-row">${awayLogoHtml}<span class="matchup-at-symbol">@</span>${homeLogoHtml}</span>`;
+          // AP rank (1-25 only; ESPN uses 99 for unranked) shown as a tiny
+          // number just before each ranked team's logo. Placed BEFORE the
+          // logo, never between it and its text fallback, since the
+          // logo's onerror handler reveals its next sibling.
+          const rankSpan = (r) => (r >= 1 && r <= 25) ? `<span class="matchup-rank">${r}</span>` : '';
+          const awayRankHtml = rankSpan(away.curatedRank && away.curatedRank.current);
+          const homeRankHtml = rankSpan(home.curatedRank && home.curatedRank.current);
+
+          let matchupLabel = `<span class="matchup-logo-row">${awayRankHtml}${awayLogoHtml}<span class="matchup-at-symbol">@</span>${homeRankHtml}${homeLogoHtml}</span>`;
 
           let time = "TBD";
           let kickoff = new Date(8640000000000000);
@@ -2972,6 +3094,181 @@
         cousinControls.style.display = "flex";
         teamControls.style.display = "none";
         if (searchWrapper) searchWrapper.style.display = "block";
+      }
+    }
+
+    // --- Top 25 and SEC standings popups -------------------------------
+    // Both read straight from ESPN and fail soft: if the data isn't there
+    // or isn't shaped as expected, the popup says so instead of breaking.
+    const infoCache = {};
+
+    function closeInfoModal() {
+      document.getElementById("infoOverlay").style.display = "none";
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeInfoModal();
+    });
+
+    function showInfoModal(title) {
+      document.getElementById("infoTitle").textContent = title;
+      document.getElementById("infoTabs").style.display = "none";
+      document.getElementById("infoTabs").innerHTML = "";
+      document.getElementById("infoBody").innerHTML = `<div class="team-sched-note">Loading...</div>`;
+      document.getElementById("infoOverlay").style.display = "flex";
+    }
+
+    async function fetchFirstOk(urls) {
+      for (const url of urls) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return await res.json();
+        } catch (e) { /* try the next one */ }
+      }
+      throw new Error("no data");
+    }
+
+    function teamLogoFrom(t) {
+      if (!t) return "";
+      return t.logo || (t.logos && t.logos[0] && t.logos[0].href) || "";
+    }
+
+    function infoTeamHtml(name, logo, isSec) {
+      return `<span class="info-team ${isSec ? "sec" : ""}">${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}<span>${name}</span></span>`;
+    }
+
+    async function openRankings() {
+      showInfoModal("Top 25");
+      const body = document.getElementById("infoBody");
+      const tabs = document.getElementById("infoTabs");
+      try {
+        if (!infoCache.rankings) {
+          infoCache.rankings = await fetchFirstOk([
+            "https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"
+          ]);
+        }
+        let polls = (infoCache.rankings.rankings || []).filter(r => r.ranks && r.ranks.length);
+        if (polls.length === 0) throw new Error("empty");
+
+        // The playoff committee's list, once it exists, is the one that
+        // matters — put it first and open on it.
+        polls.sort((a, b) => {
+          const aCfp = /playoff|cfp/i.test(a.name || a.shortName || "") ? 0 : 1;
+          const bCfp = /playoff|cfp/i.test(b.name || b.shortName || "") ? 0 : 1;
+          return aCfp - bCfp;
+        });
+
+        const renderPoll = (idx) => {
+          const poll = polls[idx];
+          tabs.querySelectorAll(".info-tab").forEach((t, i) => t.classList.toggle("active", i === idx));
+          body.innerHTML = poll.ranks.map(r => {
+            const t = r.team || {};
+            const name = t.location || t.name || t.displayName || "";
+            const prev = parseInt(r.previous, 10);
+            const cur = parseInt(r.current, 10);
+            let move = "";
+            if (!isNaN(prev) && !isNaN(cur) && prev > 0 && prev !== cur && prev < 99) {
+              move = cur < prev
+                ? `<span class="info-move-up">&#9650;${prev - cur}</span> `
+                : `<span class="info-move-down">&#9660;${cur - prev}</span> `;
+            }
+            return `
+              <div class="info-row">
+                <span class="info-rank">${r.current}</span>
+                ${infoTeamHtml(name, teamLogoFrom(t), isSecTeam(name))}
+                <span class="info-meta">${move}${r.recordSummary || ""}</span>
+              </div>`;
+          }).join("");
+        };
+
+        tabs.innerHTML = polls.map((p, i) =>
+          `<button type="button" class="info-tab" onclick="window.__renderPoll(${i})">${p.shortName || p.name}</button>`
+        ).join("");
+        tabs.style.display = "flex";
+        window.__renderPoll = renderPoll;
+        renderPoll(0);
+      } catch (err) {
+        console.error("Rankings error:", err);
+        tabs.style.display = "none";
+        body.innerHTML = `<div class="team-sched-note">Couldn't load the rankings right now.</div>`;
+      }
+    }
+
+    // Walks the whole standings response for any group of team entries, so
+    // it doesn't depend on exactly how ESPN nests conferences or divisions.
+    function collectStandingsEntries(node, out) {
+      if (!node || typeof node !== "object") return;
+      if (node.standings && Array.isArray(node.standings.entries)) {
+        node.standings.entries.forEach(e => out.push(e));
+      }
+      Object.values(node).forEach(v => {
+        if (Array.isArray(v)) v.forEach(x => collectStandingsEntries(x, out));
+        else if (v && typeof v === "object") collectStandingsEntries(v, out);
+      });
+    }
+
+    function statDisplay(stats, matcher) {
+      const st = (stats || []).find(matcher);
+      if (!st) return "";
+      return st.displayValue || st.summary || (st.value !== undefined ? String(st.value) : "");
+    }
+
+    function parseWL(str) {
+      const m = /^(\d+)-(\d+)/.exec(str || "");
+      return m ? { w: parseInt(m[1], 10), l: parseInt(m[2], 10) } : { w: 0, l: 0 };
+    }
+
+    async function openStandings() {
+      showInfoModal("SEC Standings");
+      const body = document.getElementById("infoBody");
+      try {
+        if (!infoCache.standings) {
+          infoCache.standings = await fetchFirstOk([
+            "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=8&season=2026",
+            "https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?group=8&season=2026"
+          ]);
+        }
+        const entries = [];
+        collectStandingsEntries(infoCache.standings, entries);
+        if (entries.length === 0) throw new Error("empty");
+
+        const rows = entries.map(e => {
+          const t = e.team || {};
+          const overall = statDisplay(e.stats, s => /^overall$/i.test(s.name || s.type || ""));
+          const conf = statDisplay(e.stats, s =>
+            /^(vs\.?\s?conf(erence)?|conference)$/i.test(s.name || "") ||
+            (/conf/i.test(s.name || s.type || "") && !/behind|pct|percent|point|win|rank/i.test(s.name || s.type || "")));
+          return {
+            name: t.shortDisplayName || t.displayName || t.name || "",
+            logo: teamLogoFrom(t),
+            overall: overall,
+            conf: conf,
+            c: parseWL(conf),
+            o: parseWL(overall)
+          };
+        });
+
+        rows.sort((a, b) => {
+          const aPct = a.c.w + a.c.l ? a.c.w / (a.c.w + a.c.l) : 0;
+          const bPct = b.c.w + b.c.l ? b.c.w / (b.c.w + b.c.l) : 0;
+          if (bPct !== aPct) return bPct - aPct;
+          if (b.c.w !== a.c.w) return b.c.w - a.c.w;
+          return b.o.w - a.o.w;
+        });
+
+        body.innerHTML = `
+          <div class="info-row standings-row head"><span></span><span>Team</span><span class="info-meta">Conf</span><span class="info-meta">Overall</span></div>
+          ${rows.map((r, i) => `
+            <div class="info-row standings-row">
+              <span class="info-rank">${i + 1}</span>
+              ${infoTeamHtml(r.name, r.logo, false)}
+              <span class="info-meta" style="color: var(--text-main);">${r.conf || "-"}</span>
+              <span class="info-meta">${r.overall || "-"}</span>
+            </div>`).join("")}
+        `;
+      } catch (err) {
+        console.error("Standings error:", err);
+        body.innerHTML = `<div class="team-sched-note">Couldn't load the standings right now.</div>`;
       }
     }
 
