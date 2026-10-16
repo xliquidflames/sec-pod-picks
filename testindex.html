@@ -628,20 +628,36 @@
       pointer-events: none;
     }
 
+    .bye-box {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+      padding: 0.7rem 0.85rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-card-alt);
+    }
+
+    .bye-box.collapsed {
+      display: none !important;
+    }
+
     .bye-label {
-      display: block;
       color: var(--text-main);
-      font-size: 0.78rem;
+      font-size: 0.82rem;
       font-weight: 800;
-      margin-bottom: 0.35rem;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .bye-logos {
       display: flex;
+      flex: 1;
       flex-wrap: wrap;
       align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
+      justify-content: flex-start;
+      gap: 0.6rem;
     }
 
     .hub-action-row {
@@ -1389,6 +1405,7 @@
             </tbody>
           </table>
         </div>
+        <div id="byeBox" class="bye-box"></div>
       </div>
 
       <div class="card elevated-card">
@@ -1664,6 +1681,8 @@
       const arrow = document.getElementById("hostGridArrow");
       if (!wrapper) return;
       const isCollapsed = wrapper.classList.toggle("collapsed");
+      const byeBoxEl = document.getElementById("byeBox");
+      if (byeBoxEl) byeBoxEl.classList.toggle("collapsed", isCollapsed);
       if (arrow) {
         arrow.innerHTML = isCollapsed ? "&#9656;" : "&#9662;";
       }
@@ -2653,24 +2672,23 @@
         hostBody.appendChild(tr);
       });
 
-      // Final row: SEC teams with no game this week, as tappable logos,
-      // so someone who doesn't see their team can still get to its
-      // schedule. Skipped entirely if the week has no games published yet
+      // Separate box under the grid: SEC teams with no game this week, as
+      // tappable logos, so someone who doesn't see their team can still
+      // get to its schedule. Hidden if the week has no games published yet
       // (otherwise every team would look like it was on a bye).
       const byeTeams = getSecByeTeams(games);
-      if (games.length > 0 && byeTeams.length > 0) {
-        const byeTr = document.createElement("tr");
-        byeTr.innerHTML = `
-          <td class="matchup-cell">
+      const byeBox = document.getElementById("byeBox");
+      if (byeBox) {
+        if (games.length > 0 && byeTeams.length > 0) {
+          byeBox.innerHTML = `
             <span class="bye-label">On A Bye:</span>
             <span class="bye-logos">${byeTeams.map(buildByeLogoHtml).join("")}</span>
-          </td>
-          <td class="pick-cell"></td>
-          <td class="pick-cell"></td>
-          <td class="pick-cell"></td>
-          <td class="pick-cell"></td>
-        `;
-        hostBody.appendChild(byeTr);
+          `;
+          byeBox.style.display = "flex";
+        } else {
+          byeBox.innerHTML = "";
+          byeBox.style.display = "none";
+        }
       }
 
       cousinRows.forEach(c => c.score = gradePicks(c.picks, activeWeek));
