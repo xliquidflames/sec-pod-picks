@@ -3274,19 +3274,29 @@
             "https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"
           ]);
         }
-        let polls = (infoCache.rankings.rankings || []).filter(r => r.ranks && r.ranks.length);
+        const allPolls = (infoCache.rankings.rankings || []).filter(r => r.ranks && r.ranks.length);
+
+        // Only three tabs, always in this order: AP, Coaches Poll, ESPN.
+        // ESPN's feed also carries FCS / Division II / Division III coaches
+        // polls (and the playoff committee list late in the season) — those
+        // are dropped. Each slot takes the first poll that matches it; a slot
+        // with no match just doesn't get a tab.
+        const pollLabel = p => `${p.name || ""} ${p.shortName || ""}`;
+        const lowerDivision = /fcs|division|div\.|\bd-?i{2,3}\b|naia/i;
+        const pollSlots = [
+          { tab: "AP", match: p => p.type === "ap" || /\bAP\b/.test(pollLabel(p)) },
+          { tab: "Coaches Poll", match: p => /coaches/i.test(pollLabel(p)) && !lowerDivision.test(pollLabel(p)) },
+          { tab: "ESPN", match: p => /espn/i.test(pollLabel(p)) }
+        ];
+        const polls = [];
+        pollSlots.forEach(slot => {
+          const hit = allPolls.find(p => slot.match(p) && !polls.some(x => x.poll === p));
+          if (hit) polls.push({ poll: hit, tab: slot.tab });
+        });
         if (polls.length === 0) throw new Error("empty");
 
-        // The playoff committee's list, once it exists, is the one that
-        // matters — put it first and open on it.
-        polls.sort((a, b) => {
-          const aCfp = /playoff|cfp/i.test(a.name || a.shortName || "") ? 0 : 1;
-          const bCfp = /playoff|cfp/i.test(b.name || b.shortName || "") ? 0 : 1;
-          return aCfp - bCfp;
-        });
-
         const renderPoll = (idx) => {
-          const poll = polls[idx];
+          const poll = polls[idx].poll;
           tabs.querySelectorAll(".info-tab").forEach((t, i) => t.classList.toggle("active", i === idx));
           body.innerHTML = poll.ranks.map(r => {
             const t = r.team || {};
@@ -3309,7 +3319,7 @@
         };
 
         tabs.innerHTML = polls.map((p, i) =>
-          `<button type="button" class="info-tab" onclick="window.__renderPoll(${i})">${p.shortName || p.name}</button>`
+          `<button type="button" class="info-tab" onclick="window.__renderPoll(${i})">${p.tab}</button>`
         ).join("");
         tabs.style.display = "flex";
         window.__renderPoll = renderPoll;
