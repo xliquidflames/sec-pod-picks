@@ -3286,13 +3286,29 @@
         const pollSlots = [
           { tab: "AP", match: p => p.type === "ap" || /\bAP\b/.test(pollLabel(p)) },
           { tab: "Coaches Poll", match: p => /coaches/i.test(pollLabel(p)) && !lowerDivision.test(pollLabel(p)) },
-          { tab: "ESPN", match: p => /espn/i.test(pollLabel(p)) }
+          { tab: "ESPN", match: p => /espn|fpi|power|computer/i.test(pollLabel(p)) }
         ];
         const polls = [];
         pollSlots.forEach(slot => {
           const hit = allPolls.find(p => slot.match(p) && !polls.some(x => x.poll === p));
           if (hit) polls.push({ poll: hit, tab: slot.tab });
         });
+
+        // ESPN doesn't always put its own name on its computer ranking, so if
+        // nothing matched above, the ESPN tab takes whatever top-division list
+        // is left over once AP, the Coaches Poll, the lower divisions and the
+        // playoff committee are set aside.
+        if (!polls.some(x => x.tab === "ESPN")) {
+          const leftover = allPolls.find(p =>
+            !polls.some(x => x.poll === p) &&
+            !lowerDivision.test(pollLabel(p)) &&
+            !/coaches|playoff|cfp|stats perform/i.test(pollLabel(p)));
+          if (leftover) polls.push({ poll: leftover, tab: "ESPN" });
+        }
+
+        // Every list ESPN sent, by name — open the browser console to see
+        // exactly what's in the feed if a tab ever goes missing again.
+        console.log("Rankings feed:", allPolls.map(p => `${p.name} | ${p.shortName} | ${p.type}`));
         if (polls.length === 0) throw new Error("empty");
 
         const renderPoll = (idx) => {
