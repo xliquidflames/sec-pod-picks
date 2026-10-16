@@ -605,6 +605,140 @@
       object-fit: contain;
     }
 
+    /* Only logos/names carrying a data-team-id open the schedule popup —
+       the Per Team view builds its own logos without it, on purpose, since
+       those sit inside a header that already toggles on tap. */
+    [data-team-id] {
+      cursor: pointer;
+    }
+
+    .team-sched-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .team-sched-modal {
+      background: var(--bg-card);
+      border: 1px solid var(--accent-gold);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 420px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .team-sched-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .team-sched-header img {
+      height: 36px;
+      width: 36px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .team-sched-title {
+      flex: 1;
+      min-width: 0;
+      color: var(--accent-gold);
+      font-weight: 800;
+      font-size: 1.05rem;
+    }
+
+    .team-sched-title small {
+      display: block;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+
+    .team-sched-close {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .team-sched-body {
+      overflow-y: auto;
+      padding: 0.4rem 1rem 0.9rem;
+    }
+
+    .team-sched-row {
+      display: grid;
+      grid-template-columns: 4.2rem 1fr auto;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.82rem;
+    }
+
+    .team-sched-row:last-child {
+      border-bottom: none;
+    }
+
+    .team-sched-date {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .team-sched-opp {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-width: 0;
+      color: var(--text-main);
+      font-weight: 700;
+    }
+
+    .team-sched-opp img {
+      height: 22px;
+      width: 22px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .team-sched-opp span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .team-sched-result {
+      font-weight: 800;
+      white-space: nowrap;
+      color: var(--text-muted);
+    }
+
+    .team-sched-result.win { color: var(--success); }
+    .team-sched-result.loss { color: var(--danger); }
+
+    .team-sched-note {
+      color: var(--text-muted);
+      text-align: center;
+      padding: 1.5rem 0;
+      font-size: 0.85rem;
+    }
+
     .matchup-at-symbol {
       font-size: 0.65rem;
       color: var(--text-muted);
@@ -1103,7 +1237,7 @@
           <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Here is this week's schedule, lines, scores, and Mike, Shane, and Steven's picks. Highlighted rows are games currently in progress.</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Here is this week's schedule, lines, scores, and Mike, Shane, and Steven's picks. Highlighted rows are games currently in progress. <strong style="color: var(--accent-gold);">Click a team to show their schedule.</strong></p>
         <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.4rem;">
           <table class="host-grid-table">
             <thead>
@@ -1191,6 +1325,17 @@
         </div>
 
         <div id="perTeamList" style="display: none;"></div>
+      </div>
+    </div>
+
+    <div id="teamSchedOverlay" class="team-sched-overlay" onclick="if (event.target === this) closeTeamSchedule()">
+      <div class="team-sched-modal" role="dialog" aria-modal="true" aria-labelledby="teamSchedTitle">
+        <div class="team-sched-header">
+          <img id="teamSchedLogo" src="" alt="" style="display:none;" />
+          <div class="team-sched-title" id="teamSchedTitle"></div>
+          <button type="button" class="team-sched-close" onclick="closeTeamSchedule()" aria-label="Close">&times;</button>
+        </div>
+        <div class="team-sched-body" id="teamSchedBody"></div>
       </div>
     </div>
 
@@ -1513,12 +1658,12 @@
           const homeIsSec = isSecTeam(homeName);
 
           const awayLogoHtml = awayLogo
-            ? `<img src="${awayLogo}" alt="${awayName}" title="${awayName}" class="matchup-team-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${awayName}</span>`
-            : `<span class="matchup-team-fallback ${awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${awayName}</span>`;
+            ? `<img src="${awayLogo}" alt="${awayName}" title="${awayName}" class="matchup-team-logo" data-team-id="${away.team.id || ''}" data-team-name="${awayName}" data-team-logo="${awayLogo}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" data-team-id="${away.team.id || ''}" data-team-name="${awayName}" data-team-logo="${awayLogo}" style="display:none;">${awayName}</span>`
+            : `<span class="matchup-team-fallback ${awayIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" data-team-id="${away.team.id || ''}" data-team-name="${awayName}" data-team-logo="">${awayName}</span>`;
 
           const homeLogoHtml = homeLogo
-            ? `<img src="${homeLogo}" alt="${homeName}" title="${homeName}" class="matchup-team-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" style="display:none;">${homeName}</span>`
-            : `<span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}">${homeName}</span>`;
+            ? `<img src="${homeLogo}" alt="${homeName}" title="${homeName}" class="matchup-team-logo" data-team-id="${home.team.id || ''}" data-team-name="${homeName}" data-team-logo="${homeLogo}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" data-team-id="${home.team.id || ''}" data-team-name="${homeName}" data-team-logo="${homeLogo}" style="display:none;">${homeName}</span>`
+            : `<span class="matchup-team-fallback ${homeIsSec ? 'matchup-sec-team' : 'matchup-other-team'}" data-team-id="${home.team.id || ''}" data-team-name="${homeName}" data-team-logo="">${homeName}</span>`;
 
           let matchupLabel = `<span class="matchup-logo-row">${awayLogoHtml}<span class="matchup-at-symbol">@</span>${homeLogoHtml}</span>`;
 
@@ -2063,7 +2208,7 @@
 
       const namesGrid = (members, gridId) => {
         const sorted = [...members].sort((a, b) => a.user_name.localeCompare(b.user_name));
-        return `<div class="tier-names-grid" id="${gridId}">${sorted.map(m => `<span>${m.user_name}</span>`).join("")}</div>`;
+        return `<div class="tier-names-grid open" id="${gridId}">${sorted.map(m => `<span>${m.user_name}</span>`).join("")}</div>`;
       };
 
       top5Container.innerHTML = podiumTiers.map((tier, idx) => {
@@ -2080,7 +2225,7 @@
               </div>
               <div style="display: flex; align-items: center;">
                 <span style="font-weight: 800; color: var(--accent-gold);">${rep.correct}-${rep.incorrect}</span>
-                ${isTie ? `<span class="tier-toggle-arrow">+</span>` : ''}
+                ${isTie ? `<span class="tier-toggle-arrow">&minus;</span>` : ''}
               </div>
             </div>
             ${isTie ? namesGrid(tier.members, gridId) : ''}
@@ -2670,7 +2815,9 @@
     function toggleTierExpand(gridId) {
       const grid = document.getElementById(gridId);
       if (!grid) return;
-      grid.classList.toggle("open");
+      const isOpen = grid.classList.toggle("open");
+      const arrow = grid.parentElement.querySelector(".tier-toggle-arrow");
+      if (arrow) arrow.innerHTML = isOpen ? "&minus;" : "+";
     }
 
     function toggleAllCards(expand) {
@@ -2825,6 +2972,114 @@
         cousinControls.style.display = "flex";
         teamControls.style.display = "none";
         if (searchWrapper) searchWrapper.style.display = "block";
+      }
+    }
+
+    // --- Team schedule popup -------------------------------------------
+    // Tapping any logo (or its text fallback) carrying a data-team-id opens
+    // that team's full season schedule from ESPN's team-schedule endpoint.
+    // Cached per team so reopening is instant. Display only — nothing here
+    // touches picks, keys or grading.
+    const teamScheduleCache = {};
+
+    document.addEventListener("click", (e) => {
+      const el = e.target.closest("[data-team-id]");
+      if (!el || !el.dataset.teamId) return;
+      openTeamSchedule(el.dataset.teamId, el.dataset.teamName, el.dataset.teamLogo);
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeTeamSchedule();
+    });
+
+    function closeTeamSchedule() {
+      document.getElementById("teamSchedOverlay").style.display = "none";
+    }
+
+    function schedScore(s) {
+      if (s === null || s === undefined) return "";
+      if (typeof s === "object") return String(s.displayValue !== undefined ? s.displayValue : (s.value !== undefined ? s.value : ""));
+      return String(s);
+    }
+
+    async function openTeamSchedule(teamId, teamName, teamLogo) {
+      const overlay = document.getElementById("teamSchedOverlay");
+      const body = document.getElementById("teamSchedBody");
+      const title = document.getElementById("teamSchedTitle");
+      const logo = document.getElementById("teamSchedLogo");
+
+      title.textContent = teamName || "Team Schedule";
+      if (teamLogo) {
+        logo.src = teamLogo;
+        logo.style.display = "block";
+        logo.onerror = () => { logo.style.display = "none"; };
+      } else {
+        logo.style.display = "none";
+      }
+      body.innerHTML = `<div class="team-sched-note">Loading schedule...</div>`;
+      overlay.style.display = "flex";
+
+      try {
+        if (!teamScheduleCache[teamId]) {
+          const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${teamId}/schedule?season=2026`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("bad response");
+          teamScheduleCache[teamId] = await res.json();
+        }
+        const data = teamScheduleCache[teamId];
+        const events = (data.events || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        if (data.team && data.team.recordSummary) {
+          title.innerHTML = `${teamName}<small>${data.team.recordSummary}${data.team.standingSummary ? " | " + data.team.standingSummary : ""}</small>`;
+        }
+
+        if (events.length === 0) {
+          body.innerHTML = `<div class="team-sched-note">No schedule available.</div>`;
+          return;
+        }
+
+        body.innerHTML = events.map(ev => {
+          const comp = (ev.competitions || [])[0] || {};
+          const competitors = comp.competitors || [];
+          const me = competitors.find(c => String((c.team && c.team.id) || c.id) === String(teamId));
+          const opp = competitors.find(c => c !== me);
+          const oppTeam = (opp && opp.team) || {};
+          const oppName = oppTeam.shortDisplayName || oppTeam.displayName || oppTeam.name || "TBD";
+          const oppLogo = oppTeam.logo || (oppTeam.logos && oppTeam.logos[0] && oppTeam.logos[0].href) || "";
+          const prefix = comp.neutralSite ? "vs" : (me && me.homeAway === "away" ? "@" : "vs");
+
+          const d = new Date(ev.date);
+          const dateText = isNaN(d.getTime()) ? "TBD" : d.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" });
+
+          const statusType = (comp.status && comp.status.type) || {};
+          const done = statusType.completed === true;
+          let resultHtml;
+          if (done && me && opp) {
+            const myScore = schedScore(me.score);
+            const oppScore = schedScore(opp.score);
+            const won = me.winner === true;
+            const lost = opp.winner === true;
+            resultHtml = `<span class="team-sched-result ${won ? "win" : (lost ? "loss" : "")}">${won ? "W" : (lost ? "L" : "T")} ${myScore}-${oppScore}</span>`;
+          } else if (statusType.state === "in") {
+            resultHtml = `<span class="team-sched-result" style="color: var(--accent-gold);">Live</span>`;
+          } else {
+            resultHtml = `<span class="team-sched-result">${isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>`;
+          }
+
+          return `
+            <div class="team-sched-row">
+              <span class="team-sched-date">${dateText}</span>
+              <span class="team-sched-opp">
+                ${oppLogo ? `<img src="${oppLogo}" alt="" onerror="this.style.display='none'">` : ""}
+                <span>${prefix} ${oppName}</span>
+              </span>
+              ${resultHtml}
+            </div>
+          `;
+        }).join("");
+      } catch (err) {
+        console.error("Team schedule error:", err);
+        body.innerHTML = `<div class="team-sched-note">Couldn't load this schedule right now.</div>`;
       }
     }
 
