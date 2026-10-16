@@ -616,18 +616,15 @@
 
     .matchup-rank {
       position: absolute;
-      top: -5px;
-      left: -5px;
-      min-width: 15px;
-      height: 15px;
-      padding: 0 3px;
-      border-radius: 8px;
-      background: var(--accent-gold);
-      color: #0a1120;
-      font-size: 0.58rem;
-      font-weight: 900;
-      line-height: 15px;
-      text-align: center;
+      bottom: -3px;
+      right: -4px;
+      color: #ffffff;
+      font-size: 0.55rem;
+      font-weight: 800;
+      line-height: 1;
+      white-space: nowrap;
+      /* Thin dark outline so the white stays readable over light logos. */
+      text-shadow: 0 0 2px #0a1120, 0 0 2px #0a1120, 0 0 3px #0a1120;
       pointer-events: none;
     }
 
@@ -1802,7 +1799,7 @@
           // badge on the logo's corner. It goes AFTER the logo and its text
           // fallback, never between them, since the logo's onerror handler
           // reveals its next sibling.
-          const rankSpan = (r) => (r >= 1 && r <= 25) ? `<span class="matchup-rank">${r}</span>` : '';
+          const rankSpan = (r) => (r >= 1 && r <= 25) ? `<span class="matchup-rank">#${r}</span>` : '';
           const awayRankHtml = rankSpan(away.curatedRank && away.curatedRank.current);
           const homeRankHtml = rankSpan(home.curatedRank && home.curatedRank.current);
 
