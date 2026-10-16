@@ -825,6 +825,7 @@
     }
 
     .team-sched-body {
+      position: relative;
       overflow-y: auto;
       padding: 0.4rem 1rem 0.9rem;
     }
@@ -841,6 +842,15 @@
 
     .team-sched-row:last-child {
       border-bottom: none;
+    }
+
+    /* The week the site is currently showing. */
+    .team-sched-row.current-week {
+      background: rgba(251, 191, 36, 0.14);
+      border-left: 3px solid var(--accent-gold);
+      margin: 0 -1rem;
+      padding-left: calc(1rem - 3px);
+      padding-right: 1rem;
     }
 
     .team-sched-date {
@@ -3416,6 +3426,30 @@
       return String(s);
     }
 
+    // One entry per week 1-14 with the earliest/latest kickoff and the most
+    // common game day, built from the scoreboard data the page already
+    // loaded. Used to place a game (or a bye) in the right week by date.
+    function getWeekWindows() {
+      const out = [];
+      for (let w = 1; w <= 14; w++) {
+        const entry = (window.espnRawCache || {})[w];
+        const events = (entry && entry.data && entry.data.events) || [];
+        const times = events.map(ev => new Date((ev.competitions && ev.competitions[0] && ev.competitions[0].date) || ev.date))
+          .filter(d => !isNaN(d.getTime()))
+          .sort((a, b) => a - b);
+        if (times.length === 0) continue;
+
+        const counts = {};
+        times.forEach(d => {
+          const key = d.toDateString();
+          counts[key] = (counts[key] || 0) + 1;
+        });
+        const modalKey = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+        out.push({ week: w, min: times[0], max: times[times.length - 1], modal: new Date(modalKey) });
+      }
+      return out;
+    }
+
     async function openTeamSchedule(teamId, teamName, teamLogo) {
       const overlay = document.getElementById("teamSchedOverlay");
       const body = document.getElementById("teamSchedBody");
@@ -3452,7 +3486,17 @@
           return;
         }
 
-        body.innerHTML = events.map(ev => {
+        const windows = getWeekWindows();
+        const DAY = 24 * 60 * 60 * 1000;
+        const weekOfDate = (d) => {
+          const hit = windows.find(w => d >= new Date(w.min.getTime() - 2 * DAY) && d <= new Date(w.max.getTime() + 2 * DAY));
+          return hit ? hit.week : null;
+        };
+
+        // Each game gets a week number — ESPN's own when it sends one,
+        // otherwise worked out from the date against this season's
+        // week-by-week scoreboard dates already loaded on the page.
+        const items = events.map(ev => {
           const comp = (ev.competitions || [])[0] || {};
           const competitors = comp.competitors || [];
           const me = competitors.find(c => String((c.team && c.team.id) || c.id) === String(teamId));
@@ -3464,6 +3508,7 @@
 
           const d = new Date(ev.date);
           const dateText = isNaN(d.getTime()) ? "TBD" : d.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" });
+          const week = (ev.week && ev.week.number) ? ev.week.number : (isNaN(d.getTime()) ? null : weekOfDate(d));
 
           const statusType = (comp.status && comp.status.type) || {};
           const done = statusType.completed === true;
@@ -3480,17 +3525,53 @@
             resultHtml = `<span class="team-sched-result">${isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>`;
           }
 
-          return `
-            <div class="team-sched-row">
+          return {
+            week: week,
+            sortTime: isNaN(d.getTime()) ? Infinity : d.getTime(),
+            html: `
               <span class="team-sched-date">${dateText}</span>
               <span class="team-sched-opp">
                 ${oppLogo ? `<img src="${oppLogo}" alt="" onerror="this.style.display='none'">` : ""}
                 <span>${prefix} ${oppName}</span>
               </span>
-              ${resultHtml}
-            </div>
-          `;
-        }).join("");
+              ${resultHtml}`
+          };
+        });
+
+        // Bye weeks: any week missing between this team's first and last
+        // game in weeks 1-14. Leading and trailing gaps aren't byes (the
+        // season just hadn't started for them, or is over).
+        const playedWeeks = items.map(it => it.week).filter(w => w !== null && w >= 1 && w <= 14);
+        if (playedWeeks.length > 0) {
+          const first = Math.min(...playedWeeks);
+          const last = Math.max(...playedWeeks);
+          const have = new Set(playedWeeks);
+          for (let w = first; w <= last; w++) {
+            if (have.has(w)) continue;
+            const win = windows.find(x => x.week === w);
+            if (!win) continue;
+            items.push({
+              week: w,
+              sortTime: win.modal.getTime(),
+              html: `
+                <span class="team-sched-date">${win.modal.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" })}</span>
+                <span class="team-sched-opp"><span style="font-style: italic;">Bye Week</span></span>
+                <span class="team-sched-result"></span>`
+            });
+          }
+        }
+
+        items.sort((a, b) => a.sortTime - b.sortTime);
+
+        body.innerHTML = items.map(it => `
+          <div class="team-sched-row ${it.week !== null && it.week === activeWeek ? "current-week" : ""}">${it.html}</div>
+        `).join("");
+
+        // Open scrolled to the current week so it's on screen right away.
+        const currentRow = body.querySelector(".current-week");
+        if (currentRow) {
+          body.scrollTop = Math.max(0, currentRow.offsetTop - body.clientHeight / 2 + currentRow.offsetHeight / 2);
+        }
       } catch (err) {
         console.error("Team schedule error:", err);
         body.innerHTML = `<div class="team-sched-note">Couldn't load this schedule right now.</div>`;
