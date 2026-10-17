@@ -2893,9 +2893,20 @@
         const sS = shaneScores[g.matchupKey] || shaneScores[g.id] || shaneScores[String(g.id)];
         const sSt = stevenScores[g.matchupKey] || stevenScores[g.id] || stevenScores[String(g.id)];
 
-        const scoreTextM = (sM && sM.teamA !== undefined && sM.teamB !== undefined && sM.teamA !== "") ? `${sM.teamA}-${sM.teamB}` : "";
-        const scoreTextS = (sS && sS.teamA !== undefined && sS.teamB !== undefined && sS.teamA !== "") ? `${sS.teamA}-${sS.teamB}` : "";
-        const scoreTextSt = (sSt && sSt.teamA !== undefined && sSt.teamB !== undefined && sSt.teamA !== "") ? `${sSt.teamA}-${sSt.teamB}` : "";
+        // Predicted scores are stored as teamA/teamB, and teamA is the SEC
+        // home team when there is one, so printing teamA-teamB put the
+        // home score first even though the matchup reads "Away @ Home".
+        // Florida @ Texas with Mike on Florida 35-24 showed as "24-35".
+        // The picked team's score now always goes first, the usual way a
+        // predicted score is written next to a pick: "Florida 35-24".
+        const hostScoreText = (s, pick) => {
+          if (!s || s.teamA === undefined || s.teamB === undefined || s.teamA === "") return "";
+          const pickedB = pick && normalizeTeam(pick) === normalizeTeam(g.teamB);
+          return pickedB ? `${s.teamB}-${s.teamA}` : `${s.teamA}-${s.teamB}`;
+        };
+        const scoreTextM = hostScoreText(sM, pM);
+        const scoreTextS = hostScoreText(sS, pS);
+        const scoreTextSt = hostScoreText(sSt, pSt);
 
         const isLockM = isLockActiveThisWeek && isLockMatch(mikePicks, g);
         const isLockS = isLockActiveThisWeek && isLockMatch(shanePicks, g);
