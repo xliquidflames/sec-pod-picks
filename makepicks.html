@@ -271,8 +271,35 @@
 
     .game-final-message {
       font-size: 0.82rem;
-      color: var(--text-main);
+      font-weight: 800;
+      color: var(--accent-gold);
       line-height: 1.4;
+      text-align: center;
+    }
+
+    /* Locked game: just the two logos, "Away @ Home". */
+    .final-logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      margin: 0.4rem 0 0.7rem;
+    }
+
+    .final-logo-row .btn-pick-logo-wrap {
+      width: 44px;
+      margin: 0;
+    }
+
+    .final-logo-row .btn-pick-logo {
+      height: 44px;
+      width: 44px;
+    }
+
+    .final-team-fallback {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: var(--text-main);
     }
 
     .game-header-row {
@@ -1369,9 +1396,22 @@
 
         if (g.isFinal) {
           card.className = "game-card is-final-locked";
+          // Same "Away @ Home" order as the open games; the name stands in
+          // if ESPN sent no logo.
+          const aIsHome = normalizeTeam(g.teamA) === normalizeTeam(g.homeName);
+          const finalLogo = (name, logo, rank) => logo
+            ? buildLogoHtml(logo, rank)
+            : `<span class="final-team-fallback">${shortenPickDisplay(name)}</span>`;
+          const logoA = finalLogo(g.teamA, g.teamALogo, g.teamARank);
+          const logoB = finalLogo(g.teamB, g.teamBLogo, g.teamBRank);
           card.innerHTML = `
             <div class="game-header-row">
               <span class="game-title"><strong>Game ${g.id}</strong></span>
+            </div>
+            <div class="final-logo-row">
+              ${aIsHome ? logoB : logoA}
+              <span class="pick-grid-at">@</span>
+              ${aIsHome ? logoA : logoB}
             </div>
             <div class="game-final-message">This game is in progress or finished so picking it is locked.</div>
             ${g.playedDetail ? `<span class="game-detail">${g.playedDetail}</span>` : ""}
