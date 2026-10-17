@@ -2896,17 +2896,18 @@
         // Predicted scores are stored as teamA/teamB, and teamA is the SEC
         // home team when there is one, so printing teamA-teamB put the
         // home score first even though the matchup reads "Away @ Home".
-        // Florida @ Texas with Mike on Florida 35-24 showed as "24-35".
-        // The picked team's score now always goes first, the usual way a
-        // predicted score is written next to a pick: "Florida 35-24".
-        const hostScoreText = (s, pick) => {
+        // Scores now print in the matchup's own order — away score first,
+        // home score second — same as the live score line under the logos.
+        // Florida @ Texas, Mike on Florida 35-24: "35-24".
+        // Miss State @ LSU, Mike on LSU 33-17: "17-33".
+        const teamAIsAway = normalizeTeam(g.teamA) === normalizeTeam(g.awayName);
+        const hostScoreText = (s) => {
           if (!s || s.teamA === undefined || s.teamB === undefined || s.teamA === "") return "";
-          const pickedB = pick && normalizeTeam(pick) === normalizeTeam(g.teamB);
-          return pickedB ? `${s.teamB}-${s.teamA}` : `${s.teamA}-${s.teamB}`;
+          return teamAIsAway ? `${s.teamA}-${s.teamB}` : `${s.teamB}-${s.teamA}`;
         };
-        const scoreTextM = hostScoreText(sM, pM);
-        const scoreTextS = hostScoreText(sS, pS);
-        const scoreTextSt = hostScoreText(sSt, pSt);
+        const scoreTextM = hostScoreText(sM);
+        const scoreTextS = hostScoreText(sS);
+        const scoreTextSt = hostScoreText(sSt);
 
         const isLockM = isLockActiveThisWeek && isLockMatch(mikePicks, g);
         const isLockS = isLockActiveThisWeek && isLockMatch(shanePicks, g);
