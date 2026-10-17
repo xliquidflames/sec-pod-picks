@@ -19,6 +19,7 @@
       --border-color: #22324f;
       --success: #4ade80;
       --danger: #f87171;
+      --bg-card-alt: #162032;
     }
 
     * {
@@ -449,6 +450,371 @@
       font-size: 0.95rem;
       font-weight: 700;
     }
+    .hub-action-row {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: 1.6rem 1fr auto;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.82rem;
+    }
+
+    .info-row:last-child { border-bottom: none; }
+
+    .info-row.standings-row {
+      grid-template-columns: 1.6rem 1fr 3.2rem 3.4rem;
+    }
+
+    .info-row.head {
+      color: var(--accent-gold);
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .info-rank {
+      color: var(--text-muted);
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .info-team {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-width: 0;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .info-team.sec { color: var(--accent-gold); }
+
+    .info-team img {
+      height: 22px;
+      width: 22px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .info-team span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .info-meta {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    /* Top 25 popup: three ranking columns side by side. */
+    .top25-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      font-size: 0.74rem;
+    }
+
+    .top25-table th {
+      position: sticky;
+      top: 0;
+      background: var(--bg-card);
+      color: var(--accent-gold);
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 0.5rem 0.25rem;
+      border-bottom: 1px solid var(--border-color);
+      z-index: 1;
+    }
+
+    .top25-table td {
+      padding: 0.4rem 0.25rem;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
+
+    .top25-table tr:last-child td { border-bottom: none; }
+
+    .top25-rank {
+      width: 1.6rem;
+      text-align: center !important;
+      color: var(--text-muted);
+      font-weight: 800;
+    }
+
+    .top25-team {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      min-width: 0;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .top25-team.sec { color: var(--accent-gold); }
+
+    .top25-team img {
+      height: 18px;
+      width: 18px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .top25-team span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .top25-missing {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .info-move-up { color: var(--success); }
+    .info-move-down { color: var(--danger); }
+    .team-sched-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .team-sched-modal {
+      background: var(--bg-card);
+      border: 1px solid var(--accent-gold);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 420px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .team-sched-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .team-sched-header img {
+      height: 36px;
+      width: 36px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .team-sched-title {
+      flex: 1;
+      min-width: 0;
+      color: var(--accent-gold);
+      font-weight: 800;
+      font-size: 1.05rem;
+    }
+
+    .team-sched-title small {
+      display: block;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+
+    .team-sched-close {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .team-sched-body {
+      position: relative;
+      overflow-y: auto;
+      padding: 0.4rem 1rem 0.9rem;
+    }
+
+    .team-sched-row {
+      display: grid;
+      grid-template-columns: 4.2rem 1fr auto;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.82rem;
+    }
+
+    .team-sched-row:last-child {
+      border-bottom: none;
+    }
+
+    /* The week the site is currently showing. */
+    .team-sched-row.current-week {
+      background: rgba(251, 191, 36, 0.14);
+      border-left: 3px solid var(--accent-gold);
+      margin: 0 -1rem;
+      padding-left: calc(1rem - 3px);
+      padding-right: 1rem;
+    }
+
+    .team-sched-date {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .team-sched-opp {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-width: 0;
+      color: var(--text-main);
+      font-weight: 700;
+    }
+
+    .team-sched-opp img {
+      height: 22px;
+      width: 22px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .team-sched-opp span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .team-sched-result {
+      font-weight: 800;
+      white-space: nowrap;
+      color: var(--text-muted);
+    }
+
+    .team-sched-result.win { color: var(--success); }
+    .team-sched-result.loss { color: var(--danger); }
+
+    .team-sched-note {
+      color: var(--text-muted);
+      text-align: center;
+      padding: 1.5rem 0;
+      font-size: 0.85rem;
+    }
+    .btn-ctrl {
+      background: var(--bg-card-alt);
+      color: var(--text-main);
+      border: 2px solid var(--accent-gold);
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.15s ease;
+    }
+
+    .btn-ctrl:hover {
+      background: #22314d;
+      color: var(--text-main);
+    }
+
+    /* Rank on the corner of a pick-button logo, same as the leaderboard. */
+    .btn-pick-logo-wrap {
+      position: relative;
+      display: block;
+      width: 32px;
+      margin: 0 auto 0.3rem;
+    }
+
+    .btn-pick-logo-wrap .btn-pick-logo {
+      margin: 0;
+    }
+
+    .matchup-rank {
+      position: absolute;
+      bottom: -3px;
+      right: -4px;
+      color: #ffffff;
+      font-size: 0.55rem;
+      font-weight: 800;
+      line-height: 1;
+      white-space: nowrap;
+      text-shadow: 0 0 2px #0a1120, 0 0 2px #0a1120, 0 0 3px #0a1120;
+      pointer-events: none;
+    }
+
+    .hub-action-row {
+      justify-content: center;
+    }
+
+    /* Team picker inside the Schedules popup. */
+    .sched-pick-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 0.5rem;
+      padding: 0.4rem 0;
+    }
+
+    .sched-pick-team {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      background: #0e1728;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.55rem 0.3rem;
+      color: var(--text-main);
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .sched-pick-team:hover {
+      border-color: var(--accent-gold);
+    }
+
+    .sched-pick-team.sec {
+      color: var(--accent-gold);
+    }
+
+    .sched-pick-team img {
+      height: 30px;
+      width: 30px;
+      object-fit: contain;
+    }
+
+    .sched-section-label {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin: 0.6rem 0 0.1rem;
+    }
   </style>
 </head>
 <body>
@@ -464,6 +830,12 @@
       <div class="pick-format-text">
         <span class="pick-format-highlight">Straight-Up Picks Only:</span> Select the outright winner for each game (not against the spread). Betting lines are shown for reference only.
       </div>
+    </div>
+
+    <div class="hub-action-row">
+      <button type="button" class="btn-ctrl" onclick="openSchedulePicker()">Schedules</button>
+      <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
+      <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
     </div>
 
     <div class="card-panel">
@@ -495,6 +867,28 @@
         <button type="button" class="btn-modal-primary" id="nameMatchModalYes">Yes, that's me</button>
         <button type="button" class="btn-modal-secondary" id="nameMatchModalNo">No, use what I typed</button>
       </div>
+    </div>
+  </div>
+
+  <div id="infoOverlay" class="team-sched-overlay" onclick="if (event.target === this) closeInfoModal()">
+    <div class="team-sched-modal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+      <div class="team-sched-header">
+        <div class="team-sched-title" id="infoTitle"></div>
+        <button type="button" class="team-sched-close" onclick="closeInfoModal()" aria-label="Close">&times;</button>
+      </div>
+      <div class="info-tabs" id="infoTabs" style="display:none;"></div>
+      <div class="team-sched-body" id="infoBody"></div>
+    </div>
+  </div>
+
+  <div id="teamSchedOverlay" class="team-sched-overlay" onclick="if (event.target === this) closeTeamSchedule()">
+    <div class="team-sched-modal" role="dialog" aria-modal="true" aria-labelledby="teamSchedTitle">
+      <div class="team-sched-header">
+        <img id="teamSchedLogo" src="" alt="" style="display:none;" />
+        <div class="team-sched-title" id="teamSchedTitle"></div>
+        <button type="button" class="team-sched-close" onclick="closeTeamSchedule()" aria-label="Close">&times;</button>
+      </div>
+      <div class="team-sched-body" id="teamSchedBody"></div>
     </div>
   </div>
 
@@ -612,10 +1006,9 @@
       return t.logo || (t.logos && t.logos[0] && t.logos[0].href) || "";
     }
 
-    function buildLogoHtml(url, name) {
-      return url
-        ? `<img src="${url}" alt="" class="btn-pick-logo" onerror="this.style.display='none';">`
-        : "";
+    function buildLogoHtml(url, rank) {
+      if (!url) return "";
+      return `<span class="btn-pick-logo-wrap"><img src="${url}" alt="" class="btn-pick-logo" onerror="this.style.display='none';">${rank ? `<span class="matchup-rank">#${rank}</span>` : ""}</span>`;
     }
 
     function buildRecordText(competitor) {
@@ -661,6 +1054,9 @@
           // ever cause this file's matchup keys to disagree with index.html
           // or hostpicks.html.
           let teamA, teamB, teamARecord, teamBRecord, teamALogo, teamBLogo;
+          let teamARank, teamBRank, teamAId, teamBId;
+          const rankOf = c => { const r = c && c.curatedRank && parseInt(c.curatedRank.current, 10); return (r >= 1 && r <= 25) ? r : null; };
+          const idOf = c => (c && c.team && c.team.id) ? String(c.team.id) : null;
           if (isSecTeam(homeName)) {
             teamA = homeName;
             teamB = awayName;
@@ -668,6 +1064,8 @@
             teamBRecord = buildRecordText(away);
             teamALogo = getTeamLogo(home);
             teamBLogo = getTeamLogo(away);
+            teamARank = rankOf(home); teamBRank = rankOf(away);
+            teamAId = idOf(home); teamBId = idOf(away);
           } else {
             teamA = awayName;
             teamB = homeName;
@@ -675,6 +1073,8 @@
             teamBRecord = buildRecordText(home);
             teamALogo = getTeamLogo(away);
             teamBLogo = getTeamLogo(home);
+            teamARank = rankOf(away); teamBRank = rankOf(home);
+            teamAId = idOf(away); teamBId = idOf(home);
           }
 
           const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "Line: TBD";
@@ -739,6 +1139,12 @@
             teamBRecord: teamBRecord,
             teamALogo: teamALogo,
             teamBLogo: teamBLogo,
+            teamARank: teamARank,
+            teamBRank: teamBRank,
+            teamAId: teamAId,
+            teamBId: teamBId,
+            awayName: awayName,
+            homeName: homeName,
             kickoff: kickoff,
             matchupLabel: matchupLabel,
             detail: `${time} | ${odds} | ${venue}`,
@@ -781,6 +1187,12 @@
           teamBRecord: g.teamBRecord,
           teamALogo: g.teamALogo,
           teamBLogo: g.teamBLogo,
+          teamARank: g.teamARank,
+          teamBRank: g.teamBRank,
+          teamAId: g.teamAId,
+          teamBId: g.teamBId,
+          awayName: g.awayName,
+          homeName: g.homeName,
           matchupLabel: g.matchupLabel,
           detail: g.detail,
           playedDetail: g.playedDetail,
@@ -969,6 +1381,12 @@
           `;
         } else {
           card.className = "game-card";
+          // Shown in the real "Away @ Home" order. teamA/teamB (SEC team
+          // first) are untouched for keys, picks and element ids — only
+          // the on-screen left/right order follows who is actually home.
+          const teamAIsHome = normalizeTeam(g.teamA) === normalizeTeam(g.homeName);
+          const btnAHtml = `<button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${g.teamA}" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${buildLogoHtml(g.teamALogo, g.teamARank)}<span class="btn-pick-name">${shortenPickDisplay(g.teamA)}</span>${g.teamARecord ? `<span class="btn-pick-record">${g.teamARecord}</span>` : ""}</button>`;
+          const btnBHtml = `<button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${g.teamB}" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${buildLogoHtml(g.teamBLogo, g.teamBRank)}<span class="btn-pick-name">${shortenPickDisplay(g.teamB)}</span>${g.teamBRecord ? `<span class="btn-pick-record">${g.teamBRecord}</span>` : ""}</button>`;
           card.innerHTML = `
             <div class="game-header-row">
               <span class="game-title"><strong>Game ${g.id}</strong></span>
@@ -977,9 +1395,9 @@
               ` : ""}
             </div>
             <div class="pick-grid">
-              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${g.teamA}" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${buildLogoHtml(g.teamALogo)}<span class="btn-pick-name">${shortenPickDisplay(g.teamA)}</span>${g.teamARecord ? `<span class="btn-pick-record">${g.teamARecord}</span>` : ""}</button>
+              ${teamAIsHome ? btnBHtml : btnAHtml}
               <span class="pick-grid-at">@</span>
-              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${g.teamB}" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${buildLogoHtml(g.teamBLogo)}<span class="btn-pick-name">${shortenPickDisplay(g.teamB)}</span>${g.teamBRecord ? `<span class="btn-pick-record">${g.teamBRecord}</span>` : ""}</button>
+              ${teamAIsHome ? btnAHtml : btnBHtml}
             </div>
             ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           `;
@@ -1160,6 +1578,447 @@
           submitBtn.textContent = "Submit Ballot";
         }
       }
+    }
+
+    // --- Top 25 and SEC standings popups -------------------------------
+    // Both read straight from ESPN and fail soft: if the data isn't there
+    // or isn't shaped as expected, the popup says so instead of breaking.
+    const infoCache = {};
+
+    function closeInfoModal() {
+      document.getElementById("infoOverlay").style.display = "none";
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeInfoModal();
+    });
+
+    function showInfoModal(title) {
+      document.getElementById("infoTitle").textContent = title;
+      const infoModal = document.querySelector("#infoOverlay .team-sched-modal");
+      if (infoModal) infoModal.style.maxWidth = "";
+      document.getElementById("infoTabs").style.display = "none";
+      document.getElementById("infoTabs").innerHTML = "";
+      document.getElementById("infoBody").innerHTML = `<div class="team-sched-note">Loading...</div>`;
+      document.getElementById("infoOverlay").style.display = "flex";
+    }
+
+    async function fetchFirstOk(urls) {
+      for (const url of urls) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return await res.json();
+        } catch (e) { /* try the next one */ }
+      }
+      throw new Error("no data");
+    }
+
+    function teamLogoFrom(t) {
+      if (!t) return "";
+      return t.logo || (t.logos && t.logos[0] && t.logos[0].href) || "";
+    }
+
+    function infoTeamHtml(name, logo, isSec) {
+      return `<span class="info-team ${isSec ? "sec" : ""}">${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}<span>${name}</span></span>`;
+    }
+
+    // Top 25 popup: one table, three columns side by side — AP, Coaches
+    // Poll, and ESPN's computer ranking (FPI). AP and Coaches come from the
+    // rankings feed; FPI isn't in that feed at all, it lives on ESPN's
+    // separate power-index endpoint, which is why it never showed up as a
+    // tab. Each source fails on its own: if one can't load, its column
+    // just says so and the other two still show.
+    async function openRankings() {
+      showInfoModal("Top 25");
+      const body = document.getElementById("infoBody");
+      const modal = document.querySelector("#infoOverlay .team-sched-modal");
+      if (modal) modal.style.maxWidth = "560px";
+
+      const loadPolls = async () => {
+        if (!infoCache.rankings) {
+          infoCache.rankings = await fetchFirstOk([
+            "https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"
+          ]);
+        }
+        return infoCache.rankings;
+      };
+      const loadFpi = async () => {
+        if (!infoCache.fpi) {
+          infoCache.fpi = await fetchFirstOk([
+            "https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=2026&limit=200",
+            "https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=2026"
+          ]);
+        }
+        return infoCache.fpi;
+      };
+
+      const [pollRes, fpiRes] = await Promise.allSettled([loadPolls(), loadFpi()]);
+
+      // Each column becomes a plain list of { name, logo } in rank order.
+      const teamName = t => t.location || t.nickname || t.shortDisplayName || t.name || t.displayName || "";
+      const fromPoll = (match) => {
+        if (pollRes.status !== "fulfilled") return null;
+        const polls = (pollRes.value.rankings || []).filter(r => r.ranks && r.ranks.length);
+        const label = p => `${p.name || ""} ${p.shortName || ""}`;
+        const poll = polls.find(p => match(p, label(p)));
+        if (!poll) return null;
+        return poll.ranks
+          .slice()
+          .sort((a, b) => a.current - b.current)
+          .slice(0, 25)
+          .map(r => ({ name: teamName(r.team || {}), logo: teamLogoFrom(r.team) }));
+      };
+
+      const lowerDivision = /fcs|division|div\.|\bd-?i{2,3}\b|naia/i;
+      const apList = fromPoll((p, l) => p.type === "ap" || /\bAP\b/.test(l));
+      const coachesList = fromPoll((p, l) => /coaches/i.test(l) && !lowerDivision.test(l));
+
+      let fpiList = null;
+      if (fpiRes.status === "fulfilled") {
+        // In each team's "fpi" category, values[1] is the FPI rank.
+        const ranked = (fpiRes.value.teams || []).map(entry => {
+          const cat = (entry.categories || []).find(c => c.name === "fpi");
+          const rank = cat && cat.values ? parseInt(cat.values[1], 10) : NaN;
+          return { rank, name: teamName(entry.team || {}), logo: teamLogoFrom(entry.team) };
+        }).filter(x => !isNaN(x.rank) && x.rank >= 1);
+        ranked.sort((a, b) => a.rank - b.rank);
+        if (ranked.length) fpiList = ranked.slice(0, 25);
+      } else {
+        console.error("FPI error:", fpiRes.reason);
+      }
+
+      if (!apList && !coachesList && !fpiList) {
+        body.innerHTML = `<div class="team-sched-note">Couldn't load the rankings right now.</div>`;
+        return;
+      }
+
+      const cell = (list, i) => {
+        if (!list) return i === 0 ? `<td class="top25-cell top25-missing">Unavailable</td>` : `<td class="top25-cell"></td>`;
+        const t = list[i];
+        if (!t) return `<td class="top25-cell"></td>`;
+        const sec = isSecTeam(t.name);
+        return `<td class="top25-cell">
+          <span class="top25-team ${sec ? "sec" : ""}">
+            ${t.logo ? `<img src="${t.logo}" alt="" onerror="this.style.display='none'">` : ""}
+            <span>${shortenPickDisplay(t.name)}</span>
+          </span>
+        </td>`;
+      };
+
+      let rowsHtml = "";
+      for (let i = 0; i < 25; i++) {
+        rowsHtml += `<tr>
+          <td class="top25-rank">${i + 1}</td>
+          ${cell(apList, i)}${cell(coachesList, i)}${cell(fpiList, i)}
+        </tr>`;
+      }
+
+      body.innerHTML = `
+        <table class="top25-table">
+          <thead>
+            <tr><th class="top25-rank"></th><th>AP</th><th>Coaches Poll</th><th>ESPN</th></tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>`;
+    }
+
+    // Walks the whole standings response for any group of team entries, so
+    // it doesn't depend on exactly how ESPN nests conferences or divisions.
+    function collectStandingsEntries(node, out) {
+      if (!node || typeof node !== "object") return;
+      if (node.standings && Array.isArray(node.standings.entries)) {
+        node.standings.entries.forEach(e => out.push(e));
+      }
+      Object.values(node).forEach(v => {
+        if (Array.isArray(v)) v.forEach(x => collectStandingsEntries(x, out));
+        else if (v && typeof v === "object") collectStandingsEntries(v, out);
+      });
+    }
+
+    function statDisplay(stats, matcher) {
+      const st = (stats || []).find(matcher);
+      if (!st) return "";
+      return st.displayValue || st.summary || (st.value !== undefined ? String(st.value) : "");
+    }
+
+    function parseWL(str) {
+      const m = /^(\d+)-(\d+)/.exec(str || "");
+      return m ? { w: parseInt(m[1], 10), l: parseInt(m[2], 10) } : { w: 0, l: 0 };
+    }
+
+    async function openStandings() {
+      showInfoModal("SEC Standings");
+      const body = document.getElementById("infoBody");
+      try {
+        if (!infoCache.standings) {
+          infoCache.standings = await fetchFirstOk([
+            "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=8&season=2026",
+            "https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?group=8&season=2026"
+          ]);
+        }
+        const entries = [];
+        collectStandingsEntries(infoCache.standings, entries);
+        if (entries.length === 0) throw new Error("empty");
+
+        const rows = entries.map(e => {
+          const t = e.team || {};
+          const overall = statDisplay(e.stats, s => /^overall$/i.test(s.name || s.type || ""));
+          const conf = statDisplay(e.stats, s =>
+            /^(vs\.?\s?conf(erence)?|conference)$/i.test(s.name || "") ||
+            (/conf/i.test(s.name || s.type || "") && !/behind|pct|percent|point|win|rank/i.test(s.name || s.type || "")));
+          return {
+            name: t.shortDisplayName || t.displayName || t.name || "",
+            logo: teamLogoFrom(t),
+            overall: overall,
+            conf: conf,
+            c: parseWL(conf),
+            o: parseWL(overall)
+          };
+        });
+
+        rows.sort((a, b) => {
+          const aPct = a.c.w + a.c.l ? a.c.w / (a.c.w + a.c.l) : 0;
+          const bPct = b.c.w + b.c.l ? b.c.w / (b.c.w + b.c.l) : 0;
+          if (bPct !== aPct) return bPct - aPct;
+          if (b.c.w !== a.c.w) return b.c.w - a.c.w;
+          return b.o.w - a.o.w;
+        });
+
+        body.innerHTML = `
+          <div class="info-row standings-row head"><span></span><span>Team</span><span class="info-meta">Conf</span><span class="info-meta">Overall</span></div>
+          ${rows.map((r, i) => `
+            <div class="info-row standings-row">
+              <span class="info-rank">${i + 1}</span>
+              ${infoTeamHtml(r.name, r.logo, false)}
+              <span class="info-meta" style="color: var(--text-main);">${r.conf || "-"}</span>
+              <span class="info-meta">${r.overall || "-"}</span>
+            </div>`).join("")}
+        `;
+      } catch (err) {
+        console.error("Standings error:", err);
+        body.innerHTML = `<div class="team-sched-note">Couldn't load the standings right now.</div>`;
+      }
+    }
+
+    // --- Team schedule popup -------------------------------------------
+    // Tapping any logo (or its text fallback) carrying a data-team-id opens
+    // that team's full season schedule from ESPN's team-schedule endpoint.
+    // Cached per team so reopening is instant. Display only — nothing here
+    // touches picks, keys or grading.
+    const teamScheduleCache = {};
+
+    document.addEventListener("click", (e) => {
+      const el = e.target.closest("[data-team-id]");
+      if (!el || !el.dataset.teamId) return;
+      openTeamSchedule(el.dataset.teamId, el.dataset.teamName, el.dataset.teamLogo);
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeTeamSchedule();
+    });
+
+    function closeTeamSchedule() {
+      document.getElementById("teamSchedOverlay").style.display = "none";
+    }
+
+    function schedScore(s) {
+      if (s === null || s === undefined) return "";
+      if (typeof s === "object") return String(s.displayValue !== undefined ? s.displayValue : (s.value !== undefined ? s.value : ""));
+      return String(s);
+    }
+
+    // One entry per week 1-14 with the earliest/latest kickoff and the most
+    // common game day, built from the scoreboard data the page already
+    // loaded. Used to place a game (or a bye) in the right week by date.
+    function getWeekWindows() {
+      const out = [];
+      for (let w = 1; w <= 14; w++) {
+        const entry = (window.espnRawCache || {})[w];
+        const events = (entry && entry.data && entry.data.events) || [];
+        const times = events.map(ev => new Date((ev.competitions && ev.competitions[0] && ev.competitions[0].date) || ev.date))
+          .filter(d => !isNaN(d.getTime()))
+          .sort((a, b) => a - b);
+        if (times.length === 0) continue;
+
+        const counts = {};
+        times.forEach(d => {
+          const key = d.toDateString();
+          counts[key] = (counts[key] || 0) + 1;
+        });
+        const modalKey = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+        out.push({ week: w, min: times[0], max: times[times.length - 1], modal: new Date(modalKey) });
+      }
+      return out;
+    }
+
+    async function openTeamSchedule(teamId, teamName, teamLogo) {
+      const overlay = document.getElementById("teamSchedOverlay");
+      const body = document.getElementById("teamSchedBody");
+      const title = document.getElementById("teamSchedTitle");
+      const logo = document.getElementById("teamSchedLogo");
+
+      title.textContent = teamName || "Team Schedule";
+      if (teamLogo) {
+        logo.src = teamLogo;
+        logo.style.display = "block";
+        logo.onerror = () => { logo.style.display = "none"; };
+      } else {
+        logo.style.display = "none";
+      }
+      body.innerHTML = `<div class="team-sched-note">Loading schedule...</div>`;
+      overlay.style.display = "flex";
+
+      try {
+        if (!teamScheduleCache[teamId]) {
+          const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${teamId}/schedule?season=2026`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("bad response");
+          teamScheduleCache[teamId] = await res.json();
+        }
+        const data = teamScheduleCache[teamId];
+        const events = (data.events || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        if (data.team && data.team.recordSummary) {
+          title.innerHTML = `${teamName}<small>${data.team.recordSummary}${data.team.standingSummary ? " | " + data.team.standingSummary : ""}</small>`;
+        }
+
+        if (events.length === 0) {
+          body.innerHTML = `<div class="team-sched-note">No schedule available.</div>`;
+          return;
+        }
+
+        const windows = getWeekWindows();
+        const DAY = 24 * 60 * 60 * 1000;
+        const weekOfDate = (d) => {
+          const hit = windows.find(w => d >= new Date(w.min.getTime() - 2 * DAY) && d <= new Date(w.max.getTime() + 2 * DAY));
+          return hit ? hit.week : null;
+        };
+
+        // Each game gets a week number — ESPN's own when it sends one,
+        // otherwise worked out from the date against this season's
+        // week-by-week scoreboard dates already loaded on the page.
+        const items = events.map(ev => {
+          const comp = (ev.competitions || [])[0] || {};
+          const competitors = comp.competitors || [];
+          const me = competitors.find(c => String((c.team && c.team.id) || c.id) === String(teamId));
+          const opp = competitors.find(c => c !== me);
+          const oppTeam = (opp && opp.team) || {};
+          const oppName = oppTeam.shortDisplayName || oppTeam.displayName || oppTeam.name || "TBD";
+          const oppLogo = oppTeam.logo || (oppTeam.logos && oppTeam.logos[0] && oppTeam.logos[0].href) || "";
+          const prefix = comp.neutralSite ? "vs" : (me && me.homeAway === "away" ? "@" : "vs");
+
+          const d = new Date(ev.date);
+          const dateText = isNaN(d.getTime()) ? "TBD" : d.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" });
+          const week = (ev.week && ev.week.number) ? ev.week.number : (isNaN(d.getTime()) ? null : weekOfDate(d));
+
+          const statusType = (comp.status && comp.status.type) || {};
+          const done = statusType.completed === true;
+          let resultHtml;
+          if (done && me && opp) {
+            const myScore = schedScore(me.score);
+            const oppScore = schedScore(opp.score);
+            const won = me.winner === true;
+            const lost = opp.winner === true;
+            resultHtml = `<span class="team-sched-result ${won ? "win" : (lost ? "loss" : "")}">${won ? "W" : (lost ? "L" : "T")} ${myScore}-${oppScore}</span>`;
+          } else if (statusType.state === "in") {
+            resultHtml = `<span class="team-sched-result" style="color: var(--accent-gold);">Live</span>`;
+          } else {
+            resultHtml = `<span class="team-sched-result">${isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>`;
+          }
+
+          return {
+            week: week,
+            sortTime: isNaN(d.getTime()) ? Infinity : d.getTime(),
+            html: `
+              <span class="team-sched-date">${dateText}</span>
+              <span class="team-sched-opp">
+                ${oppLogo ? `<img src="${oppLogo}" alt="" onerror="this.style.display='none'">` : ""}
+                <span>${prefix} ${oppName}</span>
+              </span>
+              ${resultHtml}`
+          };
+        });
+
+        // Bye weeks: any week missing between this team's first and last
+        // game in weeks 1-14. Leading and trailing gaps aren't byes (the
+        // season just hadn't started for them, or is over).
+        const playedWeeks = items.map(it => it.week).filter(w => w !== null && w >= 1 && w <= 14);
+        if (playedWeeks.length > 0) {
+          const first = Math.min(...playedWeeks);
+          const last = Math.max(...playedWeeks);
+          const have = new Set(playedWeeks);
+          for (let w = first; w <= last; w++) {
+            if (have.has(w)) continue;
+            const win = windows.find(x => x.week === w);
+            let byeDate = win ? win.modal : null;
+            if (!byeDate) {
+              const prev = items.filter(it => it.week !== null && it.week < w && isFinite(it.sortTime))
+                .sort((a, b) => b.sortTime - a.sortTime)[0];
+              if (!prev) continue;
+              byeDate = new Date(prev.sortTime + (w - prev.week) * 7 * 24 * 60 * 60 * 1000);
+            }
+            items.push({
+              week: w,
+              sortTime: byeDate.getTime(),
+              html: `
+                <span class="team-sched-date">${byeDate.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" })}</span>
+                <span class="team-sched-opp"><span style="font-style: italic;">Bye Week</span></span>
+                <span class="team-sched-result"></span>`
+            });
+          }
+        }
+
+        items.sort((a, b) => a.sortTime - b.sortTime);
+
+        body.innerHTML = items.map(it => `
+          <div class="team-sched-row ${it.week !== null && it.week === targetWeek ? "current-week" : ""}">${it.html}</div>
+        `).join("");
+
+        // Open scrolled to the current week so it's on screen right away.
+        const currentRow = body.querySelector(".current-week");
+        if (currentRow) {
+          body.scrollTop = Math.max(0, currentRow.offsetTop - body.clientHeight / 2 + currentRow.offsetHeight / 2);
+        }
+      } catch (err) {
+        console.error("Team schedule error:", err);
+        body.innerHTML = `<div class="team-sched-note">Couldn't load this schedule right now.</div>`;
+      }
+    }
+
+
+    // Schedules popup: every team playing this week, SEC first, as tappable
+    // logos. Tapping one opens that team's season schedule. (Tapping a logo
+    // on a pick button picks the team instead, so schedules live here.)
+    function openSchedulePicker() {
+      showInfoModal("Team Schedules");
+      const body = document.getElementById("infoBody");
+      const seen = new Set();
+      const teams = [];
+      currentSchedule.forEach(g => {
+        [[g.teamA, g.teamALogo, g.teamAId], [g.teamB, g.teamBLogo, g.teamBId]].forEach(([name, logo, id]) => {
+          if (!id || seen.has(id)) return;
+          seen.add(id);
+          teams.push({ name, logo, id, sec: isSecTeam(name) });
+        });
+      });
+      if (teams.length === 0) {
+        body.innerHTML = `<div class="team-sched-note">No games loaded for this week yet.</div>`;
+        return;
+      }
+      const tile = t => `
+        <button type="button" class="sched-pick-team ${t.sec ? "sec" : ""}"
+          onclick="closeInfoModal(); openTeamSchedule('${t.id}', this.dataset.name, this.dataset.logo)"
+          data-name="${t.name.replace(/"/g, "&quot;")}" data-logo="${t.logo || ""}">
+          ${t.logo ? `<img src="${t.logo}" alt="" onerror="this.style.display='none'">` : ""}
+          <span>${shortenPickDisplay(t.name)}</span>
+        </button>`;
+      const sec = teams.filter(t => t.sec).sort((a, b) => a.name.localeCompare(b.name));
+      const other = teams.filter(t => !t.sec).sort((a, b) => a.name.localeCompare(b.name));
+      body.innerHTML = `
+        <div class="sched-section-label">SEC</div>
+        <div class="sched-pick-grid">${sec.map(tile).join("")}</div>
+        ${other.length ? `<div class="sched-section-label">Opponents</div>
+        <div class="sched-pick-grid">${other.map(tile).join("")}</div>` : ""}`;
     }
 
     initForm();
