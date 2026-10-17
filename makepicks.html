@@ -1154,7 +1154,7 @@
             // ever set rather than just no longer relevant) — so this
             // version leaves it out entirely instead of showing something
             // false.
-            playedDetail: `Played: ${time} | ${venue}`,
+            playedDetail: `Kickoff: ${time} | ${venue}`,
             isFinal: isFinal,
             winnerName: winnerName,
             loserName: loserName,
@@ -1369,14 +1369,11 @@
 
         if (g.isFinal) {
           card.className = "game-card is-final-locked";
-          const resultText = g.winnerName
-            ? `${g.winnerName} beat ${g.loserName} ${g.winnerScore}-${g.loserScore}.`
-            : `${g.teamA} and ${g.teamB} tied.`;
           card.innerHTML = `
             <div class="game-header-row">
               <span class="game-title"><strong>Game ${g.id}</strong></span>
             </div>
-            <div class="game-final-message">Game has been played. ${resultText} Picking this game is locked.</div>
+            <div class="game-final-message">This game is in progress or finished so picking it is locked.</div>
             ${g.playedDetail ? `<span class="game-detail">${g.playedDetail}</span>` : ""}
           `;
         } else {
