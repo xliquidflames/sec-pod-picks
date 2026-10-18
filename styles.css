@@ -2298,3 +2298,289 @@ input[type="password"].form-field {
   vertical-align: -0.05em;
   color: var(--accent-gold);
 }
+
+/* ---- March Madness bracket ---- */
+
+.bk-state {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  margin-bottom: 0.75rem;
+}
+
+.bk-state a {
+  color: var(--accent-gold);
+  font-weight: 800;
+}
+
+.bk-count {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+}
+
+a.btn-submit.bk-cta {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  margin: 0 0 1rem;
+}
+
+.bk-progress {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.bk-progress strong {
+  color: var(--accent-gold);
+}
+
+.bk-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 -0.25rem 0.5rem;
+  padding: 0.4rem 0.25rem;
+  background: var(--bg-card);
+}
+
+.bk-tabs .details-tab {
+  padding-left: 0.1rem;
+  padding-right: 0.1rem;
+  font-size: 0.7rem;
+}
+
+/* A region with every game picked. */
+.bk-tabs .details-tab.done:not(.active) {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.bk-round {
+  margin-bottom: 1rem;
+}
+
+.bk-round-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-gold);
+  margin: 0.6rem 0 0.4rem;
+}
+
+.bk-round-title span {
+  color: var(--text-muted);
+  opacity: 0.7;
+  font-weight: 600;
+  margin-left: 0.3rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.bk-matchup {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.bk-choice {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-card-alt);
+  color: var(--text-main);
+  border: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.bk-choice.selected {
+  background: var(--accent-gold);
+  color: #0a1120;
+}
+
+.bk-choice.selected .bk-seed {
+  color: #0a1120;
+  border-color: rgba(10, 17, 32, 0.4);
+}
+
+.bk-choice.empty {
+  cursor: default;
+  font-size: 0.75rem;
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.bk-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.bk-team img,
+.bk-logo-blank {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.bk-seed {
+  min-width: 1.4rem;
+  padding: 0 0.2rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: center;
+  color: var(--accent-gold);
+}
+
+.bk-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bk-team.empty {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.bk-team.correct .bk-name {
+  color: var(--success);
+}
+
+.bk-team.wrong .bk-name {
+  color: var(--danger);
+  text-decoration: line-through;
+}
+
+.bk-tiebreak-label {
+  display: block;
+  font-size: 0.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.bk-nav-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+}
+
+.bk-pick-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.bk-pick-row:last-child {
+  border-bottom: none;
+}
+
+.bk-actual {
+  opacity: 0.75;
+  font-size: 0.85em;
+}
+
+.bk-actual .bk-team {
+  font-size: 0.78rem;
+}
+
+.bk-entry-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.bk-entry-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bk-entry-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.bk-points {
+  color: var(--accent-gold);
+  font-weight: 900;
+  font-size: 1rem;
+}
+
+.bk-max {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+.bk-entry-summary {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.8rem;
+}
+
+.bk-champ {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.bk-round-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.bk-round-chip {
+  padding: 0.15rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.bk-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.bk-name-chip {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.cousin-picks-body .bk-tabs {
+  background: var(--bg-card-alt);
+}
+
+.bk-round-chip b {
+  color: var(--accent-gold);
+  font-weight: 800;
+  margin-right: 0.15rem;
+}
