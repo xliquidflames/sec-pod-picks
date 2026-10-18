@@ -8,9 +8,9 @@
   <script data-goatcounter="https://liquidflames.goatcounter.com/count"
           async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="common.js?v=3"></script>
-  <script src="sec.js?v=3"></script>
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <script src="common.js?v=4"></script>
+  <script src="sec.js?v=4"></script>
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
 
@@ -389,8 +389,12 @@
             const scoreSpan = c => `<span class="matchup-score ${c.winner === true ? "won" : ""}">${c.score !== undefined ? c.score : ""}</span>`;
             detail = `<span class="matchup-score-row">${scoreSpan(away)}<span class="matchup-status">${status}</span>${scoreSpan(home)}</span>`;
           } else if (comp.date) {
-            // The date is on the day divider row, so just the time here.
-            detail = new Date(comp.date).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+            // The date is on the day divider row, so just the time and TV:
+            // "12PM on ABC", "3:30PM on SECN".
+            const time = new Date(comp.date).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+              .replace(":00", "").replace(/\s+/g, "");
+            const tv = shortNetwork(comp);
+            detail = tv ? `${time} on ${tv}` : time;
           }
 
           let kickoff = new Date(8640000000000000);
