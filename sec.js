@@ -476,13 +476,33 @@ function weatherIcon(desc, date) {
   if (/rain|shower|drizzle/.test(d)) return "🌧️";
   if (/fog|haze|mist|smoke/.test(d)) return "🌫️";
   if (/wind|breez|gust/.test(d)) return "💨";
-  if (/partly|intermittent|mostly sunny|mostly clear|few clouds|scattered/.test(d)) return "⛅";
-  if (/cloud|overcast/.test(d)) return "☁️";
-  if (/sun|clear|fair/.test(d)) {
-    const hour = date instanceof Date && !isNaN(date.getTime()) ? date.getHours() : 12;
-    return hour >= 18 || hour < 6 ? "🌙" : "☀️";
-  }
+  const night = date instanceof Date && !isNaN(date.getTime()) && (date.getHours() >= 18 || date.getHours() < 6);
+  if (/mostly sunny|mostly clear/.test(d)) return night ? "🌙" : "🌤️";
+  if (/partly|intermittent|few clouds|scattered/.test(d)) return "⛅";
+  if (/cloud|overcast|dreary/.test(d)) return "☁️";
+  if (/moon/.test(d)) return "🌙";
+  if (/^hot/.test(d)) return "🥵";
+  if (/^cold/.test(d)) return "🥶";
+  if (/sun|clear|fair/.test(d)) return night ? "🌙" : "☀️";
   return "";
+}
+
+// ESPN's forecasts come from AccuWeather, whose condition codes these are.
+const WEATHER_CODES = {
+  1: "Sunny", 2: "Mostly sunny", 3: "Partly sunny", 4: "Intermittent clouds", 5: "Hazy sunshine",
+  6: "Mostly cloudy", 7: "Cloudy", 8: "Overcast", 11: "Fog", 12: "Showers",
+  13: "Mostly cloudy with showers", 14: "Partly sunny with showers", 15: "Thunderstorms",
+  16: "Mostly cloudy with thunderstorms", 17: "Partly sunny with thunderstorms", 18: "Rain",
+  19: "Flurries", 20: "Mostly cloudy with flurries", 21: "Partly sunny with flurries", 22: "Snow",
+  23: "Mostly cloudy with snow", 24: "Ice", 25: "Sleet", 26: "Freezing rain", 29: "Rain and snow",
+  30: "Hot", 31: "Cold", 32: "Windy", 33: "Clear", 34: "Mostly clear", 35: "Partly cloudy",
+  36: "Intermittent clouds", 37: "Hazy moonlight", 38: "Mostly cloudy", 39: "Partly cloudy with showers",
+  40: "Mostly cloudy with showers", 41: "Partly cloudy with thunderstorms", 42: "Mostly cloudy with thunderstorms",
+  43: "Mostly cloudy with flurries", 44: "Mostly cloudy with snow"
+};
+
+function conditionText(code) {
+  return WEATHER_CODES[parseInt(code, 10)] || "";
 }
 
 // A simple dome for indoor stadiums.
@@ -639,15 +659,24 @@ function gameInfoHtml(s, ev, sbComp, comp) {
   // Indoor games get the dome icon and no forecast; outdoor games get an
   // icon for the conditions, then the temperature and the forecast text.
   const indoor = venue.indoor === true || (sbComp.venue && sbComp.venue.indoor === true);
-  const w = info.weather || ev.weather || sbComp.weather;
+  // The summary's forecast often has only a temperature and a condition
+  // code, so the wording falls back to the scoreboard's, then to the code.
+  const forecasts = [info.weather, ev.weather, sbComp.weather].filter(Boolean);
+  const pickField = (...keys) => {
+    for (const f of forecasts) for (const k of keys) if (f[k] !== undefined && f[k] !== null && f[k] !== "") return f[k];
+    return undefined;
+  };
   let weather = "";
   if (indoor) {
     weather = `<span class="weather-chip">${DOME_ICON} Indoors</span>`;
-  } else if (w) {
-    const desc = w.displayValue || w.conditionDescription || "";
-    const temp = w.temperature !== undefined ? w.temperature : w.highTemperature;
+  } else if (forecasts.length) {
+    const conditionId = pickField("conditionId");
+    const desc = pickField("displayValue", "conditionDescription") || conditionText(conditionId);
+    const temp = pickField("temperature", "highTemperature");
     const icon = weatherIcon(desc, date);
-    weather = `<span class="weather-chip">${icon ? `<span class="weather-icon">${icon}</span>` : ""}${temp !== undefined ? `${temp}°` : ""}${desc ? ` ${desc}` : ""}</span>`;
+    if (temp !== undefined || desc) {
+      weather = `<span class="weather-chip">${icon ? `<span class="weather-icon">${icon}</span>` : ""}${temp !== undefined ? `${temp}°` : ""}${desc ? ` ${desc}` : ""}</span>`;
+    }
   }
   if (where || weather) rows.push(["Where", [where, weather].filter(Boolean).join(" · ")]);
 
