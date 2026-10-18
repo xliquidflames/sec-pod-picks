@@ -34,6 +34,13 @@ const SITE = {
   // GoatCounter visitor stats. Set to "" to turn off.
   analytics: "https://liquidflames.goatcounter.com/count",
 
+  // March Madness bracket. On Selection Sunday, set bracketSeason to the new
+  // year and bracketFinalFour to which regions meet in each semifinal, as
+  // shown on the official bracket, e.g. [["East", "South"], ["West", "Midwest"]].
+  // The bracket page won't open for picks until the semifinal pairs are set.
+  bracketSeason: 2026,
+  bracketFinalFour: null,
+
   // Optional color overrides, using the names at the top of styles.css.
   // Example: { "--accent-gold": "#fa4616", "--bg-main": "#0021a5" }
   colors: {}
