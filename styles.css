@@ -1931,3 +1931,248 @@ input[type="password"].form-field {
 .contact-note strong {
   color: var(--text-main);
 }
+
+/* ---- Game extras ---- */
+
+.details-link {
+  display: inline-block;
+  margin-top: 0.35rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+}
+
+.game-card .details-link {
+  display: block;
+  margin: 0.45rem auto 0;
+}
+
+.details-section {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.details-section:last-child {
+  border-bottom: none;
+}
+
+.details-heading {
+  color: var(--accent-gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.45rem;
+}
+
+.details-note {
+  color: var(--text-main);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  padding-top: 0.4rem;
+}
+
+.details-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+}
+
+.form-chips {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.form-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 2rem;
+  padding: 0.15rem 0.2rem;
+  border-radius: 4px;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-color);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.form-chip small {
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.form-chip.win { color: var(--success); }
+.form-chip.loss { color: var(--danger); }
+
+.details-team-block {
+  padding: 0.3rem 0 0.5rem;
+}
+
+.injury-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  padding: 0.15rem 0 0.15rem 1.6rem;
+}
+
+.injury-status {
+  color: var(--danger);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.details-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.details-table th {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 0.3rem 0.2rem;
+  text-align: center;
+}
+
+.details-table td {
+  text-align: center;
+  padding: 0.35rem 0.2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.details-table td:first-child {
+  text-align: left;
+}
+
+.details-table.stats td:first-child,
+.details-table.stats td:last-child {
+  width: 30%;
+  text-align: center;
+  font-weight: 800;
+}
+
+.details-total {
+  font-weight: 900;
+  color: var(--accent-gold);
+}
+
+.wp-wrap {
+  position: relative;
+}
+
+.wp-chart {
+  display: block;
+  width: 100%;
+  height: 90px;
+  background: var(--bg-card-alt);
+  border-radius: 6px;
+}
+
+.wp-line {
+  fill: none;
+  stroke: var(--accent-gold);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.wp-mid {
+  stroke: var(--border-color);
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.wp-team {
+  position: absolute;
+  left: 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.wp-team.top { top: 0.25rem; }
+.wp-team.bottom { bottom: 0.25rem; }
+
+.lock-countdown {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-main);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.lock-countdown strong {
+  color: var(--accent-gold);
+}
+
+.lock-countdown.urgent {
+  border-color: var(--danger);
+}
+
+/* ---- "Jump to me" and season breakdown ---- */
+
+.search-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.search-row .cousin-search-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.jump-note {
+  font-size: 0.78rem;
+  color: var(--text-main);
+  margin-top: 0.4rem;
+}
+
+.cousin-item.me {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.season-box {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.4rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+.season-weeks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0.3rem 0;
+}
+
+.season-week {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  white-space: nowrap;
+}
