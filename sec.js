@@ -142,13 +142,11 @@ function infoTeamHtml(name, logo) {
 
 // AP and Coaches come from the rankings feed; ESPN's FPI has its own
 // endpoint. A source that fails shows "Unavailable" in its column.
-function openRankings() {
+async function openRankings() {
   showInfoModal("Top 25");
+  const body = document.getElementById("infoBody");
   document.querySelector("#infoOverlay .team-sched-modal").style.maxWidth = "560px";
-  renderRankings(document.getElementById("infoBody"));
-}
 
-async function renderRankings(body) {
   const cached = (key, urls) => async () => infoCache[key] || (infoCache[key] = await fetchFirstOk(urls));
   const [pollRes, fpiRes] = await Promise.allSettled([
     cached("rankings", ["https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"])(),
@@ -247,12 +245,9 @@ function parseWL(str) {
   return m ? { w: parseInt(m[1], 10), l: parseInt(m[2], 10) } : { w: 0, l: 0 };
 }
 
-function openStandings() {
+async function openStandings() {
   showInfoModal("SEC Standings");
-  renderStandings(document.getElementById("infoBody"));
-}
-
-async function renderStandings(body) {
+  const body = document.getElementById("infoBody");
   try {
     if (!infoCache.standings) {
       infoCache.standings = await fetchFirstOk([
@@ -308,7 +303,8 @@ function schedScore(s) {
 
 // A team's full season from ESPN, scrolled to the current week. Byes are any
 // missing week between its first and last game.
-function openTeamSchedule(teamId, teamName, teamLogo) {
+async function openTeamSchedule(teamId, teamName, teamLogo) {
+  const overlay = document.getElementById("teamSchedOverlay");
   const body = document.getElementById("teamSchedBody");
   const title = document.getElementById("teamSchedTitle");
   const logo = document.getElementById("teamSchedLogo");
@@ -321,16 +317,9 @@ function openTeamSchedule(teamId, teamName, teamLogo) {
   } else {
     logo.style.display = "none";
   }
-  document.getElementById("teamSchedOverlay").style.display = "flex";
-  renderTeamSchedule(body, teamId, (record, standing) => {
-    title.innerHTML = `${teamName}<small>${record}${standing ? " | " + standing : ""}</small>`;
-  }, true);
-}
-
-// Fills body with a team's schedule. onRecord(record, standing) gets the
-// team's record line; autoScroll centers the current week in body.
-async function renderTeamSchedule(body, teamId, onRecord, autoScroll) {
   body.innerHTML = `<div class="team-sched-note">Loading schedule...</div>`;
+  overlay.style.display = "flex";
+
   try {
     if (!teamScheduleCache[teamId]) {
       const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${teamId}/schedule?season=2026`);
@@ -340,8 +329,8 @@ async function renderTeamSchedule(body, teamId, onRecord, autoScroll) {
     const data = teamScheduleCache[teamId];
     const events = (data.events || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    if (data.team && data.team.recordSummary && onRecord) {
-      onRecord(data.team.recordSummary, data.team.standingSummary || "");
+    if (data.team && data.team.recordSummary) {
+      title.innerHTML = `${teamName}<small>${data.team.recordSummary}${data.team.standingSummary ? " | " + data.team.standingSummary : ""}</small>`;
     }
 
     if (events.length === 0) {
@@ -428,7 +417,7 @@ async function renderTeamSchedule(body, teamId, onRecord, autoScroll) {
       <div class="team-sched-row ${it.week !== null && it.week === currentWeek ? "current-week" : ""}">${it.html}</div>
     `).join("");
 
-    const currentRow = autoScroll && body.querySelector(".current-week");
+    const currentRow = body.querySelector(".current-week");
     if (currentRow) {
       body.scrollTop = Math.max(0, currentRow.offsetTop - body.clientHeight / 2 + currentRow.offsetHeight / 2);
     }
@@ -436,271 +425,4 @@ async function renderTeamSchedule(body, teamId, onRecord, autoScroll) {
     console.error("Team schedule error:", err);
     body.innerHTML = `<div class="team-sched-note">Couldn't load this schedule right now.</div>`;
   }
-}
-
-// ---- Game extras: TV network, weather, and the game details popup ----
-
-// "CBS" or "ESPN/ESPN2" from a scoreboard competition, or "".
-function tvNetwork(comp) {
-  const names = [];
-  (comp.broadcasts || []).forEach(b => (b.names || []).forEach(n => names.push(n)));
-  if (names.length === 0) {
-    (comp.geoBroadcasts || []).forEach(b => {
-      const n = b.media && (b.media.shortName || b.media.name);
-      if (n) names.push(n);
-    });
-  }
-  return [...new Set(names)].slice(0, 2).join("/");
-}
-
-// A short forecast note for outdoor games, only when it's worth knowing:
-// rain, storms, snow, wind, or temperatures at either extreme.
-function weatherNote(ev, comp) {
-  const w = ev.weather || comp.weather;
-  if (!w || (comp.venue && comp.venue.indoor === true)) return "";
-  const desc = (w.displayValue || w.conditionDescription || "").toLowerCase();
-  const temp = parseInt(w.temperature !== undefined ? w.temperature : w.highTemperature, 10);
-  let icon = "";
-  if (/thunder|storm/.test(desc)) icon = "⛈";
-  else if (/snow|flurr|sleet|ice/.test(desc)) icon = "❄";
-  else if (/rain|shower|drizzle/.test(desc)) icon = "🌧";
-  else if (/wind/.test(desc)) icon = "💨";
-  else if (!isNaN(temp) && temp <= 40) icon = "🥶";
-  else if (!isNaN(temp) && temp >= 90) icon = "🥵";
-  if (!icon) return "";
-  return isNaN(temp) ? icon : `${icon} ${temp}°`;
-}
-
-const gameSummaryCache = {};
-
-// Scoreboard events by id, so the details popup can show the line, TV and
-// weather. Pages that fetch the scoreboard themselves call rememberEvents.
-const scoreboardEvents = {};
-
-function rememberEvents(events) {
-  (events || []).forEach(ev => { if (ev && ev.id !== undefined) scoreboardEvents[String(ev.id)] = ev; });
-}
-
-function findScoreboardEvent(eventId) {
-  if (scoreboardEvents[eventId]) return scoreboardEvents[eventId];
-  for (const entry of Object.values(espnRawCache)) {
-    const ev = ((entry && entry.data && entry.data.events) || []).find(e => String(e.id) === String(eventId));
-    if (ev) return ev;
-  }
-  return null;
-}
-
-function detailsTeamCell(team) {
-  const logo = teamLogoFrom(team);
-  return `<span class="info-team">${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}<span>${shortenPickDisplay(team.shortDisplayName || team.displayName || team.abbreviation || "")}</span></span>`;
-}
-
-// One popup for a game: where, when and the line up top, then tabs for the
-// game itself, both teams' schedules, the Top 25 and the SEC standings.
-let detailsTabs = [];
-
-async function openGameDetails(eventId, title) {
-  showInfoModal(title || "Game Details");
-  document.querySelector("#infoOverlay .team-sched-modal").style.maxWidth = "560px";
-  const body = document.getElementById("infoBody");
-
-  let s = null;
-  try {
-    if (!gameSummaryCache[eventId]) {
-      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}`);
-      if (!res.ok) throw new Error("bad response");
-      gameSummaryCache[eventId] = await res.json();
-    }
-    s = gameSummaryCache[eventId];
-  } catch (err) {
-    console.error("Game details error:", err);
-  }
-
-  const ev = findScoreboardEvent(eventId) || {};
-  const sbComp = (ev.competitions && ev.competitions[0]) || {};
-  const comp = (s && s.header && s.header.competitions && s.header.competitions[0]) || sbComp;
-  const competitors = comp.competitors || [];
-  const away = competitors.find(c => c.homeAway === "away") || competitors[0] || {};
-  const home = competitors.find(c => c.homeAway === "home") || competitors[1] || {};
-  const state = (comp.status && comp.status.type && comp.status.type.state) || "pre";
-
-  const tabs = [];
-  if (s && state !== "pre") {
-    const html = gameSections(s, away, home, state, comp).join("");
-    if (html) tabs.push({ label: "Game", render: el => { el.innerHTML = html; } });
-  }
-  [away, home].forEach(c => {
-    const t = c.team || {};
-    if (!t.id) return;
-    const logo = teamLogoFrom(t);
-    tabs.push({
-      label: `${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}${t.abbreviation || shortenPickDisplay(t.shortDisplayName || "")}`,
-      render: el => {
-        el.innerHTML = `<div class="details-note sched-record"></div><div class="sched-list"></div>`;
-        renderTeamSchedule(el.querySelector(".sched-list"), t.id, (record, standing) => {
-          el.querySelector(".sched-record").textContent = `${shortenPickDisplay(t.shortDisplayName || t.displayName || "")}: ${record}${standing ? " | " + standing : ""}`;
-        }, false);
-      }
-    });
-  });
-  if (s && state === "pre") {
-    const html = pregameSections(s, away, home).join("");
-    if (html) tabs.push({ label: "Preview", render: el => { el.innerHTML = html; } });
-  }
-  tabs.push({ label: "Top 25", render: renderRankings });
-  tabs.push({ label: "SEC", render: renderStandings });
-  detailsTabs = tabs;
-
-  body.innerHTML = `
-    ${gameInfoHtml(s, ev, sbComp, comp)}
-    ${s ? "" : `<div class="team-sched-note">Couldn't load this game's details right now.</div>`}
-    <div class="details-tabs" role="tablist">
-      ${tabs.map((t, i) => `<button type="button" class="details-tab" role="tab" onclick="selectDetailsTab(${i})">${t.label}</button>`).join("")}
-    </div>
-    ${tabs.map(() => `<div class="details-pane" style="display: none;"></div>`).join("")}`;
-  selectDetailsTab(0);
-}
-
-// Each tab fills its pane the first time it's opened.
-function selectDetailsTab(index) {
-  const body = document.getElementById("infoBody");
-  const buttons = body.querySelectorAll(".details-tab");
-  const panes = body.querySelectorAll(".details-pane");
-  buttons.forEach((b, i) => b.classList.toggle("active", i === index));
-  panes.forEach((p, i) => { p.style.display = i === index ? "" : "none"; });
-  const pane = panes[index];
-  if (pane && !pane.dataset.loaded && detailsTabs[index]) {
-    pane.dataset.loaded = "1";
-    pane.innerHTML = `<div class="team-sched-note">Loading...</div>`;
-    detailsTabs[index].render(pane);
-  }
-}
-
-// Where, when, TV and the betting line, from the summary or the scoreboard.
-function gameInfoHtml(s, ev, sbComp, comp) {
-  const info = (s && s.gameInfo) || {};
-  const rows = [];
-
-  const venue = info.venue || sbComp.venue || {};
-  const city = venue.address ? [venue.address.city, venue.address.state].filter(Boolean).join(", ") : "";
-  const where = [venue.fullName, city].filter(Boolean).join(", ");
-  const w = info.weather || ev.weather || sbComp.weather;
-  let weather = "";
-  if (w && venue.indoor !== true) {
-    const temp = w.temperature !== undefined ? w.temperature : w.highTemperature;
-    weather = `${w.displayValue || w.conditionDescription || ""}${temp !== undefined ? ` ${temp}°` : ""}`.trim();
-  }
-  if (where || weather) rows.push(["Where", [where, weather].filter(Boolean).join(" · ")]);
-
-  const date = new Date(comp.date || ev.date || sbComp.date);
-  const when = [];
-  if (!isNaN(date.getTime())) {
-    when.push(date.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" }));
-    when.push(date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
-  }
-  const tv = tvNetwork(sbComp) || tvNetwork(comp);
-  if (tv) when.push(tv);
-  if (when.length) rows.push(["When", when.join(" · ")]);
-
-  const pick = (s && s.pickcenter && s.pickcenter[0]) || (sbComp.odds && sbComp.odds[0]) || null;
-  if (pick && (pick.details || pick.overUnder)) {
-    rows.push(["Line", [pick.details, pick.overUnder ? `O/U ${pick.overUnder}` : ""].filter(Boolean).join(" · ")]);
-  }
-
-  if (!rows.length) return "";
-  return `<div class="details-info">${rows.map(([k, v]) => `<div class="details-info-row"><span class="details-info-label">${k}</span><span>${v}</span></div>`).join("")}</div>`;
-}
-
-function detailsSection(title, html) {
-  return `<div class="details-section"><div class="details-heading">${title}</div>${html}</div>`;
-}
-
-function pregameSections(s, away, home) {
-  const out = [];
-
-  // Most recent meeting, if ESPN includes the series.
-  const series = (s.seasonseries && s.seasonseries[0]) || null;
-  const meeting = series && series.events && series.events[series.events.length - 1];
-  if (meeting && meeting.competitors) {
-    const parts = meeting.competitors.map(c => `${(c.team && (c.team.abbreviation || c.team.displayName)) || ""} ${c.score || ""}`);
-    const when = meeting.date ? new Date(meeting.date).getFullYear() : "";
-    out.push(detailsSection("Last Meeting", `<div class="details-note">${parts.join(" - ")}${when ? ` (${when})` : ""}</div>`));
-  }
-
-  // Injury report: players listed as anything other than active.
-  const injuries = s.injuries || [];
-  if (injuries.length) {
-    const rows = [away, home].map(c => {
-      const entry = injuries.find(i => i.team && c.team && String(i.team.id) === String(c.team.id));
-      const list = (entry && entry.injuries) || [];
-      const names = list.slice(0, 8).map(p => {
-        const a = p.athlete || {};
-        const pos = a.position && a.position.abbreviation ? ` ${a.position.abbreviation}` : "";
-        return `<div class="injury-line"><span>${a.displayName || a.shortName || "Unknown"}${pos}</span><span class="injury-status">${p.status || (p.type && p.type.description) || ""}</span></div>`;
-      }).join("");
-      return `<div class="details-team-block">${detailsTeamCell(c.team || {})}${names || `<div class="details-note">None reported</div>`}</div>`;
-    }).join("");
-    out.push(detailsSection("Injury Report", rows));
-  }
-  return out;
-}
-
-function gameSections(s, away, home, state, comp) {
-  const out = [];
-
-  // Score by quarter.
-  const lines = [away, home].map(c => (c.linescores || []).map(l => l.displayValue !== undefined ? l.displayValue : l.value));
-  const periods = Math.max(lines[0].length, lines[1].length);
-  if (periods > 0) {
-    const label = i => i < 4 ? `Q${i + 1}` : (periods > 5 ? `OT${i - 3}` : "OT");
-    const head = `<tr><th></th>${Array.from({ length: periods }, (_, i) => `<th>${label(i)}</th>`).join("")}<th>T</th></tr>`;
-    const row = (c, l) => `<tr><td>${detailsTeamCell(c.team || {})}</td>${Array.from({ length: periods }, (_, i) => `<td>${l[i] !== undefined ? l[i] : ""}</td>`).join("")}<td class="details-total">${c.score !== undefined ? c.score : ""}</td></tr>`;
-    const status = (comp && comp.status && comp.status.type && (comp.status.type.shortDetail || comp.status.type.detail)) || (state === "post" ? "Final" : "Live");
-    out.push(detailsSection(status, `<table class="details-table">${head}${row(away, lines[0])}${row(home, lines[1])}</table>`));
-  }
-
-  // Key team stats, side by side.
-  const teams = (s.boxscore && s.boxscore.teams) || [];
-  const statsFor = c => {
-    const t = teams.find(x => x.team && c.team && String(x.team.id) === String(c.team.id));
-    const map = {};
-    ((t && t.statistics) || []).forEach(st => { map[st.name] = st; });
-    return map;
-  };
-  const a = statsFor(away), h = statsFor(home);
-  const wanted = [
-    ["totalYards", "Total Yards"], ["netPassingYards", "Passing"], ["rushingYards", "Rushing"],
-    ["firstDowns", "First Downs"], ["thirdDownEff", "3rd Down"], ["turnovers", "Turnovers"],
-    ["totalPenaltiesYards", "Penalties"], ["possessionTime", "Possession"]
-  ];
-  const statRows = wanted
-    .filter(([key]) => a[key] || h[key])
-    .map(([key, label]) => `<tr><td>${(a[key] && a[key].displayValue) || "-"}</td><th>${label}</th><td>${(h[key] && h[key].displayValue) || "-"}</td></tr>`)
-    .join("");
-  if (statRows) {
-    const abbr = c => (c.team && (c.team.abbreviation || c.team.shortDisplayName)) || "";
-    out.push(detailsSection("Team Stats", `<table class="details-table stats"><tr><th>${abbr(away)}</th><th></th><th>${abbr(home)}</th></tr>${statRows}</table>`));
-  }
-
-  // Win probability over the game, home team's chance as the line.
-  const wp = (s.winprobability || []).map(p => p.homeWinPercentage).filter(v => typeof v === "number");
-  if (wp.length > 1) {
-    const W = 300, H = 80;
-    const pts = wp.map((v, i) => `${(i / (wp.length - 1) * W).toFixed(1)},${((1 - v) * H).toFixed(1)}`).join(" ");
-    const last = wp[wp.length - 1];
-    const homeAbbr = (home.team && home.team.abbreviation) || "Home";
-    const awayAbbr = (away.team && away.team.abbreviation) || "Away";
-    const leader = last >= 0.5 ? `${homeAbbr} ${Math.round(last * 100)}%` : `${awayAbbr} ${Math.round((1 - last) * 100)}%`;
-    out.push(detailsSection("Win Probability", `
-      <div class="wp-wrap">
-        <svg class="wp-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Win probability">
-          <line x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}" class="wp-mid"/>
-          <polyline points="${pts}" class="wp-line"/>
-        </svg>
-        <span class="wp-team top">${homeAbbr}</span>
-        <span class="wp-team bottom">${awayAbbr}</span>
-      </div>
-      <div class="details-note">${state === "post" ? "At the end" : "Right now"}: ${leader}</div>`));
-  }
-  return out;
 }
