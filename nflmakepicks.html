@@ -4,12 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Make Picks - NFL Pick'em</title>
-  <script data-goatcounter="https://liquidflames.goatcounter.com/count"
-          async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="common.js"></script>
-  <script src="nfl.js"></script>
-  <link rel="stylesheet" href="styles.css" />
+  <script src="config.js?v=5"></script>
+  <script src="common.js?v=5"></script>
+  <script src="nfl.js?v=5"></script>
+  <link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
 
@@ -30,7 +29,7 @@
       <div class="user-input-group">
         <label for="userNameInput">Your Handle / Name:</label>
         <div class="name-input-wrapper">
-          <input type="text" class="form-field" id="userNameInput" placeholder="e.g., @CousinDan or GridironGuy99" autocomplete="off" required />
+          <input type="text" class="form-field" id="userNameInput" placeholder="e.g., @CousinDan or GridironGuy99" data-site-attr="placeholder:e.g., @{one}Dan or GridironGuy99" autocomplete="off" required />
           <div id="nameSuggestions" class="name-suggestions"></div>
         </div>
         <div class="name-reminder">
