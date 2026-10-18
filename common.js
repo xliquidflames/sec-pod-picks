@@ -1,9 +1,65 @@
-// Shared by every page. Load order: supabase-js, common.js, then sec.js
-// (SEC pages) or nfl.js (NFL pages), then the page's own script.
+// Shared by every page. Load order: supabase-js, config.js, common.js, then
+// sec.js (SEC pages) or nfl.js (NFL pages), then the page's own script.
 
-const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
-const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.supabase.createClient(SITE.supabase.url, SITE.supabase.key);
+
+// ---- Show settings from config.js ----
+
+// Color overrides apply right away so the page never shows the defaults.
+Object.entries(SITE.colors || {}).forEach(([name, value]) => document.documentElement.style.setProperty(name, value));
+
+if (SITE.analytics) {
+  const counter = document.createElement("script");
+  counter.async = true;
+  counter.src = "//gc.zgo.at/count.js";
+  counter.dataset.goatcounter = SITE.analytics;
+  document.head.appendChild(counter);
+}
+
+const hostKey = name => name.toLowerCase();
+const possessive = word => word.endsWith("s") ? `${word}'` : `${word}'s`;
+
+// "Mike, Shane, or Steven"
+function hostListText() {
+  const h = SITE.hosts;
+  return h.length < 3 ? h.join(" or ") : `${h.slice(0, -1).join(", ")}, or ${h[h.length - 1]}`;
+}
+
+// Fills {name}-style placeholders with the show's settings.
+function siteText(template) {
+  const values = {
+    name: SITE.name,
+    headline: SITE.headline,
+    logo: SITE.logo,
+    website: SITE.website.url,
+    websiteLabel: SITE.website.label,
+    discord: SITE.discord,
+    contact: SITE.contact,
+    one: SITE.players.one,
+    many: SITE.players.many,
+    oneLower: SITE.players.one.toLowerCase(),
+    manyLower: SITE.players.many.toLowerCase(),
+    lastHost: SITE.hosts[SITE.hosts.length - 1],
+    hostList: hostListText()
+  };
+  return template.replace(/\{(\w+)\}/g, (m, key) => values[key] !== undefined ? values[key] : m);
+}
+
+// Page markup marks its show-specific bits:
+//   data-site-text="..."   text, e.g. "{many}"
+//   data-site-html="..."   HTML, e.g. "{contact}"
+//   data-site-attr="href:{website}; alt:{name}"
+function applySiteSettings(root = document) {
+  root.querySelectorAll("[data-site-text]").forEach(el => { el.textContent = siteText(el.dataset.siteText); });
+  root.querySelectorAll("[data-site-html]").forEach(el => { el.innerHTML = siteText(el.dataset.siteHtml); });
+  root.querySelectorAll("[data-site-attr]").forEach(el => {
+    el.dataset.siteAttr.split(";").forEach(pair => {
+      const i = pair.indexOf(":");
+      if (i > 0) el.setAttribute(pair.slice(0, i).trim(), siteText(pair.slice(i + 1).trim()));
+    });
+  });
+}
+document.addEventListener("DOMContentLoaded", () => applySiteSettings());
 
 // Keys in a saved picks object that aren't picks.
 const NON_PICK_KEYS = ["lock_game_id", "lock_matchup_key", "scores"];
