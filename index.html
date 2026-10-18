@@ -1,16 +1,15 @@
 <!DOCTYPE html>
 <html lang="en" class="page-index">
 <head>
-  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="icon" type="image/png" href="logo.png" data-site-attr="href:{logo}" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>That SEC Podcast Pick'em Headquarters</title>
-  <script data-goatcounter="https://liquidflames.goatcounter.com/count"
-          async src="//gc.zgo.at/count.js"></script>
+  <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="common.js?v=4"></script>
-  <script src="sec.js?v=4"></script>
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <script src="config.js?v=5"></script>
+  <script src="common.js?v=5"></script>
+  <script src="sec.js?v=5"></script>
+  <link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
 
@@ -18,9 +17,9 @@
 
     <header>
       <div class="logo-container">
-        <img src="logo.png" alt="That SEC Podcast" class="main-logo" />
+        <img src="logo.png" alt="That SEC Podcast" class="main-logo" data-site-attr="src:{logo}; alt:{name}" />
       </div>
-      <div class="main-title-badge">2026 Pick'em Headquarters</div>
+      <div class="main-title-badge" data-site-text="{headline}">2026 Pick'em Headquarters</div>
     </header>
 
     <div class="card season-standings-card">
@@ -31,27 +30,11 @@
       <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
         Hosts
       </span>
-      <div class="host-season-strip">
-        <div class="host-season-card">
-          <div class="host-season-name">Mike</div>
-          <div class="host-season-record" id="seasonMike">0-0</div>
-        </div>
-        <div class="host-season-card">
-          <div class="host-season-name">Shane</div>
-          <div class="host-season-record" id="seasonShane">0-0</div>
-        </div>
-        <div class="host-season-card">
-          <div class="host-season-name">Steven</div>
-          <div class="host-season-record" id="seasonSteven">0-0</div>
-        </div>
-        <div class="host-season-card">
-          <div class="host-season-name">Cousins</div>
-          <div class="host-season-record" id="seasonCousins">0-0</div>
-        </div>
-      </div>
+      <!-- One card per host from config.js, then the players' consensus. -->
+      <div class="host-season-strip" id="hostSeasonStrip"></div>
 
       <div id="top5Section" style="margin-top: 0.8rem;">
-        <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
+        <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;" data-site-text="Top 3 {many}">
           Top 3 Cousins
         </span>
         <div id="top5CousinsList">
@@ -65,7 +48,7 @@
         <div id="tiebreakersInfo" class="tiebreakers-box">
           <div><strong>How the Podium Works:</strong></div>
           <div style="margin-top: 0.3rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-            Cousins are ranked purely by their individual correct and incorrect picks added up for the season. The cousins with the most correct picks are first, fewest losses breaking that. Anyone sharing the exact same record shares the spot, shown as a tie. You can tap the row to open it and see every name. Ties aren't something this tries to break, especially early in a season.
+            <span data-site-text="{many}">Cousins</span> are ranked purely by their individual correct and incorrect picks added up for the season. The <span data-site-text="{manyLower}">cousins</span> with the most correct picks are first, fewest losses breaking that. Anyone sharing the exact same record shares the spot, shown as a tie. You can tap the row to open it and see every name. Ties aren't something this tries to break, especially early in a season.
           </div>
 
           <div style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
@@ -73,7 +56,7 @@
           </div>
 
           <div style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-            <strong style="color: var(--text-main);">What's up with the Cousins card next to Steven?</strong> It's a season long record for the group's own consensus pick, not a real competitor like Mike, Shane, or Steven. Every week, the code tallies all the cousins' picks and takes whichever team got the most votes. That becomes the Cousins column you see on the Week Info Hub. For example, if 87% of cousins picked Missouri to win their game, Missouri gets recorded as that week's community pick. This card is those community picks added up, correct and incorrect, across the whole season. It's just a fun look at what the wisdom of the crowd would have scored if it were one player.
+            <strong style="color: var(--text-main);" data-site-text="What's up with the {many} card next to {lastHost}?">What's up with the Cousins card next to Steven?</strong> It's a season long record for the group's own consensus pick, not a real competitor like <span data-site-text="{hostList}">Mike, Shane, or Steven</span>. Every week, the code tallies all the <span data-site-text="{manyLower}">cousins</span>' picks and takes whichever team got the most votes. That becomes the <span data-site-text="{many}">Cousins</span> column you see on the Week Info Hub. For example, if 87% of <span data-site-text="{manyLower}">cousins</span> picked Missouri to win their game, Missouri gets recorded as that week's community pick. This card is those community picks added up, correct and incorrect, across the whole season. It's just a fun look at what the wisdom of the crowd would have scored if it were one player.
           </div>
 
           <div id="tiebreakerDecisionLog" class="tiebreaker-decision-log" style="display: none;"></div>
@@ -124,10 +107,7 @@
             <thead>
               <tr>
                 <th class="matchup-header">Matchup</th>
-                <th id="thMike">Mike</th>
-                <th id="thShane">Shane</th>
-                <th id="thSteven">Steven</th>
-                <th id="thCousins">Cousins</th>
+                <!-- Host and consensus columns are added from config.js. -->
               </tr>
             </thead>
             <tbody id="hostGridBody">
@@ -171,7 +151,7 @@
           <div class="pulse-card">
             <div class="pulse-label">Lock Accuracy</div>
             <div class="pulse-stat" id="statLockAccuracy">--</div>
-            <div class="pulse-desc" id="statLockAccuracyDesc">Cousin Locks Hit</div>
+            <div class="pulse-desc" id="statLockAccuracyDesc" data-site-text="{one} Locks Hit">Cousin Locks Hit</div>
           </div>
           <div class="pulse-card">
             <div class="pulse-label">Boldest Lock</div>
@@ -193,7 +173,7 @@
           <div style="display: none; gap: 0.4rem;" id="teamViewControls">
             <button type="button" class="btn-ctrl" onclick="toggleAllPerTeamCards(true)">Expand All</button>
             <button type="button" class="btn-ctrl" onclick="toggleAllPerTeamCards(false)">Collapse All</button>
-            <button type="button" class="btn-ctrl" onclick="togglePicksView()">Per Cousin</button>
+            <button type="button" class="btn-ctrl" onclick="togglePicksView()" data-site-text="Per {one}">Per Cousin</button>
           </div>
           <a href="#pageBottom" class="btn-ctrl">&darr; To Bottom</a>
         </div>
@@ -245,12 +225,12 @@
         </p>
 
         <div class="footer-links">
-          <a href="https://www.thatsecpodcast.com" target="_blank" rel="noopener noreferrer">thatsecpodcast.com</a>
+          <a href="https://www.thatsecpodcast.com" target="_blank" rel="noopener noreferrer" data-site-attr="href:{website}" data-site-text="{websiteLabel}">thatsecpodcast.com</a>
           <span class="divider">|</span>
-          <a href="https://discord.gg/XsPnGkxFSM" target="_blank" rel="noopener noreferrer">Join Our Discord</a>
+          <a href="https://discord.gg/XsPnGkxFSM" target="_blank" rel="noopener noreferrer" data-site-attr="href:{discord}">Join Our Discord</a>
         </div>
 
-        <p class="contact-note">
+        <p class="contact-note" data-site-html="{contact}">
           Issues, comments, or suggestions? Reach out to <strong>Liquid</strong> on Discord.
         </p>
       </div>
@@ -276,6 +256,23 @@
       texasam: ["TA&M", "TAM"],
       vanderbilt: ["VAN"]
     });
+
+    // A season card and a grid column for each host in config.js, then the
+    // players' consensus.
+    (function buildHostColumns() {
+      const card = (label, id) => `
+        <div class="host-season-card">
+          <div class="host-season-name">${label}</div>
+          <div class="host-season-record" id="${id}">0-0</div>
+        </div>`;
+      document.getElementById("hostSeasonStrip").innerHTML =
+        SITE.hosts.map((h, i) => card(h, `seasonHost${i}`)).join("") + card(SITE.players.many, "seasonPlayers");
+
+      const headRow = document.querySelector(".host-grid-table thead tr");
+      headRow.insertAdjacentHTML("beforeend",
+        SITE.hosts.map((h, i) => `<th id="thHost${i}">${h}</th>`).join("") + `<th id="thPlayers">${SITE.players.many}</th>`);
+      document.querySelector("#hostGridBody td").colSpan = SITE.hosts.length + 2;
+    })();
 
     // Team schedules highlight the week being shown and place games by date.
     scheduleOptions.currentWeek = () => activeWeek;
@@ -509,7 +506,7 @@
 
     // Season records for the hosts, the Cousins consensus and the podium.
     function computeSeasonTotals() {
-      const hostTotals = { mike: [0, 0], shane: [0, 0], steven: [0, 0] };
+      const hostTotals = Object.fromEntries(SITE.hosts.map(h => [hostKey(h), [0, 0]]));
       const cousinTotals = {};
       let anyDecidedGames = false;
 
@@ -548,9 +545,7 @@
         }
       });
 
-      document.getElementById("seasonMike").textContent = hostTotals.mike.join("-");
-      document.getElementById("seasonShane").textContent = hostTotals.shane.join("-");
-      document.getElementById("seasonSteven").textContent = hostTotals.steven.join("-");
+      SITE.hosts.forEach((h, i) => setText(`seasonHost${i}`, hostTotals[hostKey(h)].join("-")));
 
       let cousinsSeasonW = 0, cousinsSeasonL = 0;
       Object.keys(pickCounts).forEach(w => {
@@ -564,9 +559,9 @@
           else cousinsSeasonL++;
         });
       });
-      document.getElementById("seasonCousins").textContent = `${cousinsSeasonW}-${cousinsSeasonL}`;
+      setText("seasonPlayers", `${cousinsSeasonW}-${cousinsSeasonL}`);
 
-      renderPodium(Object.values(cousinTotals), anyDecidedGames, { namesOpen: true, noun: "Cousins" });
+      renderPodium(Object.values(cousinTotals), anyDecidedGames, { namesOpen: true, noun: SITE.players.many });
     }
 
     async function switchWeek(weekNum) {
@@ -576,7 +571,7 @@
       if (dropdown) dropdown.value = weekNum;
 
       document.getElementById("weekHostTitle").textContent = `Week ${weekNum} Info Hub`;
-      document.getElementById("weekCousinsTitle").textContent = `The Cousins' Week ${weekNum} Picks`;
+      document.getElementById("weekCousinsTitle").textContent = `The ${possessive(SITE.players.many)} Week ${weekNum} Picks`;
 
       const sortDesc = document.getElementById("leaderboardSortDesc");
       if (sortDesc) {
@@ -725,8 +720,8 @@
         const row = hostRows.find(h => h.user_name?.toLowerCase() === name);
         return row ? parseUserPicks(row.picks) : {};
       };
-      const hosts = ["mike", "shane", "steven"].map(name => {
-        const picks = hostPicksFor(name);
+      const hosts = SITE.hosts.map(name => {
+        const picks = hostPicksFor(hostKey(name));
         return { picks, scores: picks.scores || {}, record: gradePicks(picks, activeWeek) };
       });
       const consensus = gradeCousinsConsensus(cousinRows, games);
@@ -734,10 +729,8 @@
       const header = (id, label, rec) => {
         document.getElementById(id).innerHTML = `${label} <span class="host-header-score">${rec.correct}-${rec.incorrect}</span>`;
       };
-      header("thMike", "Mike", hosts[0].record);
-      header("thShane", "Shane", hosts[1].record);
-      header("thSteven", "Steven", hosts[2].record);
-      header("thCousins", "Cousins", consensus);
+      SITE.hosts.forEach((name, i) => header(`thHost${i}`, name, hosts[i].record));
+      header("thPlayers", SITE.players.many, consensus);
 
       const hostBody = document.getElementById("hostGridBody");
       hostBody.innerHTML = "";
@@ -748,7 +741,7 @@
         if (divider) {
           const dividerTr = document.createElement("tr");
           dividerTr.innerHTML = `
-            <td colspan="5" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
+            <td colspan="${SITE.hosts.length + 2}" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
               ${divider}
             </td>
           `;
