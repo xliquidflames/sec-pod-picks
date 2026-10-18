@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Host Portal - That SEC Podcast</title>
+  <script data-goatcounter="https://liquidflames.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-main: #0a1120;
+      --bg-card: #131d31;
+      --bg-card-inner: #19263e;
+      --accent-gold: #fbbf24;
+      --accent-gold-hover: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #22324f;
+      --success: #4ade80;
+      --danger: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    html, body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100dvh;
+    }
+
+    body {
+      padding: 1.5rem 1rem 3rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 550px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      color: var(--accent-gold);
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: var(--accent-gold);
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin-bottom: 0.25rem;
+    }
+
+    .sub-header {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .card-panel {
+      background: var(--bg-card);
+      padding: 1.25rem;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .control-group label {
+      display: block;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    select, input[type="password"] {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 8px;
+      background: #0d1527;
+      border: 1px solid var(--border-color);
+      color: var(--accent-gold);
+      font-size: 1rem;
+      font-weight: 700;
+      outline: none;
+    }
+
+    input[type="password"] {
+      color: var(--text-main);
+      font-weight: normal;
+      margin-bottom: 1.25rem;
+    }
+
+    input[type="password"]:focus {
+      border-color: var(--accent-gold);
+    }
+
+    select option {
+      background: #0d1527;
+      color: var(--text-main);
+    }
+
+    .game-card {
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .game-card.is-locked {
+      border: 1.5px solid var(--accent-gold);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
+    }
+
+    .game-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.4rem;
+    }
+
+    .game-title {
+      flex: 1;
+      text-align: left;
+      color: var(--accent-gold);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .matchup-sec-team {
+      font-weight: 800;
+    }
+
+    .matchup-other-team {
+      font-weight: 400;
+    }
+
+    .btn-lock-toggle {
+      background: #0e1728;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .btn-lock-toggle:hover {
+      border-color: var(--accent-gold);
+      color: var(--text-main);
+    }
+
+    .btn-lock-toggle.active {
+      background: var(--accent-gold);
+      color: #0a1120;
+      border-color: var(--accent-gold);
+      font-weight: 900;
+    }
+
+    .game-detail {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 0.6rem;
+      margin-bottom: 0.75rem;
+      line-height: 1.3;
+      text-align: center;
+    }
+
+    .pick-buttons-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .pick-buttons-grid-at {
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--accent-gold);
+    }
+
+    .btn-pick {
+      background: #0e1728;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-muted);
+      padding: 0.85rem 0.4rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-pick:hover {
+      border-color: #3b4d71;
+      color: var(--text-main);
+    }
+
+    .btn-pick.selected {
+      background: var(--accent-gold);
+      color: #0a1120;
+      font-weight: 900;
+      border-color: var(--accent-gold);
+    }
+
+    .score-inputs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+      margin-top: 0.6rem;
+    }
+
+    .score-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .score-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .score-field {
+      width: 100%;
+      background: #0d1527;
+      border: 1px solid var(--border-color);
+      color: var(--accent-gold);
+      font-size: 1.1rem;
+      font-weight: 900;
+      text-align: center;
+      padding: 0.45rem;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .score-field:focus {
+      border-color: var(--accent-gold);
+    }
+
+    .btn-save-all {
+      width: 100%;
+      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+      color: #0a1120;
+      font-size: 1.1rem;
+      font-weight: 900;
+      padding: 1.1rem;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      margin-top: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 0 #b45309;
+      transition: transform 0.1s ease;
+    }
+
+    .btn-save-all:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #b45309;
+    }
+
+    .status-alert {
+      margin-top: 1rem;
+      text-align: center;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <a href="index.html" class="back-link">&larr; Back to Leaderboard</a>
+      <h1>HOST PICKS PORTAL</h1>
+      <p class="sub-header" id="portalSubHeading">Week 1 Picks, Scores & Lock Submission</p>
+    </header>
+
+    <div class="card-panel">
+      <div class="controls-grid">
+        <div class="control-group">
+          <label for="weekSelect">Select Week:</label>
+          <select id="weekSelect" onchange="onWeekChange()">
+            <option value="1">Week 1</option>
+            <option value="2">Week 2</option>
+            <option value="3">Week 3</option>
+            <option value="4">Week 4</option>
+            <option value="5">Week 5</option>
+            <option value="6">Week 6</option>
+            <option value="7">Week 7</option>
+            <option value="8">Week 8</option>
+            <option value="9">Week 9</option>
+            <option value="10">Week 10</option>
+            <option value="11">Week 11</option>
+            <option value="12">Week 12</option>
+            <option value="13">Week 13</option>
+            <option value="14">Week 14</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="hostSelect">Submitting As:</label>
+          <select id="hostSelect" onchange="onHostChange()">
+            <option value="Mike">Mike</option>
+            <option value="Shane">Shane</option>
+            <option value="Steven">Steven</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="hostPin">Host Security PIN:</label>
+        <input type="password" id="hostPin" placeholder="Enter Host PIN" />
+      </div>
+
+      <div id="gamesContainer">
+        <div style="text-align: center; color: var(--text-muted); padding: 2rem 0;">Loading schedule...</div>
+      </div>
+
+      <button type="button" class="btn-save-all" onclick="saveHostSelections()">Save Host Picks</button>
+      <div id="statusAlert" class="status-alert"></div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Canonical SEC team identities. Each entry lists every spelling ESPN
+    // might use for that team (full name, "St" abbreviation, nickname).
+    // Classification is by EXACT match against these known spellings, not
+    // substring matching — substring matching used to wrongly classify
+    // schools like "Texas State" or "Florida State" as SEC teams just
+    // because "Texas" or "Florida" appears inside their name.
+    const secTeamAliases = {
+      alabama: ["Alabama"],
+      arkansas: ["Arkansas"],
+      auburn: ["Auburn"],
+      florida: ["Florida"],
+      georgia: ["Georgia"],
+      kentucky: ["Kentucky"],
+      lsu: ["LSU"],
+      olemiss: ["Ole Miss"],
+      mississippistate: ["Mississippi State", "Mississippi St", "Miss State", "Miss St"],
+      missouri: ["Missouri", "Mizzou"],
+      oklahoma: ["Oklahoma"],
+      southcarolina: ["South Carolina"],
+      tennessee: ["Tennessee"],
+      texas: ["Texas"],
+      texasam: ["Texas A&M", "Texas AM"],
+      vanderbilt: ["Vanderbilt"]
+    };
+
+    let currentSchedule = [];
+    let hostPicks = {};
+    let hostScores = {};
+    let currentLockMatchupKey = null;
+
+    function cleanTeamName(name) {
+      if (!name) return "";
+      const lower = name.toLowerCase().trim();
+      if (lower.includes("pine bluff") || lower === "uapb" || lower.includes("peanut")) {
+        return "Arkansas Peanut Butter (Pine Bluff)";
+      }
+      return name;
+    }
+
+    function isSecTeam(teamName) {
+      if (!teamName) return false;
+      return secNormalizedNames.has(normalizeTeam(teamName));
+    }
+
+    // Every known spelling of each SEC team collapses to one canonical
+    // string here (built from secTeamAliases above, before normalizeTeam —
+    // fine due to function hoisting). This is what actually fixes picks
+    // like "Miss State" not matching "Mississippi St" — two different
+    // abbreviations for the same team, used at different times, that
+    // would otherwise normalize to two different strings and never be
+    // recognized as the same pick.
+    const secNameCanonical = {};
+    Object.entries(secTeamAliases).forEach(([canonicalKey, variants]) => {
+      variants.forEach(variant => {
+        const crude = variant.toLowerCase().replace(/[^a-z0-9]/g, "");
+        secNameCanonical[crude] = canonicalKey;
+      });
+    });
+
+    function normalizeTeam(str) {
+      if (!str) return "";
+      const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned.includes("uapb")) {
+        return "uapb";
+      }
+      if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
+        return "arkansas";
+      }
+      if (secNameCanonical[cleaned]) {
+        return secNameCanonical[cleaned];
+      }
+      return cleaned;
+    }
+
+    // Shortens just these two team names for display on the pick buttons
+    // — South Carolina and Mississippi State are the only two that wrap
+    // to a second line. This ONLY changes the button's visible text; the
+    // real, full name is still what gets stored as the pick, via the
+    // data-team attribute selectTeam() below now reads instead of the
+    // button's own text (see that function for why that distinction
+    // matters here specifically).
+    function shortenPickDisplay(pick) {
+      const canonical = normalizeTeam(pick);
+      if (canonical === 'southcarolina') return 'S Carolina';
+      if (canonical === 'mississippistate') return 'Miss State';
+      if (canonical === 'texasam') return 'TAMU';
+      return pick;
+    }
+
+    const secNormalizedNames = new Set(
+      Object.values(secTeamAliases).flat().map(n => normalizeTeam(n))
+    );
+
+    function buildMatchupKey(teamA, teamB) {
+      return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
+    }
+
+    // Every ESPN scoreboard fetch for a given week happens at most once per
+    // page load thanks to this cache.
+    window.espnRawCache = {};
+
+    async function fetchEspnRaw(week) {
+      if (window.espnRawCache[week]) return window.espnRawCache[week];
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
+        const res = await fetch(url);
+        const serverDateHeader = res.headers.get("date");
+        const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+        const data = await res.json();
+        const result = { data, currentTime };
+        window.espnRawCache[week] = result;
+        return result;
+      } catch (err) {
+        console.error(`ESPN fetch failed for week ${week}:`, err);
+        return { data: null, currentTime: new Date() };
+      }
+    }
+
+    const TOTAL_WEEKS = 14;
+
+    // Figures out which week to default the "Select Week" dropdown to when
+    // the portal first loads, instead of it always sitting on Week 1 no
+    // matter how far the season's progressed. Hosts move to the next
+    // week's admin page on MONDAY specifically — a day earlier than the
+    // cousin-facing leaderboard, which waits until Tuesday. That's
+    // intentional, not a mismatch to fix: hosts record and prep for the
+    // next week sooner than when the podcast wants the audience to see it
+    // reflected on the public leaderboard.
+    async function determineActiveWeek() {
+      let activeW = 1;
+      const weekNums = Array.from({length: TOTAL_WEEKS}, (_, i) => i + 1);
+      await Promise.all(weekNums.map(w => fetchEspnRaw(w)));
+
+      for (let w = 1; w <= TOTAL_WEEKS; w++) {
+        try {
+          const { data, currentTime } = await fetchEspnRaw(w);
+          if (!data || !data.events || data.events.length === 0) continue;
+
+          const gameDates = data.events
+            .map(ev => new Date(ev.competitions[0]?.date || ev.date))
+            .filter(d => !isNaN(d.getTime()))
+            .sort((a, b) => a - b);
+
+          if (gameDates.length === 0) continue;
+
+          const firstKickoff = gameDates[0];
+          const lastKickoff = gameDates[gameDates.length - 1];
+          const lastGameEnd = new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000);
+
+          const TRANSITION_WEEKDAY = 1; // 0=Sun, 1=Mon, 2=Tue, ...
+          const transitionDay = new Date(lastGameEnd);
+          transitionDay.setHours(0, 0, 0, 0);
+          do {
+            transitionDay.setDate(transitionDay.getDate() + 1);
+          } while (transitionDay.getDay() !== TRANSITION_WEEKDAY);
+
+          if (currentTime >= firstKickoff) {
+            activeW = w;
+            if (currentTime >= transitionDay) {
+              activeW = Math.min(w + 1, TOTAL_WEEKS);
+            }
+          }
+        } catch (e) {
+          console.error(`Error calculating active week for week ${w}:`, e);
+        }
+      }
+
+      return activeW;
+    }
+
+    async function fetchEspnSchedule(week) {
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.events || data.events.length === 0) return [];
+
+        const rawGames = [];
+
+        data.events.forEach(ev => {
+          const comp = ev.competitions[0];
+          const home = comp.competitors.find(c => c.homeAway === 'home');
+          const away = comp.competitors.find(c => c.homeAway === 'away');
+
+          const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
+          const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
+
+          // Team order no longer depends on home/away at all — the SEC
+          // team is always teamA, the opponent is always teamB. This keeps
+          // every list sorted Alabama-through-Vanderbilt regardless of who
+          // hosts, and removes ESPN home/away data as a variable that could
+          // ever cause this file's matchup keys to disagree with index.html
+          // or makepicks.html.
+          let teamA, teamB;
+          if (isSecTeam(homeName)) {
+            teamA = homeName;
+            teamB = awayName;
+          } else {
+            teamA = awayName;
+            teamB = homeName;
+          }
+
+          const isFinal = comp.status && comp.status.type && comp.status.type.completed;
+          const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : 'Line: TBD';
+          const isNeutralSite = comp.neutralSite === true;
+          const city = comp.venue && comp.venue.address ? comp.venue.address.city : '';
+          const venue = (comp.venue && comp.venue.address)
+            ? `${comp.venue.address.city || ''}${comp.venue.address.state ? ', ' + comp.venue.address.state : ''}`
+            : '';
+
+          // Real, literal "Away @ Home" text — never flipped. The SEC side
+          // is bolded wherever it actually falls in the sentence (instead
+          // of always being first), so the eye can anchor on weight
+          // rather than position; centering the whole title (CSS) helps
+          // it read as one unit. Completely separate from teamA/teamB,
+          // which stay SEC-team-first no matter what for the matchup key.
+          const awayClass = isSecTeam(awayName) ? 'matchup-sec-team' : 'matchup-other-team';
+          const homeClass = isSecTeam(homeName) ? 'matchup-sec-team' : 'matchup-other-team';
+          let matchupLabel = `<span class="${awayClass}">${awayName}</span> @ <span class="${homeClass}">${homeName}</span>`;
+          if (isNeutralSite) {
+            matchupLabel += `${city ? ` in ${city}` : ''} (NS)`;
+          }
+
+          let time = "TBD";
+          let kickoff = new Date(8640000000000000);
+          if (isFinal) {
+            time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
+          } else if (comp.date) {
+            time = new Date(comp.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
+                   new Date(comp.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+          }
+          if (comp.date) {
+            const kd = new Date(comp.date);
+            if (!isNaN(kd.getTime())) kickoff = kd;
+          }
+
+          rawGames.push({
+            teamA: teamA,
+            teamB: teamB,
+            kickoff: kickoff,
+            matchupLabel: matchupLabel,
+            detail: isFinal ? `${time} | ${venue}` : `${time} | ${odds} | ${venue}`,
+            // ESPN's own event id — stable no matter how ESPN formats a
+            // team's display name. Building the matchup key from team-name
+            // text (the old approach) breaks the moment ESPN shows a name
+            // even slightly differently between when a ballot was submitted
+            // and when this page loads later. The id never changes.
+            espnId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null,
+            awayName: awayName,
+            homeName: homeName
+          });
+        });
+
+        // Adopted the NFL site's sort convention: chronological by kickoff
+        // instead of alphabetical by SEC team — sidesteps the inconsistency
+        // where a conference game's list position depended on which of the
+        // two SEC teams happened to be hosting that year. teamA/teamB are
+        // untouched and still SEC-team-first for the matchup key; this
+        // only changes what order rows appear in.
+        rawGames.sort((a, b) => a.kickoff - b.kickoff);
+
+        return rawGames.map((g, idx) => ({
+          id: idx + 1,
+          matchupKey: g.espnId || buildMatchupKey(g.teamA, g.teamB),
+          teamA: g.teamA,
+          teamB: g.teamB,
+          matchupLabel: g.matchupLabel,
+          detail: g.detail,
+          awayName: g.awayName,
+          homeName: g.homeName
+        }));
+      } catch (e) {
+        console.error("ESPN schedule error:", e);
+        return [];
+      }
+    }
+
+    async function loadSchedule() {
+      const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
+      document.getElementById("portalSubHeading").textContent = `Week ${weekNum} Picks, Scores & Lock Submission`;
+
+      currentSchedule = await fetchEspnSchedule(weekNum);
+
+      renderCards();
+      await fetchExistingHostData();
+    }
+
+    function renderCards() {
+      const container = document.getElementById("gamesContainer");
+      if (currentSchedule.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--danger); padding: 1.5rem 0;">No scheduled games found for this week.</div>`;
+        return;
+      }
+
+      container.innerHTML = "";
+
+      currentSchedule.forEach(game => {
+        const card = document.createElement("div");
+        card.className = "game-card";
+        card.id = `card_${game.matchupKey}`;
+
+        // Buttons and score boxes are shown in the real "Away @ Home"
+        // order. teamA/teamB (SEC team first) stay exactly as they were for
+        // the matchup key, the saved picks and the _A/_B element ids; only
+        // the on-screen left/right order changes.
+        const teamAIsHome = normalizeTeam(game.teamA) === normalizeTeam(game.homeName);
+
+        const btnAHtml = `
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_A" data-team="${game.teamA}" onclick="selectTeam('${game.matchupKey}', '${game.teamA}')">
+              ${shortenPickDisplay(game.teamA)}
+            </button>`;
+        const btnBHtml = `
+            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_B" data-team="${game.teamB}" onclick="selectTeam('${game.matchupKey}', '${game.teamB}')">
+              ${shortenPickDisplay(game.teamB)}
+            </button>`;
+        const scoreAHtml = `
+            <div class="score-group">
+              <span class="score-label">${game.teamA} Score</span>
+              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_A" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.teamA}', '${game.teamB}')" />
+            </div>`;
+        const scoreBHtml = `
+            <div class="score-group">
+              <span class="score-label">${game.teamB} Score</span>
+              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_B" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.teamA}', '${game.teamB}')" />
+            </div>`;
+
+        card.innerHTML = `
+          <div class="game-header-row">
+            <span class="game-title"><strong>GAME ${game.id}</strong></span>
+            <button type="button" class="btn-lock-toggle" id="lock_btn_${game.matchupKey}" onclick="toggleLock('${game.matchupKey}')">
+              Lock of Week
+            </button>
+          </div>
+          <div class="pick-buttons-grid">
+            ${teamAIsHome ? btnBHtml : btnAHtml}
+            <span class="pick-buttons-grid-at">@</span>
+            ${teamAIsHome ? btnAHtml : btnBHtml}
+          </div>
+          ${game.detail ? `<span class="game-detail">${game.detail}</span>` : ''}
+          <div class="score-inputs-grid">
+            ${teamAIsHome ? scoreBHtml : scoreAHtml}
+            ${teamAIsHome ? scoreAHtml : scoreBHtml}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function selectTeam(matchupKey, teamName) {
+      hostPicks[matchupKey] = teamName;
+      const btnA = document.getElementById(`btn_${matchupKey}_A`);
+      const btnB = document.getElementById(`btn_${matchupKey}_B`);
+
+      if (btnA && btnB) {
+        // Matching on data-team (the real, full name) instead of the
+        // button's visible text — the text can now be a shortened display
+        // version (see shortenPickDisplay), so comparing against it
+        // directly would silently fail to highlight the right button,
+        // both on a fresh click and when reopening an existing submission.
+        if (btnA.dataset.team === teamName) {
+          btnA.classList.add("selected");
+          btnB.classList.remove("selected");
+        } else {
+          btnB.classList.add("selected");
+          btnA.classList.remove("selected");
+        }
+      }
+    }
+
+    function onScoreInput(matchupKey, teamA, teamB) {
+      const valA = document.getElementById(`score_${matchupKey}_A`).value;
+      const valB = document.getElementById(`score_${matchupKey}_B`).value;
+
+      if (!hostScores[matchupKey]) hostScores[matchupKey] = {};
+      hostScores[matchupKey].teamA = valA;
+      hostScores[matchupKey].teamB = valB;
+
+      const numA = parseInt(valA, 10);
+      const numB = parseInt(valB, 10);
+
+      if (!isNaN(numA) && !isNaN(numB)) {
+        if (numA > numB) selectTeam(matchupKey, teamA);
+        else if (numB > numA) selectTeam(matchupKey, teamB);
+      }
+    }
+
+    function toggleLock(matchupKey) {
+      currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
+      refreshLockVisuals();
+    }
+
+    function refreshLockVisuals() {
+      currentSchedule.forEach(game => {
+        const card = document.getElementById(`card_${game.matchupKey}`);
+        const lockBtn = document.getElementById(`lock_btn_${game.matchupKey}`);
+
+        if (card && lockBtn) {
+          if (currentLockMatchupKey === game.matchupKey) {
+            card.classList.add("is-locked");
+            lockBtn.classList.add("active");
+            lockBtn.textContent = "★ Lock Selected";
+          } else {
+            card.classList.remove("is-locked");
+            lockBtn.classList.remove("active");
+            lockBtn.textContent = "Lock of Week";
+          }
+        }
+      });
+    }
+
+    function onWeekChange() {
+      hostPicks = {};
+      hostScores = {};
+      currentLockMatchupKey = null;
+      document.getElementById("statusAlert").textContent = "";
+      loadSchedule();
+    }
+
+    function onHostChange() {
+      hostPicks = {};
+      hostScores = {};
+      currentLockMatchupKey = null;
+      document.querySelectorAll(".btn-pick").forEach(btn => btn.classList.remove("selected"));
+      document.querySelectorAll(".score-field").forEach(inp => inp.value = "");
+      document.getElementById("statusAlert").textContent = "";
+      refreshLockVisuals();
+      fetchExistingHostData();
+    }
+
+    async function fetchExistingHostData() {
+      const hostName = document.getElementById("hostSelect").value;
+      const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
+
+      try {
+        const { data, error } = await supabaseClient
+          .from("picks")
+          .select("*")
+          .eq("week_number", weekNum)
+          .eq("user_name", hostName)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data && data.picks) {
+          const raw = typeof data.picks === 'object' ? data.picks : JSON.parse(data.picks);
+          hostPicks = { ...raw };
+          hostScores = raw.scores || {};
+
+          currentSchedule.forEach(g => {
+            const aNorm = normalizeTeam(g.teamA);
+            const bNorm = normalizeTeam(g.teamB);
+
+            let team = hostPicks[g.matchupKey] || hostPicks[g.id] || hostPicks[String(g.id)];
+            if (!team) {
+              const matchKey = Object.keys(hostPicks).find(k => {
+                if (k === 'lock_game_id' || k === 'lock_matchup_key' || k === 'scores') return false;
+                const vNorm = normalizeTeam(hostPicks[k]);
+                return vNorm === aNorm || vNorm === bNorm;
+              });
+              if (matchKey) team = hostPicks[matchKey];
+            }
+
+            if (team) {
+              selectTeam(g.matchupKey, team);
+            }
+
+            const gScore = hostScores[g.matchupKey] || hostScores[g.id] || hostScores[String(g.id)];
+            if (gScore) {
+              const inpA = document.getElementById(`score_${g.matchupKey}_A`);
+              const inpB = document.getElementById(`score_${g.matchupKey}_B`);
+              if (inpA && gScore.teamA !== undefined) inpA.value = gScore.teamA;
+              if (inpB && gScore.teamB !== undefined) inpB.value = gScore.teamB;
+            }
+          });
+
+          if (hostPicks.lock_matchup_key) {
+            currentLockMatchupKey = hostPicks.lock_matchup_key;
+            refreshLockVisuals();
+          } else if (hostPicks.lock_game_id) {
+            const foundGame = currentSchedule.find(g => g.id === parseInt(hostPicks.lock_game_id, 10));
+            if (foundGame) {
+              currentLockMatchupKey = foundGame.matchupKey;
+              refreshLockVisuals();
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching host data:", e);
+      }
+    }
+
+    async function saveHostSelections() {
+      const pinInput = document.getElementById("hostPin").value.trim();
+      const hostName = document.getElementById("hostSelect").value;
+      const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
+      const statusAlert = document.getElementById("statusAlert");
+
+      if (pinInput.toUpperCase() !== "SEC2026") {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = "Invalid Host Security PIN.";
+        return;
+      }
+
+      const pickedKeys = Object.keys(hostPicks).filter(k => k !== 'lock_game_id' && k !== 'lock_matchup_key' && k !== 'scores');
+      if (pickedKeys.length < currentSchedule.length) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = `Please make picks for all ${currentSchedule.length} games.`;
+        return;
+      }
+
+      currentSchedule.forEach(g => {
+        const inpA = document.getElementById(`score_${g.matchupKey}_A`);
+        const inpB = document.getElementById(`score_${g.matchupKey}_B`);
+        if (inpA && inpB && inpA.value !== "" && inpB.value !== "") {
+          if (!hostScores[g.matchupKey]) hostScores[g.matchupKey] = {};
+          hostScores[g.matchupKey].teamA = inpA.value;
+          hostScores[g.matchupKey].teamB = inpB.value;
+        }
+      });
+
+      hostPicks.lock_matchup_key = currentLockMatchupKey;
+      hostPicks.scores = hostScores;
+
+      statusAlert.style.color = "var(--text-muted)";
+      statusAlert.textContent = "Saving...";
+
+      try {
+        const { data: existing, error: checkError } = await supabaseClient
+          .from("picks")
+          .select("id")
+          .eq("week_number", weekNum)
+          .eq("user_name", hostName)
+          .maybeSingle();
+
+        if (checkError) throw checkError;
+
+        let saveError = null;
+
+        if (existing && existing.id) {
+          const { error } = await supabaseClient
+            .from("picks")
+            .update({
+              is_host: true,
+              picks: hostPicks,
+              created_at: new Date().toISOString()
+            })
+            .eq("id", existing.id);
+
+          saveError = error;
+        } else {
+          const { error } = await supabaseClient
+            .from("picks")
+            .insert({
+              user_name: hostName,
+              week_number: weekNum,
+              is_host: true,
+              picks: hostPicks,
+              created_at: new Date().toISOString()
+            });
+
+          saveError = error;
+        }
+
+        if (saveError) throw saveError;
+
+        statusAlert.style.color = "var(--success)";
+        statusAlert.textContent = `Week ${weekNum} picks, scores & Lock saved for ${hostName}!`;
+      } catch (err) {
+        statusAlert.style.color = "var(--danger)";
+        statusAlert.textContent = `Error: ${err.message}`;
+      }
+    }
+
+    (async () => {
+      const activeWeek = await determineActiveWeek();
+      const weekSelect = document.getElementById("weekSelect");
+      if (weekSelect) weekSelect.value = String(activeWeek);
+      loadSchedule();
+    })();
+  </script>
+</body>
+</html>
