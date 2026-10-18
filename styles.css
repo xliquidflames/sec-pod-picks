@@ -1165,7 +1165,7 @@ input[type="password"].form-field {
 }
 
 .info-row.standings-row {
-  grid-template-columns: 1.6rem 1fr 3.2rem 3.4rem;
+  grid-template-columns: 2.2rem 1fr 3.2rem 3.4rem;
 }
 
 .info-row.head {
