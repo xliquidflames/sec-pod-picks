@@ -626,6 +626,15 @@ header {
   flex-shrink: 0;
 }
 
+.bye-label small {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
 .bye-logos {
   display: flex;
   flex: 1;
