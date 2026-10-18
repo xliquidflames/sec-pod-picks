@@ -7,9 +7,9 @@
   <script data-goatcounter="https://liquidflames.goatcounter.com/count"
           async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="common.js"></script>
-  <script src="sec.js"></script>
-  <link rel="stylesheet" href="styles.css" />
+  <script src="common.js?v=3"></script>
+  <script src="sec.js?v=3"></script>
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
 
@@ -117,6 +117,7 @@
       try {
         const data = await (await fetch(scoreboardUrl(week))).json();
         if (!data.events || data.events.length === 0) return [];
+        rememberEvents(data.events);
 
         const games = data.events.map(ev => {
           const comp = ev.competitions[0];
