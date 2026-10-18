@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="page-bracket">
+<html lang="en" class="page-bracketpicks">
 <head>
-  <link rel="icon" type="image/png" href="logo.png" data-site-attr="href:{logo}" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title data-site-text="Bracket Challenge - {name}">Bracket Challenge - That SEC Podcast</title>
+  <title data-site-text="Fill Out Your Bracket - {name}">Fill Out Your Bracket - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=7"></script>
   <script src="common.js?v=7"></script>
@@ -13,159 +12,296 @@
 </head>
 <body>
 
-  <div class="container" id="pageTop">
+  <div class="container narrow">
     <header>
-      <div class="logo-container">
-        <img src="logo.png" alt="That SEC Podcast" class="main-logo" data-site-attr="src:{logo}; alt:{name}" />
-      </div>
-      <div class="main-title-badge" id="bracketHeadline">Bracket Challenge</div>
+      <a href="BBBracket.html" class="back-link">&larr; Bracket Standings</a>
+      <h1 id="pageHeading">FILL OUT YOUR BRACKET</h1>
+      <p class="sub-header" id="pageSubHeading">Men's NCAA Tournament</p>
     </header>
 
+    <div class="pick-format-banner">
+      <div class="pick-format-text">
+        <span class="pick-format-highlight">Scoring:</span> 10 points per correct pick in the Round of 64, doubling each round: 20, 40, 80, 160, and 320 for the champion. Tiebreaker is the title game's total points.
+      </div>
+    </div>
+
     <div class="card">
-      <div class="section-title-bar">
-        <h2 class="section-title">Standings</h2>
-        <span class="bk-count" id="entryCount"></span>
-      </div>
-      <div class="bk-state" id="stageLine">Loading the tournament...</div>
-      <a href="BBBracketpicks.html" class="btn-submit bk-cta" id="fillOutBtn" style="display: none;">Fill Out Your Bracket &rarr;</a>
-      <div id="standingsList"></div>
-    </div>
+      <div id="bracketState" class="bk-state">Loading the tournament...</div>
 
-    <div class="card" id="realBracketCard" style="display: none;">
-      <div class="section-title-bar">
-        <h2 class="section-title">Tournament Results</h2>
-      </div>
-      <div id="realTabsWrap"></div>
-    </div>
-
-    <footer class="site-footer" id="pageBottom">
-      <div class="footer-container">
-        <p class="disclaimer">
-          Data is sourced directly from ESPN. Any discrepancies, delays, or stat corrections reflect upstream data from ESPN and will update automatically once ESPN publishes their official updates.
-        </p>
-        <div class="footer-links">
-          <a href="index.html">Weekly Pick'em</a>
-          <span class="divider">|</span>
-          <a href="https://discord.gg/XsPnGkxFSM" target="_blank" rel="noopener noreferrer" data-site-attr="href:{discord}">Join Our Discord</a>
+      <div id="bracketForm" style="display: none;">
+        <div class="user-input-group">
+          <label for="userNameInput">Your Handle / Name:</label>
+          <div class="name-input-wrapper">
+            <input type="text" class="form-field" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" data-site-attr="placeholder:e.g., @{one}Dan or VolFan99" autocomplete="off" required />
+            <div id="nameSuggestions" class="name-suggestions"></div>
+          </div>
+          <div class="name-reminder">
+            ⚠️ Use the same name you use for weekly picks — same spelling, capitalization, and @ symbol.
+          </div>
         </div>
-        <p class="contact-note" data-site-html="{contact}">
-          Issues, comments, or suggestions? Reach out to <strong>Liquid</strong> on Discord.
-        </p>
+
+        <div class="bk-progress" id="bkProgress"></div>
+        <div id="pickTabsWrap"></div>
+
+        <div class="bk-nav-row">
+          <button type="button" class="btn-ctrl" id="prevTabBtn">&larr; Back</button>
+          <button type="button" class="btn-ctrl" id="nextTabBtn">Next &rarr;</button>
+        </div>
+
+        <button type="button" class="btn-submit" id="submitBtn" onclick="submitBracket()">Submit Bracket</button>
+        <div id="statusAlert" class="status-alert"></div>
       </div>
-    </footer>
+    </div>
+  </div>
+
+  <div id="nameMatchModal" class="name-match-modal-overlay">
+    <div class="name-match-modal">
+      <div class="name-match-modal-title">Is this you?</div>
+      <div class="name-match-modal-text" id="nameMatchModalText"></div>
+      <div class="name-match-modal-buttons">
+        <button type="button" class="btn-modal-primary" id="nameMatchModalYes">Yes, that's me</button>
+        <button type="button" class="btn-modal-secondary" id="nameMatchModalNo">No, use what I typed</button>
+      </div>
+    </div>
   </div>
 
   <script>
     const season = SITE.bracketSeason;
+    // Add ?test to the address to try the page after brackets lock. Nothing
+    // is saved to the database in test mode.
+    const TEST_MODE = new URLSearchParams(location.search).has("test");
+    const DRAFT_KEY = `bracketDraft-${season}${TEST_MODE ? "-test" : ""}`;
     let T = null;
+    let picks = {};
+    let tiebreaker = "";
+    let knownNames = [];
+    let selectTab = null;
+    let currentTab = null;
 
-    function entryRowHtml(e, i) {
-      const champ = e.picks.CH;
-      const champStatus = pickStatus(T, "CH", champ);
-      const rounds = [1, 2, 3, 4, 5, 6].map(r => {
-        const total = 64 >> r;
-        return `<span class="bk-round-chip" title="${ROUND_NAMES[r]}"><b>${ROUND_SHORT[r]}</b> ${e.score.perRound[r]}/${total}</span>`;
-      }).join("");
-      return `
-        <div class="cousin-item bk-entry">
-          <div class="cousin-header" data-entry="${i}">
-            <div class="bk-entry-main">
-              <span class="rank-badge ${["", "rank-gold", "rank-silver", "rank-bronze"][e.rank] || ""}">${e.tied ? "T" : "#"}${e.rank}</span>
-              <span class="bk-entry-name">${e.user_name}</span>
-            </div>
-            <div class="bk-entry-score">
-              <span class="bk-points">${e.score.points}</span>
-              <span class="bk-max">max ${e.score.max}</span>
-            </div>
-          </div>
-          <div class="cousin-picks-body" id="entryBody${i}">
-            <div class="bk-entry-summary">
-              <div class="bk-champ">Champion pick ${teamChip(T, champ, { status: champStatus })}</div>
-              <div class="bk-round-chips">${rounds}</div>
-              <div class="bk-tiebreak">Tiebreaker: ${e.tiebreaker ?? "-"}${T.finalTotal !== null ? ` (actual ${T.finalTotal})` : ""}</div>
-            </div>
-            <div class="bk-entry-tabs" id="entryTabsWrap${i}"></div>
-          </div>
-        </div>`;
+    function saveDraft() {
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ picks, tiebreaker })); } catch (e) {}
     }
 
-    // Points, then (once the title game is over) closest tiebreaker.
-    // Entries still level share a rank.
-    function rankEntries(entries) {
-      const tieGap = e => T.finalTotal === null || e.tiebreaker === null ? 0 : Math.abs(e.tiebreaker - T.finalTotal);
-      entries.sort((a, b) => (b.score.points - a.score.points) || (tieGap(a) - tieGap(b)) || (b.score.max - a.score.max) || a.user_name.localeCompare(b.user_name));
-      entries.forEach((e, i) => {
-        const prev = entries[i - 1];
-        e.rank = prev && prev.score.points === e.score.points && tieGap(prev) === tieGap(e) ? prev.rank : i + 1;
+    function loadDraft() {
+      try {
+        const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+        if (d && d.picks) { picks = d.picks; tiebreaker = d.tiebreaker || ""; }
+      } catch (e) {}
+    }
+
+    // After any change, drop later-round picks whose team is no longer in
+    // that game, round by round, so the whole bracket stays consistent.
+    function clearBrokenPicks() {
+      const order = Object.values(T.slots).sort((a, b) => a.round - b.round);
+      order.forEach(slot => {
+        if (!picks[slot.key]) return;
+        picks[slot.key] = resolveEntrant(T, picks[slot.key]);
+        if (!slotEntrants(T, slot.key, picks).includes(picks[slot.key])) delete picks[slot.key];
       });
-      entries.forEach(e => { e.tied = entries.some(o => o !== e && o.rank === e.rank); });
+    }
+
+    function pickCount() {
+      return Object.keys(T.slots).filter(k => picks[k]).length;
+    }
+
+    function choose(key, id) {
+      picks[key] = id;
+      clearBrokenPicks();
+      saveDraft();
+      renderTab(document.getElementById("pickBody"), currentTab);
+      renderProgress();
+    }
+
+    function renderProgress() {
+      const n = pickCount();
+      const tieOk = /^\d+$/.test(String(tiebreaker));
+      document.getElementById("bkProgress").innerHTML =
+        `<strong>${n}</strong> of ${TOTAL_PICKS} picks${n === TOTAL_PICKS ? (tieOk ? " · ready to submit" : " · add a tiebreaker") : ""}`;
+      // Tabs with every game picked get a check.
+      document.querySelectorAll("#pickTabs .details-tab").forEach(b => {
+        const keys = tabRounds(T, b.dataset.tab).flatMap(([, ks]) => ks);
+        b.classList.toggle("done", keys.every(k => picks[k]) && (b.dataset.tab !== "Final Four" || tieOk));
+      });
+    }
+
+    function matchupHtml(key) {
+      const entrants = slotEntrants(T, key, picks);
+      const btn = id => {
+        if (!id) return `<div class="bk-choice empty">${T.slots[key].round === 1 ? "TBD" : "Pick the earlier game first"}</div>`;
+        return `<button type="button" class="bk-choice ${picks[key] === id ? "selected" : ""}" data-key="${key}" data-id="${id}">${teamChip(T, id)}</button>`;
+      };
+      return `<div class="bk-matchup">${btn(entrants[0])}${btn(entrants[1])}</div>`;
+    }
+
+    function renderTab(container, tab) {
+      currentTab = tab;
+      container.innerHTML = tabRounds(T, tab).map(([round, keys]) => `
+        <div class="bk-round">
+          <div class="bk-round-title">${ROUND_NAMES[round]} <span>${ROUND_POINTS[round]} pts each</span></div>
+          ${keys.map(matchupHtml).join("")}
+        </div>`).join("") + (tab === "Final Four" ? `
+        <div class="bk-round">
+          <div class="bk-round-title">Tiebreaker</div>
+          <label class="bk-tiebreak-label" for="tiebreakInput">Total points scored in the championship game</label>
+          <input type="number" inputmode="numeric" min="0" max="400" class="form-field" id="tiebreakInput" placeholder="e.g. 141" value="${tiebreaker}" />
+        </div>` : "");
+
+      const tieInput = document.getElementById("tiebreakInput");
+      if (tieInput) tieInput.addEventListener("input", () => { tiebreaker = tieInput.value.trim(); saveDraft(); renderProgress(); });
+
+      const tabs = [...T.regions, "Final Four"];
+      const i = tabs.indexOf(tab);
+      document.getElementById("prevTabBtn").style.visibility = i > 0 ? "" : "hidden";
+      document.getElementById("nextTabBtn").style.visibility = i < tabs.length - 1 ? "" : "hidden";
+    }
+
+    function goTab(step) {
+      const tabs = [...T.regions, "Final Four"];
+      const next = tabs[tabs.indexOf(currentTab) + step];
+      if (!next) return;
+      selectTab(next);
+      document.getElementById("pickTabsWrap").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // Ignores case, spaces and a leading "@", like the weekly picks page.
+    function normalizeNameForMatch(name) {
+      return (name || "").trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+    }
+
+    function findPossibleNameMatch(typedName) {
+      const typed = normalizeNameForMatch(typedName);
+      return knownNames.find(n => n !== typedName && normalizeNameForMatch(n) === typed) || null;
+    }
+
+    function confirmNameMatch(typedName, matchedName) {
+      return new Promise(resolve => {
+        const modal = document.getElementById("nameMatchModal");
+        const yesBtn = document.getElementById("nameMatchModalYes");
+        const noBtn = document.getElementById("nameMatchModalNo");
+        document.getElementById("nameMatchModalText").innerHTML = `You typed <strong>"${typedName}"</strong>, but that looks like it might be the same person as <strong>"${matchedName}"</strong>. Is that you?`;
+        modal.style.display = "flex";
+        function done(result) {
+          modal.style.display = "none";
+          yesBtn.removeEventListener("click", onYes);
+          noBtn.removeEventListener("click", onNo);
+          resolve(result);
+        }
+        function onYes() { done(matchedName); }
+        function onNo() { done(typedName); }
+        yesBtn.addEventListener("click", onYes);
+        noBtn.addEventListener("click", onNo);
+      });
+    }
+
+    async function submitBracket() {
+      const submitBtn = document.getElementById("submitBtn");
+      const username = document.getElementById("userNameInput").value.trim();
+      const fail = text => {
+        setStatus("var(--danger)", text);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Bracket";
+      };
+
+      if (isLocked(T) && !TEST_MODE) return setStatus("var(--danger)", "The tournament has tipped off, so brackets are locked.");
+      if (!username) return setStatus("var(--danger)", "Please enter your handle or name.");
+      if (pickCount() < TOTAL_PICKS) return setStatus("var(--danger)", `Please pick all ${TOTAL_PICKS} games. You have ${TOTAL_PICKS - pickCount()} left.`);
+      if (!/^\d+$/.test(String(tiebreaker))) return setStatus("var(--danger)", "Please enter a tiebreaker on the Final Four tab.");
+
+      if (TEST_MODE) return setStatus("var(--success)", "Test mode: your bracket is complete. Nothing was saved.");
+
+      let finalName = username;
+      const match = findPossibleNameMatch(username);
+      if (match) finalName = await confirmNameMatch(username, match);
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Submitting...";
+      setStatus("var(--text-muted)", "Submitting your bracket...");
+
+      try {
+        const { data: existing } = await supabaseClient
+          .from(BRACKET_TABLE).select("id").ilike("user_name", finalName).eq("season", season).limit(1);
+        if (existing && existing.length > 0) {
+          return fail(`A bracket under "${finalName}" has already been submitted. Only one bracket per person.`);
+        }
+
+        const saved = {};
+        Object.keys(T.slots).forEach(k => { saved[k] = picks[k]; });
+        const { error } = await supabaseClient.from(BRACKET_TABLE).insert({
+          user_name: finalName,
+          season,
+          picks: saved,
+          tiebreaker: parseInt(tiebreaker, 10),
+          created_at: new Date().toISOString()
+        });
+        if (error) {
+          if (error.code === "23505" || error.message?.includes("unique")) return fail(`A bracket under "${finalName}" was already submitted.`);
+          throw error;
+        }
+
+        try {
+          localStorage.setItem("secPickEmUserName", finalName);
+          localStorage.removeItem(DRAFT_KEY);
+        } catch (e) {}
+        setStatus("var(--success)", "Bracket submitted! Good luck.");
+        submitBtn.textContent = "Submitted";
+        setTimeout(() => { window.location.href = "BBBracket.html"; }, 1800);
+      } catch (err) {
+        console.error("Bracket submit error:", err);
+        fail("Something went wrong saving your bracket. Please try again.");
+      }
     }
 
     async function init() {
-      document.getElementById("bracketHeadline").textContent = `${season} Bracket Challenge`;
-      const stage = document.getElementById("stageLine");
-      const list = document.getElementById("standingsList");
-
-      let rows = [];
+      const stateEl = document.getElementById("bracketState");
       try {
-        const [tournament, { data, error }] = await Promise.all([
-          loadTournament(season),
-          supabaseClient.from(BRACKET_TABLE).select("*").eq("season", season)
-        ]);
-        T = tournament;
-        if (error) throw error;
-        rows = data || [];
+        T = await loadTournament(season);
       } catch (err) {
-        console.error("Bracket load error:", err);
-        stage.textContent = "Couldn't load the bracket right now. Please try again in a bit.";
+        console.error("Tournament load error:", err);
+        stateEl.textContent = "Couldn't load the tournament from ESPN right now. Please try again in a bit.";
+        return;
+      }
+      if (!T.ready) {
+        stateEl.textContent = `The ${season} bracket isn't out yet. Brackets open after Selection Sunday.`;
+        return;
+      }
+      if (isLocked(T) && !TEST_MODE) {
+        stateEl.innerHTML = `The tournament has tipped off, so brackets are locked. <a href="BBBracket.html">See the standings &rarr;</a>`;
+        return;
+      }
+      if (!T.pairsKnown) {
+        stateEl.textContent = `The ${season} bracket is out, but it isn't set up here yet. Check back soon.`;
+        console.warn("Set bracketFinalFour in config.js to the regions that meet in each semifinal.");
         return;
       }
 
-      document.getElementById("entryCount").textContent = `${rows.length} ${rows.length === 1 ? "Bracket" : "Brackets"}`;
-      stage.textContent = tournamentStage(T);
+      const lock = T.lockTime.toLocaleString([], { weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
+      stateEl.innerHTML = TEST_MODE
+        ? `<strong>Test mode.</strong> Pick freely; nothing will be saved.`
+        : `Brackets lock at the first Round of 64 tip: <strong>${lock}</strong>. Your picks are saved on this device as you go.`;
+      document.getElementById("bracketForm").style.display = "";
 
-      if (!T.ready) return;
+      loadDraft();
+      clearBrokenPicks();
 
-      // Before tip-off, show who's in but keep everyone's picks hidden.
-      if (!isLocked(T)) {
-        const lock = T.lockTime.toLocaleString([], { weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
-        stage.innerHTML = `Brackets are open until <strong>${lock}</strong>. Picks stay hidden until then.`;
-        document.getElementById("fillOutBtn").style.display = "";
-        list.innerHTML = rows.length
-          ? `<div class="bk-names">${rows.map(r => `<span class="bk-name-chip">${r.user_name}</span>`).join("")}</div>`
-          : `<div class="bk-state">No brackets yet. Be the first!</div>`;
-        return;
-      }
+      try {
+        const savedName = localStorage.getItem("secPickEmUserName");
+        if (savedName) document.getElementById("userNameInput").value = savedName;
+      } catch (e) {}
+      Promise.all([
+        loadKnownNames(supabaseClient.from("picks").select("user_name").eq("is_host", false)),
+        loadKnownNames(supabaseClient.from(BRACKET_TABLE).select("user_name"))
+      ]).then(([a, b]) => { knownNames = [...new Set([...a, ...b])].sort((x, y) => x.localeCompare(y)); });
+      setupNameAutocomplete(() => knownNames, (name, query) => name.startsWith(query));
 
-      const entries = rows.map(r => ({
-        user_name: r.user_name,
-        picks: typeof r.picks === "string" ? JSON.parse(r.picks) : (r.picks || {}),
-        tiebreaker: r.tiebreaker ?? null
-      }));
-      entries.forEach(e => { e.score = scoreBracket(T, e.picks); });
-      rankEntries(entries);
-
-      list.innerHTML = entries.length ? entries.map(entryRowHtml).join("") : `<div class="bk-state">No brackets were submitted.</div>`;
-
-      // Each entry's bracket is drawn the first time it's opened.
-      list.addEventListener("click", ev => {
-        const header = ev.target.closest(".cousin-header[data-entry]");
-        if (!header) return;
-        const i = header.dataset.entry;
-        const body = document.getElementById(`entryBody${i}`);
-        body.classList.toggle("open");
-        const wrap = document.getElementById(`entryTabsWrap${i}`);
-        if (body.classList.contains("open") && !wrap.dataset.ready) {
-          wrap.dataset.ready = "1";
-          wrap.innerHTML = bracketTabsHtml(T, `e${i}`);
-          wireBracketTabs(`e${i}`, (container, tab) => renderEntryTab(T, entries[i].picks, container, tab));
-        }
+      document.getElementById("pickTabsWrap").innerHTML = bracketTabsHtml(T, "pick");
+      document.getElementById("pickBody").addEventListener("click", e => {
+        const b = e.target.closest(".bk-choice[data-key]");
+        if (b) choose(b.dataset.key, b.dataset.id);
       });
-
-      // The real bracket so far.
-      document.getElementById("realBracketCard").style.display = "";
-      document.getElementById("realTabsWrap").innerHTML = bracketTabsHtml(T, "real");
-      wireBracketTabs("real", (container, tab) => renderEntryTab(T, T.results, container, tab, true));
+      document.getElementById("prevTabBtn").addEventListener("click", () => goTab(-1));
+      document.getElementById("nextTabBtn").addEventListener("click", () => goTab(1));
+      selectTab = wireBracketTabs("pick", renderTab);
+      renderProgress();
     }
 
     init();
