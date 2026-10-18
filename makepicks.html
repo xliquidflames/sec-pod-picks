@@ -7,9 +7,9 @@
   <script data-goatcounter="https://liquidflames.goatcounter.com/count"
           async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="common.js?v=3"></script>
-  <script src="sec.js?v=3"></script>
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <script src="common.js?v=4"></script>
+  <script src="sec.js?v=4"></script>
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
 
@@ -299,10 +299,22 @@
       return `${shortenPickDisplay(g.awayName)} @ ${shortenPickDisplay(g.homeName)}`;
     }
 
-    // "Details" link that opens the game details popup.
+    // "Details +" opens the game's details right inside its card, so picks
+    // stay tappable while reading. Filled in the first time it's opened.
     function detailsLink(g) {
       if (!g.eventId) return "";
-      return `<button type="button" class="details-link" onclick="openGameDetails('${g.eventId}', '${matchupTitle(g).replace(/'/g, "\\'")}')">Details</button>`;
+      return `<button type="button" class="details-link" onclick="toggleCardDetails(this, '${g.eventId}')">Details +</button><div class="card-details" style="display: none;"></div>`;
+    }
+
+    function toggleCardDetails(btn, eventId) {
+      const panel = btn.nextElementSibling;
+      const opening = panel.style.display === "none";
+      panel.style.display = opening ? "" : "none";
+      btn.textContent = opening ? "Details −" : "Details +";
+      if (opening && !panel.dataset.loaded) {
+        panel.dataset.loaded = "1";
+        renderGameDetails(panel, eventId);
+      }
     }
 
     // Bar at the top counting down to the next game that will lock. Updates
