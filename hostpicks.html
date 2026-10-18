@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Host Portal - That SEC Podcast</title>
-  <script data-goatcounter="https://liquidflames.goatcounter.com/count"
-          async src="//gc.zgo.at/count.js"></script>
+  <title data-site-text="Host Portal - {name}">Host Portal - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="common.js"></script>
-  <script src="sec.js"></script>
-  <link rel="stylesheet" href="styles.css" />
+  <script src="config.js?v=5"></script>
+  <script src="common.js?v=5"></script>
+  <script src="sec.js?v=5"></script>
+  <link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
 
@@ -45,9 +44,7 @@
         <div class="control-group">
           <label for="hostSelect">Submitting As:</label>
           <select class="form-field" id="hostSelect" onchange="onHostChange()">
-            <option value="Mike">Mike</option>
-            <option value="Shane">Shane</option>
-            <option value="Steven">Steven</option>
+            <!-- Filled from the hosts in config.js. -->
           </select>
         </div>
       </div>
@@ -67,6 +64,9 @@
   </div>
 
   <script>
+    document.getElementById("hostSelect").innerHTML =
+      SITE.hosts.map(h => `<option value="${h}">${h}</option>`).join("");
+
     let currentSchedule = [];
     let hostPicks = {};
     let hostScores = {};
@@ -296,7 +296,7 @@
       const hostName = document.getElementById("hostSelect").value;
       const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
 
-      if (pinInput.toUpperCase() !== "SEC2026") return setStatus("var(--danger)", "Invalid Host Security PIN.");
+      if (pinInput.toUpperCase() !== SITE.hostPin.toUpperCase()) return setStatus("var(--danger)", "Invalid Host Security PIN.");
 
       const pickedKeys = Object.keys(hostPicks).filter(k => !NON_PICK_KEYS.includes(k));
       if (pickedKeys.length < currentSchedule.length) {
