@@ -432,9 +432,9 @@ header {
 
 .host-grid-table th.matchup-header,
 .host-grid-table td.matchup-cell {
-  width: 28%;
+  width: 31%;
   text-align: center;
-  padding: 0.45rem 0.4rem;
+  padding: 0.45rem 0.25rem;
   font-size: 0.75rem;
 }
 
@@ -589,14 +589,17 @@ header {
 
 .matchup-rank {
   position: absolute;
-  bottom: -3px;
-  right: -4px;
-  color: #ffffff;
+  bottom: -2px;
+  right: -3px;
+  padding: 1px 3px;
+  border-radius: 4px;
+  background: rgba(10, 17, 32, 0.88);
+  border: 1px solid rgba(251, 191, 36, 0.55);
+  color: var(--accent-gold);
   font-size: 0.55rem;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
-  text-shadow: 0 0 2px #0a1120, 0 0 2px #0a1120, 0 0 3px #0a1120;
   pointer-events: none;
 }
 
@@ -1445,7 +1448,7 @@ input[type="password"].form-field {
 
 .host-grid-table th:not(.matchup-header),
 .host-grid-table td.pick-cell {
-  width: 18%;
+  width: 17.25%;
   padding: 0.45rem 0.2rem;
   font-size: 0.75rem;
   font-weight: 600;
@@ -1978,42 +1981,6 @@ input[type="password"].form-field {
   padding-top: 0.4rem;
 }
 
-.details-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.3rem 0;
-}
-
-.form-chips {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.form-chip {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 2rem;
-  padding: 0.15rem 0.2rem;
-  border-radius: 4px;
-  background: var(--bg-card-alt);
-  border: 1px solid var(--border-color);
-  font-size: 0.72rem;
-  font-weight: 900;
-  line-height: 1.1;
-}
-
-.form-chip small {
-  font-size: 0.55rem;
-  font-weight: 700;
-  color: var(--text-muted);
-}
-
-.form-chip.win { color: var(--success); }
-.form-chip.loss { color: var(--danger); }
-
 .details-team-block {
   padding: 0.3rem 0 0.5rem;
 }
@@ -2175,4 +2142,111 @@ input[type="password"].form-field {
   border: 1px solid var(--border-color);
   border-radius: 999px;
   white-space: nowrap;
+}
+
+/* Grid matchup cell: bigger logos, one short line, then Details. */
+.host-grid-table td.matchup-cell .matchup-logo-row {
+  gap: 0.2rem;
+}
+
+.host-grid-table td.matchup-cell .matchup-team-logo {
+  width: 36px;
+  height: 36px;
+}
+
+.host-grid-table td.matchup-cell .matchup-subdetail {
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.matchup-score-row {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.matchup-score {
+  width: 36px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.matchup-score.won {
+  color: var(--accent-gold);
+}
+
+.matchup-status {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Game details popup: info rows, then tabs. */
+.details-info {
+  display: grid;
+  gap: 0.35rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.82rem;
+}
+
+.details-info-row {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr;
+  gap: 0.5rem;
+}
+
+.details-info-label {
+  color: var(--accent-gold);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding-top: 0.1rem;
+}
+
+.details-tabs {
+  display: flex;
+  gap: 0.3rem;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.details-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.2rem;
+  background: var(--bg-card-alt);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.details-tab img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.details-tab.active {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.details-pane .details-section:first-child {
+  padding-top: 0.25rem;
+}
+
+.sched-record {
+  margin-bottom: 0.4rem;
 }
