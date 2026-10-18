@@ -4,12 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NFL Pick'em Headquarters</title>
-  <script data-goatcounter="https://liquidflames.goatcounter.com/count"
-          async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="common.js"></script>
-  <script src="nfl.js"></script>
-  <link rel="stylesheet" href="styles.css" />
+  <script src="config.js?v=5"></script>
+  <script src="common.js?v=5"></script>
+  <script src="nfl.js?v=5"></script>
+  <link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
 
@@ -156,12 +155,12 @@
         </p>
 
         <div class="footer-links">
-          <a href="https://www.thatsecpodcast.com" target="_blank" rel="noopener noreferrer">thatsecpodcast.com</a>
+          <a href="https://www.thatsecpodcast.com" target="_blank" rel="noopener noreferrer" data-site-attr="href:{website}" data-site-text="{websiteLabel}">thatsecpodcast.com</a>
           <span class="divider">|</span>
-          <a href="https://discord.gg/XsPnGkxFSM" target="_blank" rel="noopener noreferrer">Join Our Discord</a>
+          <a href="https://discord.gg/XsPnGkxFSM" target="_blank" rel="noopener noreferrer" data-site-attr="href:{discord}">Join Our Discord</a>
         </div>
 
-        <p class="contact-note">
+        <p class="contact-note" data-site-html="{contact}">
           Issues, comments, or suggestions? Reach out to <strong>Liquid</strong> on Discord.
         </p>
       </div>
