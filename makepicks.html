@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Make Picks - That SEC Podcast</title>
-  <script data-goatcounter="https://liquidflames.goatcounter.com/count"
-          async src="//gc.zgo.at/count.js"></script>
+  <title data-site-text="Make Picks - {name}">Make Picks - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="common.js?v=4"></script>
-  <script src="sec.js?v=4"></script>
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <script src="config.js?v=5"></script>
+  <script src="common.js?v=5"></script>
+  <script src="sec.js?v=5"></script>
+  <link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
 
@@ -38,7 +37,7 @@
       <div class="user-input-group">
         <label for="userNameInput">Your Handle / Name:</label>
         <div class="name-input-wrapper">
-          <input type="text" class="form-field" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" autocomplete="off" required />
+          <input type="text" class="form-field" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" data-site-attr="placeholder:e.g., @{one}Dan or VolFan99" autocomplete="off" required />
           <div id="nameSuggestions" class="name-suggestions"></div>
         </div>
         <div class="name-reminder">
@@ -403,7 +402,7 @@
           .limit(1);
 
         if (existing && existing.length > 0) {
-          return fail(`An entry under "${finalUsername}" has already been submitted for Week ${targetWeek}! Only one submission per Cousin is allowed.`);
+          return fail(`An entry under "${finalUsername}" has already been submitted for Week ${targetWeek}! Only one submission per ${SITE.players.one} is allowed.`);
         }
 
         const { error } = await supabaseClient
