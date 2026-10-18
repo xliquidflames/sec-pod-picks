@@ -2273,3 +2273,19 @@ input[type="password"].form-field {
   width: 14px;
   height: 14px;
 }
+
+.weather-chip {
+  white-space: nowrap;
+}
+
+.weather-icon {
+  margin-right: 0.2rem;
+}
+
+.dome-icon {
+  width: 1.45em;
+  height: 1em;
+  margin-right: 0.25rem;
+  vertical-align: -0.05em;
+  color: var(--accent-gold);
+}
