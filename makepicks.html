@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="page-makepicks">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,846 +7,13 @@
   <script data-goatcounter="https://liquidflames.goatcounter.com/count"
           async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    :root {
-      --bg-main: #0a1120;
-      --bg-card: #131d31;
-      --bg-card-inner: #19263e;
-      --accent-gold: #fbbf24;
-      --accent-gold-hover: #f59e0b;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --border-color: #22324f;
-      --success: #4ade80;
-      --danger: #f87171;
-      --bg-card-alt: #162032;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
-    html, body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      min-height: 100dvh;
-    }
-
-    body {
-      padding: 1.5rem 1rem 3rem;
-      display: flex;
-      justify-content: center;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 550px;
-    }
-
-    header {
-      text-align: center;
-      margin-bottom: 1.25rem;
-    }
-
-    .back-link {
-      display: inline-block;
-      color: var(--accent-gold);
-      font-size: 0.85rem;
-      font-weight: 700;
-      text-decoration: none;
-      margin-bottom: 0.75rem;
-    }
-
-    h1 {
-      font-size: 1.8rem;
-      color: var(--accent-gold);
-      font-weight: 900;
-      letter-spacing: -0.5px;
-      margin-bottom: 0.25rem;
-    }
-
-    .sub-header {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-    }
-
-    .pick-format-banner {
-      background: #19263e;
-      border: 1.5px solid var(--accent-gold);
-      border-radius: 10px;
-      padding: 0.75rem 1rem;
-      margin-bottom: 1.25rem;
-      text-align: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    }
-
-    .pick-format-text {
-      font-size: 0.85rem;
-      font-weight: 800;
-      color: var(--text-main);
-      letter-spacing: 0.3px;
-      line-height: 1.4;
-    }
-
-    .pick-format-highlight {
-      color: var(--accent-gold);
-      text-transform: uppercase;
-    }
-
-    .card-panel {
-      background: var(--bg-card);
-      padding: 1.25rem;
-      border-radius: 14px;
-      border: 1px solid var(--border-color);
-    }
-
-    .user-input-group {
-      margin-bottom: 1.25rem;
-    }
-
-    .name-input-wrapper {
-      position: relative;
-    }
-
-    .name-suggestions {
-      display: none;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: var(--bg-card-inner, #1a2740);
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
-      border: 1px solid var(--border-color);
-      border-top: none;
-      border-radius: 0 0 8px 8px;
-      max-height: 220px;
-      overflow-y: auto;
-      z-index: 20;
-    }
-
-    .name-suggestions.open {
-      display: block;
-    }
-
-    .name-suggestion-item {
-      padding: 0.55rem 0.75rem;
-      font-size: 0.85rem;
-      color: var(--text-main);
-      cursor: pointer;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .name-suggestion-item:last-child {
-      border-bottom: none;
-    }
-
-    .name-suggestion-item:hover {
-      background: var(--accent-gold);
-      color: #0a1120;
-    }
-
-    .name-reminder {
-      font-size: 0.8rem;
-      color: var(--text-main);
-      margin-top: 0.45rem;
-      line-height: 1.4;
-    }
-
-    .name-reminder strong {
-      color: var(--accent-gold);
-    }
-
-    /* "Did you mean" confirmation — catches the case a plain autocomplete
-       can't: someone typing a name that only differs from an existing one
-       by case, spacing, or a leading "@", where the exact string they
-       typed would never have matched the dropdown's filter to begin with. */
-    .name-match-modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      padding: 1.5rem;
-    }
-
-    .name-match-modal {
-      background: var(--bg-card);
-      border: 1px solid var(--accent-gold);
-      border-radius: 12px;
-      padding: 1.5rem;
-      max-width: 380px;
-      width: 100%;
-    }
-
-    .name-match-modal-title {
-      color: var(--accent-gold);
-      font-size: 1.1rem;
-      font-weight: 800;
-      margin-bottom: 0.75rem;
-    }
-
-    .name-match-modal-text {
-      color: var(--text-main);
-      font-size: 0.9rem;
-      line-height: 1.5;
-      margin-bottom: 1.25rem;
-    }
-
-    .name-match-modal-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 0.6rem;
-    }
-
-    .btn-modal-primary {
-      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
-      color: #0f172a;
-      font-weight: 900;
-      padding: 0.75rem;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-
-    .btn-modal-secondary {
-      background: none;
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-      padding: 0.7rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-
-    label {
-      display: block;
-      color: var(--text-main);
-      font-size: 0.9rem;
-      font-weight: 700;
-      margin-bottom: 0.4rem;
-    }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 0.85rem 1rem;
-      border-radius: 8px;
-      background: #0d1527;
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      font-size: 1rem;
-      outline: none;
-      transition: border-color 0.15s ease;
-    }
-
-    input[type="text"]:focus {
-      border-color: var(--accent-gold);
-    }
-
-    .game-card {
-      background: var(--bg-card-inner);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .game-card.is-locked {
-      border: 1.5px solid var(--accent-gold);
-      box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
-    }
-
-    /* A specific game already being started or finished is not the same
-       state as the Lock of the Week toggle above (.is-locked) — kept as
-       its own class, even though it carries no visual dimming, so the
-       two stay semantically distinct. */
-    .game-card.is-final-locked {
-    }
-
-    .game-final-message {
-      font-size: 0.82rem;
-      font-weight: 800;
-      color: var(--accent-gold);
-      line-height: 1.4;
-      text-align: center;
-    }
-
-    /* Locked game: just the two logos, "Away @ Home". */
-    .final-logo-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 1.25rem;
-      margin: 0.4rem 0 0.7rem;
-    }
-
-    .final-logo-row .btn-pick-logo-wrap {
-      width: 44px;
-      margin: 0;
-    }
-
-    .final-logo-row .btn-pick-logo {
-      height: 44px;
-      width: 44px;
-    }
-
-    .final-team-fallback {
-      font-size: 0.9rem;
-      font-weight: 800;
-      color: var(--text-main);
-    }
-
-    .game-header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.4rem;
-    }
-
-    .game-title {
-      flex: 1;
-      text-align: left;
-      color: var(--accent-gold);
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .matchup-sec-team {
-      font-weight: 800;
-    }
-
-    .matchup-other-team {
-      font-weight: 400;
-    }
-
-    .btn-lock-toggle {
-      background: #0e1728;
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-      font-size: 0.7rem;
-      font-weight: 800;
-      padding: 0.25rem 0.6rem;
-      border-radius: 6px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      white-space: pre-line;
-      line-height: 1.25;
-      gap: 0.3rem;
-      transition: all 0.15s ease;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }
-
-    .btn-lock-toggle:hover {
-      border-color: var(--accent-gold);
-      color: var(--text-main);
-    }
-
-    .btn-lock-toggle.active {
-      background: var(--accent-gold);
-      color: #0a1120;
-      border-color: var(--accent-gold);
-      font-weight: 900;
-    }
-
-    .game-detail {
-      font-size: 0.8rem;
-      color: var(--text-main);
-      display: block;
-      margin-top: 0.65rem;
-      line-height: 1.3;
-      text-align: center;
-    }
-
-    .pick-grid {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      gap: 0.6rem;
-    }
-
-    .pick-grid-at {
-      font-size: 1.3rem;
-      font-weight: 900;
-      color: var(--accent-gold);
-    }
-
-    .btn-pick {
-      background: #0e1728;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      color: var(--text-muted);
-      padding: 0.85rem 0.4rem;
-      font-size: 0.9rem;
-      font-weight: 700;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.15s ease;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .btn-pick-logo {
-      display: block;
-      height: 32px;
-      width: 32px;
-      object-fit: contain;
-      margin: 0 auto 0.3rem;
-    }
-
-    .btn-pick-name {
-      color: var(--text-main);
-      font-size: 0.78rem;
-      display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .btn-pick-record {
-      display: block;
-      font-size: 0.68rem;
-      font-weight: 600;
-      color: var(--text-main);
-      margin-top: 0.15rem;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .btn-pick:hover {
-      border-color: #3b4d71;
-      color: var(--text-main);
-    }
-
-    /* White text would vanish on the gold selected background, so the
-       selected button keeps its dark text. */
-    .btn-pick.selected .btn-pick-name,
-    .btn-pick.selected .btn-pick-record {
-      color: #0a1120;
-    }
-
-    .btn-pick.selected {
-      background: var(--accent-gold);
-      color: #0a1120;
-      font-weight: 900;
-      border-color: var(--accent-gold);
-    }
-
-    .btn-submit {
-      width: 100%;
-      background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
-      color: #0a1120;
-      font-size: 1.1rem;
-      font-weight: 900;
-      padding: 1.1rem;
-      border-radius: 10px;
-      border: none;
-      cursor: pointer;
-      margin-top: 1rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      box-shadow: 0 4px 0 #b45309;
-      transition: transform 0.1s ease;
-    }
-
-    .btn-submit:active {
-      transform: translateY(2px);
-      box-shadow: 0 2px 0 #b45309;
-    }
-
-    .btn-submit:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      box-shadow: none;
-      transform: none;
-    }
-
-    .status-alert {
-      margin-top: 1rem;
-      text-align: center;
-      font-size: 0.95rem;
-      font-weight: 700;
-    }
-    .hub-action-row {
-      display: flex;
-      gap: 0.4rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .info-row {
-      display: grid;
-      grid-template-columns: 1.6rem 1fr auto;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.45rem 0;
-      border-bottom: 1px solid var(--border-color);
-      font-size: 0.82rem;
-    }
-
-    .info-row:last-child { border-bottom: none; }
-
-    .info-row.standings-row {
-      grid-template-columns: 1.6rem 1fr 3.2rem 3.4rem;
-    }
-
-    .info-row.head {
-      color: var(--accent-gold);
-      font-size: 0.68rem;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-
-    .info-rank {
-      color: var(--text-muted);
-      font-weight: 800;
-      text-align: center;
-    }
-
-    .info-team {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      min-width: 0;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-
-    .info-team.sec { color: var(--accent-gold); }
-
-    .info-team img {
-      height: 22px;
-      width: 22px;
-      object-fit: contain;
-      flex-shrink: 0;
-    }
-
-    .info-team span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .info-meta {
-      color: var(--text-muted);
-      font-size: 0.75rem;
-      white-space: nowrap;
-      text-align: right;
-    }
-
-    /* Top 25 popup: three ranking columns side by side. */
-    .top25-table {
-      width: 100%;
-      table-layout: fixed;
-      border-collapse: collapse;
-      font-size: 0.74rem;
-    }
-
-    .top25-table th {
-      position: sticky;
-      top: 0;
-      background: var(--bg-card);
-      color: var(--accent-gold);
-      font-size: 0.68rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      text-align: left;
-      padding: 0.5rem 0.25rem;
-      border-bottom: 1px solid var(--border-color);
-      z-index: 1;
-    }
-
-    .top25-table td {
-      padding: 0.4rem 0.25rem;
-      border-bottom: 1px solid var(--border-color);
-      vertical-align: middle;
-    }
-
-    .top25-table tr:last-child td { border-bottom: none; }
-
-    .top25-rank {
-      width: 1.6rem;
-      text-align: center !important;
-      color: var(--text-muted);
-      font-weight: 800;
-    }
-
-    .top25-team {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-      min-width: 0;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-
-    .top25-team.sec { color: var(--accent-gold); }
-
-    .top25-team img {
-      height: 18px;
-      width: 18px;
-      object-fit: contain;
-      flex-shrink: 0;
-    }
-
-    .top25-team span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .top25-missing {
-      color: var(--text-muted);
-      font-style: italic;
-    }
-
-    .info-move-up { color: var(--success); }
-    .info-move-down { color: var(--danger); }
-    .team-sched-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      padding: 1rem;
-    }
-
-    .team-sched-modal {
-      background: var(--bg-card);
-      border: 1px solid var(--accent-gold);
-      border-radius: 12px;
-      width: 100%;
-      max-width: 420px;
-      max-height: 85vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .team-sched-header {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      padding: 0.9rem 1rem;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .team-sched-header img {
-      height: 36px;
-      width: 36px;
-      object-fit: contain;
-      flex-shrink: 0;
-    }
-
-    .team-sched-title {
-      flex: 1;
-      min-width: 0;
-      color: var(--accent-gold);
-      font-weight: 800;
-      font-size: 1.05rem;
-    }
-
-    .team-sched-title small {
-      display: block;
-      color: var(--text-muted);
-      font-weight: 600;
-      font-size: 0.75rem;
-    }
-
-    .team-sched-close {
-      background: none;
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      border-radius: 8px;
-      width: 34px;
-      height: 34px;
-      font-size: 1.1rem;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    .team-sched-body {
-      position: relative;
-      overflow-y: auto;
-      padding: 0.4rem 1rem 0.9rem;
-    }
-
-    .team-sched-row {
-      display: grid;
-      grid-template-columns: 4.2rem 1fr auto;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.55rem 0;
-      border-bottom: 1px solid var(--border-color);
-      font-size: 0.82rem;
-    }
-
-    .team-sched-row:last-child {
-      border-bottom: none;
-    }
-
-    /* The week the site is currently showing. */
-    .team-sched-row.current-week {
-      background: rgba(251, 191, 36, 0.14);
-      border-left: 3px solid var(--accent-gold);
-      margin: 0 -1rem;
-      padding-left: calc(1rem - 3px);
-      padding-right: 1rem;
-    }
-
-    .team-sched-date {
-      color: var(--text-muted);
-      font-size: 0.75rem;
-    }
-
-    .team-sched-opp {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      min-width: 0;
-      color: var(--text-main);
-      font-weight: 700;
-    }
-
-    .team-sched-opp img {
-      height: 22px;
-      width: 22px;
-      object-fit: contain;
-      flex-shrink: 0;
-    }
-
-    .team-sched-opp span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .team-sched-result {
-      font-weight: 800;
-      white-space: nowrap;
-      color: var(--text-muted);
-    }
-
-    .team-sched-result.win { color: var(--success); }
-    .team-sched-result.loss { color: var(--danger); }
-
-    .team-sched-note {
-      color: var(--text-muted);
-      text-align: center;
-      padding: 1.5rem 0;
-      font-size: 0.85rem;
-    }
-    .btn-ctrl {
-      background: var(--bg-card-alt);
-      color: var(--text-main);
-      border: 2px solid var(--accent-gold);
-      padding: 0.35rem 0.6rem;
-      border-radius: 6px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      transition: all 0.15s ease;
-    }
-
-    .btn-ctrl:hover {
-      background: #22314d;
-      color: var(--text-main);
-    }
-
-    /* Rank on the corner of a pick-button logo, same as the leaderboard. */
-    .btn-pick-logo-wrap {
-      position: relative;
-      display: block;
-      width: 32px;
-      margin: 0 auto 0.3rem;
-    }
-
-    .btn-pick-logo-wrap .btn-pick-logo {
-      margin: 0;
-    }
-
-    .matchup-rank {
-      position: absolute;
-      bottom: -3px;
-      right: -4px;
-      color: #ffffff;
-      font-size: 0.55rem;
-      font-weight: 800;
-      line-height: 1;
-      white-space: nowrap;
-      text-shadow: 0 0 2px #0a1120, 0 0 2px #0a1120, 0 0 3px #0a1120;
-      pointer-events: none;
-    }
-
-    .hub-action-row {
-      justify-content: center;
-    }
-
-    /* Team picker inside the Schedules popup. */
-    .sched-pick-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-      gap: 0.5rem;
-      padding: 0.4rem 0;
-    }
-
-    .sched-pick-team {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.3rem;
-      background: #0e1728;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 0.55rem 0.3rem;
-      color: var(--text-main);
-      font-size: 0.72rem;
-      font-weight: 700;
-      cursor: pointer;
-      text-align: center;
-    }
-
-    .sched-pick-team:hover {
-      border-color: var(--accent-gold);
-    }
-
-    .sched-pick-team.sec {
-      color: var(--accent-gold);
-    }
-
-    .sched-pick-team img {
-      height: 30px;
-      width: 30px;
-      object-fit: contain;
-    }
-
-    .sched-section-label {
-      font-size: 0.68rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-muted);
-      margin: 0.6rem 0 0.1rem;
-    }
-  </style>
+  <script src="common.js"></script>
+  <script src="sec.js"></script>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <div class="container">
+  <div class="container narrow">
     <header>
       <a href="index.html" class="back-link">&larr; Back to Leaderboard</a>
       <h1 id="pageHeading">SUBMIT PICKS</h1>
@@ -859,17 +26,17 @@
       </div>
     </div>
 
-    <div class="hub-action-row">
+    <div class="hub-action-row centered">
       <button type="button" class="btn-ctrl" onclick="openSchedulePicker()">Schedules</button>
       <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
       <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
     </div>
 
-    <div class="card-panel">
+    <div class="card">
       <div class="user-input-group">
         <label for="userNameInput">Your Handle / Name:</label>
         <div class="name-input-wrapper">
-          <input type="text" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" autocomplete="off" required />
+          <input type="text" class="form-field" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" autocomplete="off" required />
           <div id="nameSuggestions" class="name-suggestions"></div>
         </div>
         <div class="name-reminder">
@@ -903,7 +70,6 @@
         <div class="team-sched-title" id="infoTitle"></div>
         <button type="button" class="team-sched-close" onclick="closeInfoModal()" aria-label="Close">&times;</button>
       </div>
-      <div class="info-tabs" id="infoTabs" style="display:none;"></div>
       <div class="team-sched-body" id="infoBody"></div>
     </div>
   </div>
@@ -920,124 +86,23 @@
   </div>
 
   <script>
-    const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetWeek = parseInt(urlParams.get("week"), 10) || 1;
-    // Lock of the Week applies to Week 2 onward. Week 1 is permanently
-    // exempt — not a bug, a deliberate choice: the feature didn't exist
-    // yet when Week 1 picks were submitted, so there's no lock data for
-    // that week and never will be. Showing lock UI or stats for Week 1
-    // would just be confusing (empty/placeholder values with nothing
-    // behind them), so it stays off for that one week specifically.
-    const isLockAllowed = (targetWeek !== 1);
-
-    // Canonical SEC team identities. Each entry lists every spelling ESPN
-    // might use for that team (full name, "St" abbreviation, nickname).
-    // Classification is by EXACT match against these known spellings, not
-    // substring matching — substring matching used to wrongly classify
-    // schools like "Texas State" or "Florida State" as SEC teams just
-    // because "Texas" or "Florida" appears inside their name.
-    const secTeamAliases = {
-      alabama: ["Alabama"],
-      arkansas: ["Arkansas"],
-      auburn: ["Auburn"],
-      florida: ["Florida"],
-      georgia: ["Georgia"],
-      kentucky: ["Kentucky"],
-      lsu: ["LSU"],
-      olemiss: ["Ole Miss"],
-      mississippistate: ["Mississippi State", "Mississippi St", "Miss State", "Miss St"],
-      missouri: ["Missouri", "Mizzou"],
-      oklahoma: ["Oklahoma"],
-      southcarolina: ["South Carolina"],
-      tennessee: ["Tennessee"],
-      texas: ["Texas"],
-      texasam: ["Texas A&M", "Texas AM"],
-      vanderbilt: ["Vanderbilt"]
-    };
+    const targetWeek = parseInt(new URLSearchParams(window.location.search).get("week"), 10) || 1;
 
     let currentSchedule = [];
     let userSelections = {};
     let currentLockMatchupKey = null;
+    let knownNames = [];
 
-    function cleanTeamName(name) {
-      if (!name) return "";
-      const lower = name.toLowerCase().trim();
-      if (lower.includes("pine bluff") || lower === "uapb" || lower.includes("peanut")) {
-        return "Arkansas Peanut Butter (Pine Bluff)";
-      }
-      return name;
-    }
+    // Team schedules highlight the week being picked.
+    scheduleOptions.currentWeek = () => targetWeek;
 
-    function isSecTeam(teamName) {
-      if (!teamName) return false;
-      return secNormalizedNames.has(normalizeTeam(teamName));
-    }
-
-    // Every known spelling of each SEC team collapses to one canonical
-    // string here (built from secTeamAliases above, before normalizeTeam —
-    // fine due to function hoisting). This is what actually fixes picks
-    // like "Miss State" not matching "Mississippi St" — two different
-    // abbreviations for the same team, used at different times, that
-    // would otherwise normalize to two different strings and never be
-    // recognized as the same pick.
-    const secNameCanonical = {};
-    Object.entries(secTeamAliases).forEach(([canonicalKey, variants]) => {
-      variants.forEach(variant => {
-        const crude = variant.toLowerCase().replace(/[^a-z0-9]/g, "");
-        secNameCanonical[crude] = canonicalKey;
-      });
-    });
-
-    function normalizeTeam(str) {
-      if (!str) return "";
-      const cleaned = cleanTeamName(str).toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (cleaned.includes("peanut") || cleaned.includes("pinebluff") || cleaned.includes("uapb")) {
-        return "uapb";
-      }
-      if (cleaned === "arkansas" || cleaned === "razorbacks" || cleaned === "ark") {
-        return "arkansas";
-      }
-      if (secNameCanonical[cleaned]) {
-        return secNameCanonical[cleaned];
-      }
-      return cleaned;
-    }
-
-    // Shortens just these two team names for display on the pick buttons
-    // — South Carolina and Mississippi State are the only two that wrap
-    // to a second line. This ONLY changes the button's visible text; the
-    // actual value stored as the pick (passed to chooseTeam below) stays
-    // the real, full team name, completely untouched by this. Keeping
-    // what's actually submitted unchanged is what keeps this safe — it's
-    // the same reasoning that fixed the "Miss State" vs "Mississippi
-    // State" mismatch bug earlier this season, just applied in reverse:
-    // don't let a display shortcut become a second real spelling.
-    function shortenPickDisplay(pick) {
-      const canonical = normalizeTeam(pick);
-      if (canonical === 'southcarolina') return 'S Carolina';
-      if (canonical === 'mississippistate') return 'Miss State';
-      if (canonical === 'texasam') return 'TAMU';
-      return pick;
-    }
-
-    // Pulls "4-1 (3-1)" (overall, then conference in parentheses) out of
-    // ESPN's competitor.records. Display only — never part of a pick or a
-    // matchup key. Returns "" when ESPN has no record for the team, so the
-    // button just shows the name like before.
-    function getTeamLogo(competitor) {
-      const t = (competitor && competitor.team) || {};
-      return t.logo || (t.logos && t.logos[0] && t.logos[0].href) || "";
-    }
-
+    // Logo with the AP rank on its corner.
     function buildLogoHtml(url, rank) {
       if (!url) return "";
       return `<span class="btn-pick-logo-wrap"><img src="${url}" alt="" class="btn-pick-logo" onerror="this.style.display='none';">${rank ? `<span class="matchup-rank">#${rank}</span>` : ""}</span>`;
     }
 
+    // "4-1 (3-1)": overall, then conference. Display only.
     function buildRecordText(competitor) {
       const records = (competitor && competitor.records) || [];
       const overall = records.find(r => r.type === "total" || (r.name || "").toLowerCase() === "overall");
@@ -1046,190 +111,65 @@
       return conf && conf.summary ? `${overall.summary} (${conf.summary})` : overall.summary;
     }
 
-    const secNormalizedNames = new Set(
-      Object.values(secTeamAliases).flat().map(n => normalizeTeam(n))
-    );
-
-    function buildMatchupKey(teamA, teamB) {
-      return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
-    }
-
     async function fetchEspnSchedule(week) {
       try {
-        const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
-        const res = await fetch(url);
-        const data = await res.json();
+        const data = await (await fetch(scoreboardUrl(week))).json();
+        if (!data.events || data.events.length === 0) return [];
 
-        if (!data.events || data.events.length === 0) {
-          return [];
-        }
-
-        const rawGames = [];
-
-        data.events.forEach(ev => {
+        const games = data.events.map(ev => {
           const comp = ev.competitions[0];
           const home = comp.competitors.find(c => c.homeAway === "home");
           const away = comp.competitors.find(c => c.homeAway === "away");
-
           const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
           const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
 
-          // Team order no longer depends on home/away at all — the SEC
-          // team is always teamA, the opponent is always teamB. This keeps
-          // every list sorted Alabama-through-Vanderbilt regardless of who
-          // hosts, and removes ESPN home/away data as a variable that could
-          // ever cause this file's matchup keys to disagree with index.html
-          // or hostpicks.html.
-          let teamA, teamB, teamARecord, teamBRecord, teamALogo, teamBLogo;
-          let teamARank, teamBRank, teamAId, teamBId;
+          // teamA is always the SEC team (home if both are). Matchup keys and
+          // saved picks use this order; the screen shows real Away @ Home.
+          const [a, b] = isSecTeam(homeName) ? [home, away] : [away, home];
+          const nameOf = c => c === home ? homeName : awayName;
           const rankOf = c => { const r = c && c.curatedRank && parseInt(c.curatedRank.current, 10); return (r >= 1 && r <= 25) ? r : null; };
           const idOf = c => (c && c.team && c.team.id) ? String(c.team.id) : null;
-          if (isSecTeam(homeName)) {
-            teamA = homeName;
-            teamB = awayName;
-            teamARecord = buildRecordText(home);
-            teamBRecord = buildRecordText(away);
-            teamALogo = getTeamLogo(home);
-            teamBLogo = getTeamLogo(away);
-            teamARank = rankOf(home); teamBRank = rankOf(away);
-            teamAId = idOf(home); teamBId = idOf(away);
-          } else {
-            teamA = awayName;
-            teamB = homeName;
-            teamARecord = buildRecordText(away);
-            teamBRecord = buildRecordText(home);
-            teamALogo = getTeamLogo(away);
-            teamBLogo = getTeamLogo(home);
-            teamARank = rankOf(away); teamBRank = rankOf(home);
-            teamAId = idOf(away); teamBId = idOf(home);
-          }
 
           const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "Line: TBD";
-          const isNeutralSite = comp.neutralSite === true;
-          const city = comp.venue && comp.venue.address ? comp.venue.address.city : "";
-          const venue = (comp.venue && comp.venue.address)
-            ? `${comp.venue.address.city || ""}${comp.venue.address.state ? ", " + comp.venue.address.state : ""}`
-            : "";
-
-          // Real, literal "Away @ Home" text — never flipped. The SEC side
-          // is bolded wherever it actually falls in the sentence (instead
-          // of always being first), so the eye can anchor on weight
-          // rather than position; centering the whole title (CSS) helps
-          // it read as one unit. Completely separate from teamA/teamB,
-          // which stay SEC-team-first no matter what for the matchup key.
-          const awayClass = isSecTeam(awayName) ? "matchup-sec-team" : "matchup-other-team";
-          const homeClass = isSecTeam(homeName) ? "matchup-sec-team" : "matchup-other-team";
-          let matchupLabel = `<span class="${awayClass}">${awayName}</span> @ <span class="${homeClass}">${homeName}</span>`;
-          if (isNeutralSite) {
-            matchupLabel += `${city ? ` in ${city}` : ""} (NS)`;
-          }
+          const venue = venueText(comp);
 
           let time = "TBD";
           let kickoff = new Date(8640000000000000);
           if (comp.date) {
             const d = new Date(comp.date);
             if (!isNaN(d.getTime())) kickoff = d;
-            time = d.toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " + 
+            time = d.toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " +
                    d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
           }
 
-          // Locks on "started" as well as "done" — a game already in
-          // progress isn't something anyone should still be able to pick
-          // the outcome of, not just one that's fully over.
-          const compState = comp.status && comp.status.type && comp.status.type.state;
-          const isCompleted = comp.status && comp.status.type && comp.status.type.completed;
-          const isFinal = !!(isCompleted || compState === "in" || compState === "post");
+          // A game locks once it has started, not just when it's over.
+          const type = comp.status && comp.status.type;
+          const isFinal = !!((type && type.completed) || (type && type.state === "in") || (type && type.state === "post"));
 
-          let winnerName = null;
-          let loserName = null;
-          let winnerScore = null;
-          let loserScore = null;
-          if (isFinal) {
-            const awayWon = away.winner === true;
-            const homeWon = home.winner === true;
-            if (awayWon) {
-              winnerName = awayName; loserName = homeName;
-              winnerScore = away.score; loserScore = home.score;
-            } else if (homeWon) {
-              winnerName = homeName; loserName = awayName;
-              winnerScore = home.score; loserScore = away.score;
-            }
-            // Neither winner flag set means the game just started (no
-            // score to report yet) or ended in a tie — both handled as
-            // "no declared winner yet" at render time.
-          }
-
-          rawGames.push({
-            teamA: teamA,
-            teamB: teamB,
-            teamARecord: teamARecord,
-            teamBRecord: teamBRecord,
-            teamALogo: teamALogo,
-            teamBLogo: teamBLogo,
-            teamARank: teamARank,
-            teamBRank: teamBRank,
-            teamAId: teamAId,
-            teamBId: teamBId,
-            awayName: awayName,
-            homeName: homeName,
-            kickoff: kickoff,
-            matchupLabel: matchupLabel,
+          const teamA = nameOf(a), teamB = nameOf(b);
+          return {
+            matchupKey: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : buildMatchupKey(teamA, teamB),
+            teamA,
+            teamB,
+            teamARecord: buildRecordText(a),
+            teamBRecord: buildRecordText(b),
+            teamALogo: teamLogoFrom(a.team),
+            teamBLogo: teamLogoFrom(b.team),
+            teamARank: rankOf(a),
+            teamBRank: rankOf(b),
+            teamAId: idOf(a),
+            teamBId: idOf(b),
+            homeName,
+            kickoff,
             detail: `${time} | ${odds} | ${venue}`,
-            // For an already-started or finished game, the betting line
-            // is either gone or meaningless (ESPN renders it as "Line:
-            // TBD" once a game's underway, which reads as if no line was
-            // ever set rather than just no longer relevant) — so this
-            // version leaves it out entirely instead of showing something
-            // false.
             playedDetail: `Kickoff: ${time} | ${venue}`,
-            isFinal: isFinal,
-            winnerName: winnerName,
-            loserName: loserName,
-            winnerScore: winnerScore,
-            loserScore: loserScore,
-            // ESPN's own event id — stable no matter how ESPN formats a
-            // team's display name. Building the matchup key from team-name
-            // text (the old approach) breaks the moment ESPN shows a name
-            // even slightly differently between when this ballot was
-            // submitted and when index.html loads later — which is
-            // exactly what happened with UL Monroe. The id never changes.
-            espnId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null
-          });
+            isFinal
+          };
         });
 
-        // Adopted the NFL site's sort convention: chronological by kickoff
-        // instead of alphabetical by SEC team — sidesteps the inconsistency
-        // where a conference game's list position depended on which of the
-        // two SEC teams happened to be hosting that year. teamA/teamB are
-        // untouched and still SEC-team-first for the matchup key; this
-        // only changes what order rows appear in.
-        rawGames.sort((a, b) => a.kickoff - b.kickoff);
-
-        return rawGames.map((g, idx) => ({
-          id: idx + 1,
-          matchupKey: g.espnId || buildMatchupKey(g.teamA, g.teamB),
-          teamA: g.teamA,
-          teamB: g.teamB,
-          teamARecord: g.teamARecord,
-          teamBRecord: g.teamBRecord,
-          teamALogo: g.teamALogo,
-          teamBLogo: g.teamBLogo,
-          teamARank: g.teamARank,
-          teamBRank: g.teamBRank,
-          teamAId: g.teamAId,
-          teamBId: g.teamBId,
-          awayName: g.awayName,
-          homeName: g.homeName,
-          matchupLabel: g.matchupLabel,
-          detail: g.detail,
-          playedDetail: g.playedDetail,
-          isFinal: g.isFinal,
-          winnerName: g.winnerName,
-          loserName: g.loserName,
-          winnerScore: g.winnerScore,
-          loserScore: g.loserScore
-        }));
-
+        games.sort((x, y) => x.kickoff - y.kickoff);
+        games.forEach((g, idx) => { g.id = idx + 1; });
+        return games;
       } catch (e) {
         console.error("ESPN auto-fetch error:", e);
         return [];
@@ -1240,89 +180,37 @@
       document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
       document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
 
-      // Pre-fills from whatever name was used last time on this device,
-      // so a returning cousin doesn't have to retype it — and can't
-      // introduce a new spelling variant by retyping it slightly
-      // differently than before.
+      // Pre-fill the name used last time on this device.
       try {
         const savedName = localStorage.getItem("secPickEmUserName");
-        if (savedName) {
-          document.getElementById("userNameInput").value = savedName;
-        }
-      } catch (storageErr) {
-        // Private browsing or storage disabled — just skip the pre-fill.
-      }
+        if (savedName) document.getElementById("userNameInput").value = savedName;
+      } catch (storageErr) {}
 
-      loadKnownNames();
-      setupNameAutocomplete();
+      loadKnownNames(supabaseClient.from(PICKS_TABLE).select("user_name").eq("is_host", false)).then(names => { knownNames = names; });
+      setupNameAutocomplete(() => knownNames, (name, query) => name.startsWith(query));
 
       currentSchedule = await fetchEspnSchedule(targetWeek);
       renderForm();
     }
 
-    // Pulls every distinct name anyone has ever submitted under (across all
-    // weeks, not just this one) so we can suggest it back to a returning
-    // cousin as they type — the goal is to make it easy to pick the exact
-    // same spelling they used before, since a mismatched name silently
-    // splits one person into two entries in the season standings.
-    let knownNames = [];
-
-    async function loadKnownNames() {
-      try {
-        const { data, error } = await supabaseClient
-          .from("picks")
-          .select("user_name")
-          .eq("is_host", false);
-
-        if (error || !data) return;
-
-        const seen = new Set();
-        const names = [];
-        data.forEach(row => {
-          const trimmed = (row.user_name || "").trim();
-          const key = trimmed.toLowerCase();
-          if (trimmed && !seen.has(key)) {
-            seen.add(key);
-            names.push(trimmed);
-          }
-        });
-        names.sort((a, b) => a.localeCompare(b));
-        knownNames = names;
-      } catch (err) {
-        console.error("Could not load known names:", err);
-      }
-    }
-
-    // Same normalization the admin panel's duplicate-name checker already
-    // uses — case, spacing, and a leading "@" all ignored. Keeping this
-    // identical to that logic on purpose: the whole point is that these
-    // two checks agree with each other, one just catches it before
-    // submission instead of after.
+    // Ignores case, spaces and a leading "@" (same rule as the admin duplicate check).
     function normalizeNameForMatch(name) {
       return (name || "").trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
     }
 
-    // Finds an existing name that's the same person under that
-    // normalization but not letter-for-letter identical to what was just
-    // typed — an exact match needs no prompt at all, that's just a
-    // returning cousin typing their name correctly.
     function findPossibleNameMatch(typedName) {
       const normalizedTyped = normalizeNameForMatch(typedName);
       return knownNames.find(n => n !== typedName && normalizeNameForMatch(n) === normalizedTyped) || null;
     }
 
-    // Shows the confirmation modal and resolves with whichever name
-    // should actually be used going forward — the existing one if they
-    // confirm it's them, or their own typed version if not.
+    // "Is this you?" prompt. Resolves with the name to submit under.
     function confirmNameMatch(typedName, matchedName) {
       return new Promise(resolve => {
         const modal = document.getElementById("nameMatchModal");
-        const text = document.getElementById("nameMatchModalText");
         const yesBtn = document.getElementById("nameMatchModalYes");
         const noBtn = document.getElementById("nameMatchModalNo");
 
-        text.innerHTML = `You typed <strong>"${typedName}"</strong>, but that looks like it might be the same person as <strong>"${matchedName}"</strong>, who's already submitted picks before. Is that you?`;
-
+        document.getElementById("nameMatchModalText").innerHTML = `You typed <strong>"${typedName}"</strong>, but that looks like it might be the same person as <strong>"${matchedName}"</strong>, who's already submitted picks before. Is that you?`;
         modal.style.display = "flex";
 
         function cleanup(result) {
@@ -1339,49 +227,6 @@
       });
     }
 
-    function setupNameAutocomplete() {
-      const input = document.getElementById("userNameInput");
-      const box = document.getElementById("nameSuggestions");
-      if (!input || !box) return;
-
-      input.addEventListener("input", () => {
-        const query = input.value.trim().toLowerCase();
-        if (!query) {
-          box.classList.remove("open");
-          box.innerHTML = "";
-          return;
-        }
-        const matches = knownNames
-          .filter(n => n.toLowerCase().startsWith(query))
-          .slice(0, 6);
-
-        if (matches.length === 0) {
-          box.classList.remove("open");
-          box.innerHTML = "";
-          return;
-        }
-
-        box.innerHTML = matches.map(n =>
-          `<div class="name-suggestion-item">${n}</div>`
-        ).join("");
-        box.classList.add("open");
-      });
-
-      box.addEventListener("click", (e) => {
-        const item = e.target.closest(".name-suggestion-item");
-        if (!item) return;
-        input.value = item.textContent;
-        box.classList.remove("open");
-        box.innerHTML = "";
-      });
-
-      document.addEventListener("click", (e) => {
-        if (!e.target.closest(".name-input-wrapper")) {
-          box.classList.remove("open");
-        }
-      });
-    }
-
     function renderForm() {
       const container = document.getElementById("gamesList");
       if (currentSchedule.length === 0) {
@@ -1393,48 +238,47 @@
       currentSchedule.forEach(g => {
         const card = document.createElement("div");
         card.id = `card_${g.matchupKey}`;
+        // Real "Away @ Home" order on screen; ids and saved picks stay A/B.
+        const aIsHome = normalizeTeam(g.teamA) === normalizeTeam(g.homeName);
+        const awayHome = (htmlA, htmlB) => aIsHome ? [htmlB, htmlA] : [htmlA, htmlB];
 
         if (g.isFinal) {
           card.className = "game-card is-final-locked";
-          // Same "Away @ Home" order as the open games; the name stands in
-          // if ESPN sent no logo.
-          const aIsHome = normalizeTeam(g.teamA) === normalizeTeam(g.homeName);
           const finalLogo = (name, logo, rank) => logo
             ? buildLogoHtml(logo, rank)
             : `<span class="final-team-fallback">${shortenPickDisplay(name)}</span>`;
-          const logoA = finalLogo(g.teamA, g.teamALogo, g.teamARank);
-          const logoB = finalLogo(g.teamB, g.teamBLogo, g.teamBRank);
+          const [left, right] = awayHome(finalLogo(g.teamA, g.teamALogo, g.teamARank), finalLogo(g.teamB, g.teamBLogo, g.teamBRank));
           card.innerHTML = `
             <div class="game-header-row">
               <span class="game-title"><strong>Game ${g.id}</strong></span>
             </div>
             <div class="final-logo-row">
-              ${aIsHome ? logoB : logoA}
+              ${left}
               <span class="pick-grid-at">@</span>
-              ${aIsHome ? logoA : logoB}
+              ${right}
             </div>
             <div class="game-final-message">This game is in progress or finished so picking it is locked.</div>
             ${g.playedDetail ? `<span class="game-detail">${g.playedDetail}</span>` : ""}
           `;
         } else {
           card.className = "game-card";
-          // Shown in the real "Away @ Home" order. teamA/teamB (SEC team
-          // first) are untouched for keys, picks and element ids — only
-          // the on-screen left/right order follows who is actually home.
-          const teamAIsHome = normalizeTeam(g.teamA) === normalizeTeam(g.homeName);
-          const btnAHtml = `<button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${g.teamA}" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${buildLogoHtml(g.teamALogo, g.teamARank)}<span class="btn-pick-name">${shortenPickDisplay(g.teamA)}</span>${g.teamARecord ? `<span class="btn-pick-record">${g.teamARecord}</span>` : ""}</button>`;
-          const btnBHtml = `<button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${g.teamB}" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${buildLogoHtml(g.teamBLogo, g.teamBRank)}<span class="btn-pick-name">${shortenPickDisplay(g.teamB)}</span>${g.teamBRecord ? `<span class="btn-pick-record">${g.teamBRecord}</span>` : ""}</button>`;
+          const pickBtn = (side, team, logo, rank, record) =>
+            `<button type="button" class="btn-pick" id="btn_${g.matchupKey}_${side}" data-team="${team}" onclick="chooseTeam('${g.matchupKey}', '${team}')">${buildLogoHtml(logo, rank)}<span class="btn-pick-name">${shortenPickDisplay(team)}</span>${record ? `<span class="btn-pick-record">${record}</span>` : ""}</button>`;
+          const [left, right] = awayHome(
+            pickBtn("A", g.teamA, g.teamALogo, g.teamARank, g.teamARecord),
+            pickBtn("B", g.teamB, g.teamBLogo, g.teamBRank, g.teamBRecord)
+          );
           card.innerHTML = `
             <div class="game-header-row">
               <span class="game-title"><strong>Game ${g.id}</strong></span>
-              ${isLockAllowed ? `
+              ${isLockWeek(targetWeek) ? `
                 <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">Lock Of\nThe Week</button>
               ` : ""}
             </div>
             <div class="pick-grid">
-              ${teamAIsHome ? btnBHtml : btnAHtml}
+              ${left}
               <span class="pick-grid-at">@</span>
-              ${teamAIsHome ? btnAHtml : btnBHtml}
+              ${right}
             </div>
             ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           `;
@@ -1445,130 +289,66 @@
 
     function chooseTeam(matchupKey, team) {
       userSelections[matchupKey] = team;
-      const btnA = document.getElementById(`btn_${matchupKey}_A`);
-      const btnB = document.getElementById(`btn_${matchupKey}_B`);
-
-      if (btnA && btnB) {
-        // Matching on data-team (the real, full name) instead of the
-        // button's visible text — the text can now be a shortened display
-        // version (see shortenPickDisplay), so comparing against it
-        // directly would silently highlight the wrong button.
-        if (btnA.dataset.team === team) {
-          btnA.classList.add("selected");
-          btnB.classList.remove("selected");
-        } else {
-          btnB.classList.add("selected");
-          btnA.classList.remove("selected");
-        }
-      }
+      markPick(matchupKey, btnA => btnA.dataset.team === team);
     }
 
     function toggleUserLock(matchupKey) {
-      if (!isLockAllowed) return;
+      if (!isLockWeek(targetWeek)) return;
       currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
-      refreshLockVisuals();
-    }
-
-    function refreshLockVisuals() {
-      if (!isLockAllowed) return;
-      currentSchedule.forEach(g => {
-        const card = document.getElementById(`card_${g.matchupKey}`);
-        const lockBtn = document.getElementById(`lock_btn_${g.matchupKey}`);
-
-        if (card && lockBtn) {
-          if (currentLockMatchupKey === g.matchupKey) {
-            card.classList.add("is-locked");
-            lockBtn.classList.add("active");
-            lockBtn.textContent = "★ Lock Selected";
-          } else {
-            card.classList.remove("is-locked");
-            lockBtn.classList.remove("active");
-            lockBtn.textContent = "Lock Of\nThe Week";
-          }
-        }
-      });
+      refreshLockButtons(currentSchedule, currentLockMatchupKey, "Lock Of\nThe Week");
     }
 
     async function submitBallot() {
       const submitBtn = document.getElementById("submitBtn");
       const username = document.getElementById("userNameInput").value.trim();
-      const statusAlert = document.getElementById("statusAlert");
+      const fail = text => {
+        setStatus("var(--danger)", text);
+        resetSubmitButton();
+      };
 
-      if (!username) {
-        statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = "Please enter your handle or name.";
-        return;
-      }
+      if (!username) return setStatus("var(--danger)", "Please enter your handle or name.");
 
-      // Only games still open matter here — someone who missed a game
-      // that's already started or finished isn't asked to somehow pick it
-      // retroactively, and shouldn't be blocked from submitting the rest
-      // of the week because of it.
+      // Games already started can't be picked, so they aren't required.
       const pickableGames = currentSchedule.filter(g => !g.isFinal);
-
       if (pickableGames.length === 0) {
-        statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = "Every game this week has already started or been played — there's nothing left to submit picks for.";
-        return;
+        return setStatus("var(--danger)", "Every game this week has already started or been played — there's nothing left to submit picks for.");
       }
 
-      const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_game_id" && k !== "lock_matchup_key").length;
+      const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_matchup_key").length;
       if (pickedGameCount < pickableGames.length) {
-        statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = `Please make selections for all ${pickableGames.length} remaining games.`;
-        return;
+        return setStatus("var(--danger)", `Please make selections for all ${pickableGames.length} remaining games.`);
       }
 
-      if (isLockAllowed && !currentLockMatchupKey) {
-        statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = "Please select your Lock of the Week pick before submitting.";
-        return;
+      if (isLockWeek(targetWeek) && !currentLockMatchupKey) {
+        return setStatus("var(--danger)", "Please select your Lock of the Week pick before submitting.");
       }
 
-      // Catches the case a dropdown suggestion alone can't: someone who
-      // typed a name that's only different from an existing one by case,
-      // spacing, or a leading "@" — exactly the pattern that's split
-      // people into two entries in the season standings before.
+      // Catch "SECFan" vs "@secfan" before it splits one person in two.
       let finalUsername = username;
       const possibleMatch = findPossibleNameMatch(username);
-      if (possibleMatch) {
-        finalUsername = await confirmNameMatch(username, possibleMatch);
-      }
+      if (possibleMatch) finalUsername = await confirmNameMatch(username, possibleMatch);
 
-      if (isLockAllowed && currentLockMatchupKey) {
-        userSelections.lock_matchup_key = currentLockMatchupKey;
-      } else {
-        delete userSelections.lock_matchup_key;
-      }
+      if (isLockWeek(targetWeek)) userSelections.lock_matchup_key = currentLockMatchupKey;
+      else delete userSelections.lock_matchup_key;
 
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Submitting picks...";
-      }
-
-      statusAlert.style.color = "var(--text-muted)";
-      statusAlert.textContent = "Submitting your picks...";
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Submitting picks...";
+      setStatus("var(--text-muted)", "Submitting your picks...");
 
       try {
-        const { data: existing, error: checkErr } = await supabaseClient
-          .from("picks")
+        const { data: existing } = await supabaseClient
+          .from(PICKS_TABLE)
           .select("id")
           .ilike("user_name", finalUsername)
           .eq("week_number", targetWeek)
           .limit(1);
 
         if (existing && existing.length > 0) {
-          statusAlert.style.color = "var(--danger)";
-          statusAlert.textContent = `An entry under "${finalUsername}" has already been submitted for Week ${targetWeek}! Only one submission per Cousin is allowed.`;
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Submit Ballot";
-          }
-          return;
+          return fail(`An entry under "${finalUsername}" has already been submitted for Week ${targetWeek}! Only one submission per Cousin is allowed.`);
         }
 
         const { error } = await supabaseClient
-          .from("picks")
+          .from(PICKS_TABLE)
           .insert({
             user_name: finalUsername,
             week_number: targetWeek,
@@ -1579,453 +359,24 @@
 
         if (error) {
           if (error.code === "23505" || error.message?.includes("unique")) {
-            statusAlert.style.color = "var(--danger)";
-            statusAlert.textContent = `An entry under "${finalUsername}" was already submitted for Week ${targetWeek}!`;
-          } else {
-            throw error;
+            return fail(`An entry under "${finalUsername}" was already submitted for Week ${targetWeek}!`);
           }
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Submit Ballot";
-          }
-          return;
+          throw error;
         }
 
-        // Remembered on this device so a returning cousin doesn't have to
-        // retype it next week at all — retyping from scratch is exactly
-        // where a spelling or capitalization slip creeps in.
         try {
           localStorage.setItem("secPickEmUserName", finalUsername);
-        } catch (storageErr) {
-          // Private browsing or storage disabled — not worth failing the
-          // submission over.
-        }
+        } catch (storageErr) {}
 
-        statusAlert.style.color = "var(--success)";
-        statusAlert.innerHTML = `Week ${targetWeek} ballot submitted! Returning to Leaderboard...`;
-
-        setTimeout(() => {
-          window.location.href = "index.html";
-        }, 1800);
+        setStatus("var(--success)", `Week ${targetWeek} ballot submitted! Returning to Leaderboard...`);
+        setTimeout(() => { window.location.href = "index.html"; }, 1800);
       } catch (err) {
-        statusAlert.style.color = "var(--danger)";
-        statusAlert.textContent = `Error: ${err.message}`;
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Submit Ballot";
-        }
+        fail(`Error: ${err.message}`);
       }
     }
 
-    // --- Top 25 and SEC standings popups -------------------------------
-    // Both read straight from ESPN and fail soft: if the data isn't there
-    // or isn't shaped as expected, the popup says so instead of breaking.
-    const infoCache = {};
-
-    function closeInfoModal() {
-      document.getElementById("infoOverlay").style.display = "none";
-    }
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeInfoModal();
-    });
-
-    function showInfoModal(title) {
-      document.getElementById("infoTitle").textContent = title;
-      const infoModal = document.querySelector("#infoOverlay .team-sched-modal");
-      if (infoModal) infoModal.style.maxWidth = "";
-      document.getElementById("infoTabs").style.display = "none";
-      document.getElementById("infoTabs").innerHTML = "";
-      document.getElementById("infoBody").innerHTML = `<div class="team-sched-note">Loading...</div>`;
-      document.getElementById("infoOverlay").style.display = "flex";
-    }
-
-    async function fetchFirstOk(urls) {
-      for (const url of urls) {
-        try {
-          const res = await fetch(url);
-          if (res.ok) return await res.json();
-        } catch (e) { /* try the next one */ }
-      }
-      throw new Error("no data");
-    }
-
-    function teamLogoFrom(t) {
-      if (!t) return "";
-      return t.logo || (t.logos && t.logos[0] && t.logos[0].href) || "";
-    }
-
-    function infoTeamHtml(name, logo, isSec) {
-      return `<span class="info-team ${isSec ? "sec" : ""}">${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}<span>${name}</span></span>`;
-    }
-
-    // Top 25 popup: one table, three columns side by side — AP, Coaches
-    // Poll, and ESPN's computer ranking (FPI). AP and Coaches come from the
-    // rankings feed; FPI isn't in that feed at all, it lives on ESPN's
-    // separate power-index endpoint, which is why it never showed up as a
-    // tab. Each source fails on its own: if one can't load, its column
-    // just says so and the other two still show.
-    async function openRankings() {
-      showInfoModal("Top 25");
-      const body = document.getElementById("infoBody");
-      const modal = document.querySelector("#infoOverlay .team-sched-modal");
-      if (modal) modal.style.maxWidth = "560px";
-
-      const loadPolls = async () => {
-        if (!infoCache.rankings) {
-          infoCache.rankings = await fetchFirstOk([
-            "https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"
-          ]);
-        }
-        return infoCache.rankings;
-      };
-      const loadFpi = async () => {
-        if (!infoCache.fpi) {
-          infoCache.fpi = await fetchFirstOk([
-            "https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=2026&limit=200",
-            "https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=2026"
-          ]);
-        }
-        return infoCache.fpi;
-      };
-
-      const [pollRes, fpiRes] = await Promise.allSettled([loadPolls(), loadFpi()]);
-
-      // Each column becomes a plain list of { name, logo } in rank order.
-      const teamName = t => t.location || t.nickname || t.shortDisplayName || t.name || t.displayName || "";
-      const fromPoll = (match) => {
-        if (pollRes.status !== "fulfilled") return null;
-        const polls = (pollRes.value.rankings || []).filter(r => r.ranks && r.ranks.length);
-        const label = p => `${p.name || ""} ${p.shortName || ""}`;
-        const poll = polls.find(p => match(p, label(p)));
-        if (!poll) return null;
-        return poll.ranks
-          .slice()
-          .sort((a, b) => a.current - b.current)
-          .slice(0, 25)
-          .map(r => ({ name: teamName(r.team || {}), logo: teamLogoFrom(r.team) }));
-      };
-
-      const lowerDivision = /fcs|division|div\.|\bd-?i{2,3}\b|naia/i;
-      const apList = fromPoll((p, l) => p.type === "ap" || /\bAP\b/.test(l));
-      const coachesList = fromPoll((p, l) => /coaches/i.test(l) && !lowerDivision.test(l));
-
-      let fpiList = null;
-      if (fpiRes.status === "fulfilled") {
-        // In each team's "fpi" category, values[1] is the FPI rank.
-        const ranked = (fpiRes.value.teams || []).map(entry => {
-          const cat = (entry.categories || []).find(c => c.name === "fpi");
-          const rank = cat && cat.values ? parseInt(cat.values[1], 10) : NaN;
-          return { rank, name: teamName(entry.team || {}), logo: teamLogoFrom(entry.team) };
-        }).filter(x => !isNaN(x.rank) && x.rank >= 1);
-        ranked.sort((a, b) => a.rank - b.rank);
-        if (ranked.length) fpiList = ranked.slice(0, 25);
-      } else {
-        console.error("FPI error:", fpiRes.reason);
-      }
-
-      if (!apList && !coachesList && !fpiList) {
-        body.innerHTML = `<div class="team-sched-note">Couldn't load the rankings right now.</div>`;
-        return;
-      }
-
-      const cell = (list, i) => {
-        if (!list) return i === 0 ? `<td class="top25-cell top25-missing">Unavailable</td>` : `<td class="top25-cell"></td>`;
-        const t = list[i];
-        if (!t) return `<td class="top25-cell"></td>`;
-        const sec = isSecTeam(t.name);
-        return `<td class="top25-cell">
-          <span class="top25-team ${sec ? "sec" : ""}">
-            ${t.logo ? `<img src="${t.logo}" alt="" onerror="this.style.display='none'">` : ""}
-            <span>${shortenPickDisplay(t.name)}</span>
-          </span>
-        </td>`;
-      };
-
-      let rowsHtml = "";
-      for (let i = 0; i < 25; i++) {
-        rowsHtml += `<tr>
-          <td class="top25-rank">${i + 1}</td>
-          ${cell(apList, i)}${cell(coachesList, i)}${cell(fpiList, i)}
-        </tr>`;
-      }
-
-      body.innerHTML = `
-        <table class="top25-table">
-          <thead>
-            <tr><th class="top25-rank"></th><th>AP</th><th>Coaches Poll</th><th>ESPN</th></tr>
-          </thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>`;
-    }
-
-    // Walks the whole standings response for any group of team entries, so
-    // it doesn't depend on exactly how ESPN nests conferences or divisions.
-    function collectStandingsEntries(node, out) {
-      if (!node || typeof node !== "object") return;
-      if (node.standings && Array.isArray(node.standings.entries)) {
-        node.standings.entries.forEach(e => out.push(e));
-      }
-      Object.values(node).forEach(v => {
-        if (Array.isArray(v)) v.forEach(x => collectStandingsEntries(x, out));
-        else if (v && typeof v === "object") collectStandingsEntries(v, out);
-      });
-    }
-
-    function statDisplay(stats, matcher) {
-      const st = (stats || []).find(matcher);
-      if (!st) return "";
-      return st.displayValue || st.summary || (st.value !== undefined ? String(st.value) : "");
-    }
-
-    function parseWL(str) {
-      const m = /^(\d+)-(\d+)/.exec(str || "");
-      return m ? { w: parseInt(m[1], 10), l: parseInt(m[2], 10) } : { w: 0, l: 0 };
-    }
-
-    async function openStandings() {
-      showInfoModal("SEC Standings");
-      const body = document.getElementById("infoBody");
-      try {
-        if (!infoCache.standings) {
-          infoCache.standings = await fetchFirstOk([
-            "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=8&season=2026",
-            "https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?group=8&season=2026"
-          ]);
-        }
-        const entries = [];
-        collectStandingsEntries(infoCache.standings, entries);
-        if (entries.length === 0) throw new Error("empty");
-
-        const rows = entries.map(e => {
-          const t = e.team || {};
-          const overall = statDisplay(e.stats, s => /^overall$/i.test(s.name || s.type || ""));
-          const conf = statDisplay(e.stats, s =>
-            /^(vs\.?\s?conf(erence)?|conference)$/i.test(s.name || "") ||
-            (/conf/i.test(s.name || s.type || "") && !/behind|pct|percent|point|win|rank/i.test(s.name || s.type || "")));
-          return {
-            name: t.shortDisplayName || t.displayName || t.name || "",
-            logo: teamLogoFrom(t),
-            overall: overall,
-            conf: conf,
-            c: parseWL(conf),
-            o: parseWL(overall)
-          };
-        });
-
-        rows.sort((a, b) => {
-          const aPct = a.c.w + a.c.l ? a.c.w / (a.c.w + a.c.l) : 0;
-          const bPct = b.c.w + b.c.l ? b.c.w / (b.c.w + b.c.l) : 0;
-          if (bPct !== aPct) return bPct - aPct;
-          if (b.c.w !== a.c.w) return b.c.w - a.c.w;
-          return b.o.w - a.o.w;
-        });
-
-        body.innerHTML = `
-          <div class="info-row standings-row head"><span></span><span>Team</span><span class="info-meta">Conf</span><span class="info-meta">Overall</span></div>
-          ${rows.map((r, i) => `
-            <div class="info-row standings-row">
-              <span class="info-rank">${i + 1}</span>
-              ${infoTeamHtml(r.name, r.logo, false)}
-              <span class="info-meta" style="color: var(--text-main);">${r.conf || "-"}</span>
-              <span class="info-meta">${r.overall || "-"}</span>
-            </div>`).join("")}
-        `;
-      } catch (err) {
-        console.error("Standings error:", err);
-        body.innerHTML = `<div class="team-sched-note">Couldn't load the standings right now.</div>`;
-      }
-    }
-
-    // --- Team schedule popup -------------------------------------------
-    // Tapping any logo (or its text fallback) carrying a data-team-id opens
-    // that team's full season schedule from ESPN's team-schedule endpoint.
-    // Cached per team so reopening is instant. Display only — nothing here
-    // touches picks, keys or grading.
-    const teamScheduleCache = {};
-
-    document.addEventListener("click", (e) => {
-      const el = e.target.closest("[data-team-id]");
-      if (!el || !el.dataset.teamId) return;
-      openTeamSchedule(el.dataset.teamId, el.dataset.teamName, el.dataset.teamLogo);
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeTeamSchedule();
-    });
-
-    function closeTeamSchedule() {
-      document.getElementById("teamSchedOverlay").style.display = "none";
-    }
-
-    function schedScore(s) {
-      if (s === null || s === undefined) return "";
-      if (typeof s === "object") return String(s.displayValue !== undefined ? s.displayValue : (s.value !== undefined ? s.value : ""));
-      return String(s);
-    }
-
-    // One entry per week 1-14 with the earliest/latest kickoff and the most
-    // common game day, built from the scoreboard data the page already
-    // loaded. Used to place a game (or a bye) in the right week by date.
-    function getWeekWindows() {
-      const out = [];
-      for (let w = 1; w <= 14; w++) {
-        const entry = (window.espnRawCache || {})[w];
-        const events = (entry && entry.data && entry.data.events) || [];
-        const times = events.map(ev => new Date((ev.competitions && ev.competitions[0] && ev.competitions[0].date) || ev.date))
-          .filter(d => !isNaN(d.getTime()))
-          .sort((a, b) => a - b);
-        if (times.length === 0) continue;
-
-        const counts = {};
-        times.forEach(d => {
-          const key = d.toDateString();
-          counts[key] = (counts[key] || 0) + 1;
-        });
-        const modalKey = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
-        out.push({ week: w, min: times[0], max: times[times.length - 1], modal: new Date(modalKey) });
-      }
-      return out;
-    }
-
-    async function openTeamSchedule(teamId, teamName, teamLogo) {
-      const overlay = document.getElementById("teamSchedOverlay");
-      const body = document.getElementById("teamSchedBody");
-      const title = document.getElementById("teamSchedTitle");
-      const logo = document.getElementById("teamSchedLogo");
-
-      title.textContent = teamName || "Team Schedule";
-      if (teamLogo) {
-        logo.src = teamLogo;
-        logo.style.display = "block";
-        logo.onerror = () => { logo.style.display = "none"; };
-      } else {
-        logo.style.display = "none";
-      }
-      body.innerHTML = `<div class="team-sched-note">Loading schedule...</div>`;
-      overlay.style.display = "flex";
-
-      try {
-        if (!teamScheduleCache[teamId]) {
-          const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${teamId}/schedule?season=2026`;
-          const res = await fetch(url);
-          if (!res.ok) throw new Error("bad response");
-          teamScheduleCache[teamId] = await res.json();
-        }
-        const data = teamScheduleCache[teamId];
-        const events = (data.events || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        if (data.team && data.team.recordSummary) {
-          title.innerHTML = `${teamName}<small>${data.team.recordSummary}${data.team.standingSummary ? " | " + data.team.standingSummary : ""}</small>`;
-        }
-
-        if (events.length === 0) {
-          body.innerHTML = `<div class="team-sched-note">No schedule available.</div>`;
-          return;
-        }
-
-        const windows = getWeekWindows();
-        const DAY = 24 * 60 * 60 * 1000;
-        const weekOfDate = (d) => {
-          const hit = windows.find(w => d >= new Date(w.min.getTime() - 2 * DAY) && d <= new Date(w.max.getTime() + 2 * DAY));
-          return hit ? hit.week : null;
-        };
-
-        // Each game gets a week number — ESPN's own when it sends one,
-        // otherwise worked out from the date against this season's
-        // week-by-week scoreboard dates already loaded on the page.
-        const items = events.map(ev => {
-          const comp = (ev.competitions || [])[0] || {};
-          const competitors = comp.competitors || [];
-          const me = competitors.find(c => String((c.team && c.team.id) || c.id) === String(teamId));
-          const opp = competitors.find(c => c !== me);
-          const oppTeam = (opp && opp.team) || {};
-          const oppName = oppTeam.shortDisplayName || oppTeam.displayName || oppTeam.name || "TBD";
-          const oppLogo = oppTeam.logo || (oppTeam.logos && oppTeam.logos[0] && oppTeam.logos[0].href) || "";
-          const prefix = comp.neutralSite ? "vs" : (me && me.homeAway === "away" ? "@" : "vs");
-
-          const d = new Date(ev.date);
-          const dateText = isNaN(d.getTime()) ? "TBD" : d.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" });
-          const week = (ev.week && ev.week.number) ? ev.week.number : (isNaN(d.getTime()) ? null : weekOfDate(d));
-
-          const statusType = (comp.status && comp.status.type) || {};
-          const done = statusType.completed === true;
-          let resultHtml;
-          if (done && me && opp) {
-            const myScore = schedScore(me.score);
-            const oppScore = schedScore(opp.score);
-            const won = me.winner === true;
-            const lost = opp.winner === true;
-            resultHtml = `<span class="team-sched-result ${won ? "win" : (lost ? "loss" : "")}">${won ? "W" : (lost ? "L" : "T")} ${myScore}-${oppScore}</span>`;
-          } else if (statusType.state === "in") {
-            resultHtml = `<span class="team-sched-result" style="color: var(--accent-gold);">Live</span>`;
-          } else {
-            resultHtml = `<span class="team-sched-result">${isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>`;
-          }
-
-          return {
-            week: week,
-            sortTime: isNaN(d.getTime()) ? Infinity : d.getTime(),
-            html: `
-              <span class="team-sched-date">${dateText}</span>
-              <span class="team-sched-opp">
-                ${oppLogo ? `<img src="${oppLogo}" alt="" onerror="this.style.display='none'">` : ""}
-                <span>${prefix} ${oppName}</span>
-              </span>
-              ${resultHtml}`
-          };
-        });
-
-        // Bye weeks: any week missing between this team's first and last
-        // game in weeks 1-14. Leading and trailing gaps aren't byes (the
-        // season just hadn't started for them, or is over).
-        const playedWeeks = items.map(it => it.week).filter(w => w !== null && w >= 1 && w <= 14);
-        if (playedWeeks.length > 0) {
-          const first = Math.min(...playedWeeks);
-          const last = Math.max(...playedWeeks);
-          const have = new Set(playedWeeks);
-          for (let w = first; w <= last; w++) {
-            if (have.has(w)) continue;
-            const win = windows.find(x => x.week === w);
-            let byeDate = win ? win.modal : null;
-            if (!byeDate) {
-              const prev = items.filter(it => it.week !== null && it.week < w && isFinite(it.sortTime))
-                .sort((a, b) => b.sortTime - a.sortTime)[0];
-              if (!prev) continue;
-              byeDate = new Date(prev.sortTime + (w - prev.week) * 7 * 24 * 60 * 60 * 1000);
-            }
-            items.push({
-              week: w,
-              sortTime: byeDate.getTime(),
-              html: `
-                <span class="team-sched-date">${byeDate.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" })}</span>
-                <span class="team-sched-opp"><span style="font-style: italic;">Bye Week</span></span>
-                <span class="team-sched-result"></span>`
-            });
-          }
-        }
-
-        items.sort((a, b) => a.sortTime - b.sortTime);
-
-        body.innerHTML = items.map(it => `
-          <div class="team-sched-row ${it.week !== null && it.week === targetWeek ? "current-week" : ""}">${it.html}</div>
-        `).join("");
-
-        // Open scrolled to the current week so it's on screen right away.
-        const currentRow = body.querySelector(".current-week");
-        if (currentRow) {
-          body.scrollTop = Math.max(0, currentRow.offsetTop - body.clientHeight / 2 + currentRow.offsetHeight / 2);
-        }
-      } catch (err) {
-        console.error("Team schedule error:", err);
-        body.innerHTML = `<div class="team-sched-note">Couldn't load this schedule right now.</div>`;
-      }
-    }
-
-
-    // Schedules popup: every team playing this week, SEC first, as tappable
-    // logos. Tapping one opens that team's season schedule. (Tapping a logo
-    // on a pick button picks the team instead, so schedules live here.)
+    // Every team playing this week, SEC first. Tapping a pick-button logo
+    // picks the team, so schedules are reached from here instead.
     function openSchedulePicker() {
       showInfoModal("Team Schedules");
       const body = document.getElementById("infoBody");
@@ -2049,8 +400,9 @@
           ${t.logo ? `<img src="${t.logo}" alt="" onerror="this.style.display='none'">` : ""}
           <span>${shortenPickDisplay(t.name)}</span>
         </button>`;
-      const sec = teams.filter(t => t.sec).sort((a, b) => a.name.localeCompare(b.name));
-      const other = teams.filter(t => !t.sec).sort((a, b) => a.name.localeCompare(b.name));
+      const byName = (a, b) => a.name.localeCompare(b.name);
+      const sec = teams.filter(t => t.sec).sort(byName);
+      const other = teams.filter(t => !t.sec).sort(byName);
       body.innerHTML = `
         <div class="sched-section-label">SEC</div>
         <div class="sched-pick-grid">${sec.map(tile).join("")}</div>
