@@ -599,14 +599,12 @@ async function renderGameDetails(body, eventId) {
           // SEC teams show their spot in the SEC tab's list so the two always
           // match; anyone else keeps ESPN's summary.
           let place = standing;
-          if (isSecTeam(t.shortDisplayName || t.displayName || "")) {
-            try {
-              const myName = normalizeTeam(t.shortDisplayName || t.displayName || "");
-              const row = (await loadSecStandings()).find(r => (r.id && r.id === String(t.id)) || normalizeTeam(r.name) === myName);
-              if (row) place = `${ordinal(row.place)} in SEC`;
-            } catch (e) {}
-          }
-          el.querySelector(".sched-record").textContent = `${shortenPickDisplay(t.shortDisplayName || t.displayName || "")}: ${record}${place ? " | " + place : ""}`;
+          try {
+            const names = [t.location, t.shortDisplayName, t.displayName, t.name].filter(Boolean).map(normalizeTeam);
+            const row = (await loadSecStandings()).find(r => (r.id && r.id === String(t.id)) || names.includes(normalizeTeam(r.name)));
+            if (row) place = `${ordinal(row.place)} in SEC`;
+          } catch (e) {}
+          el.querySelector(".sched-record").textContent = `${shortenPickDisplay(t.location || t.shortDisplayName || t.displayName || "")}: ${record}${place ? " | " + place : ""}`;
         }, false);
       }
     });
