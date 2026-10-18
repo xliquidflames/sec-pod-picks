@@ -8,9 +8,9 @@
   <script data-goatcounter="https://liquidflames.goatcounter.com/count"
           async src="//gc.zgo.at/count.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="common.js"></script>
-  <script src="sec.js"></script>
-  <link rel="stylesheet" href="styles.css" />
+  <script src="common.js?v=3"></script>
+  <script src="sec.js?v=3"></script>
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
 
@@ -378,15 +378,19 @@
             `<span class="matchup-logo-wrap">${teamLogoHtml(name, logo, isSec, scheduleAttrs(c.team.id || "", name, logo))}${rankSpan(c.curatedRank && c.curatedRank.current)}</span>`;
           const matchupLabel = `<span class="matchup-logo-row">${logoCell(away, awayName, awayLogo, awayIsSec)}<span class="matchup-at-symbol">@</span>${logoCell(home, homeName, homeLogo, homeIsSec)}</span>`;
 
-          const scoreLine = `${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
-          let time = "TBD";
-          if (isFinal) {
-            time = `Final: ${scoreLine}`;
-          } else if (isLive) {
-            time = `${comp.status.type.detail || `Period ${comp.status.period}`}: ${scoreLine}`;
+          // One short line under the logos: kickoff time before the game,
+          // otherwise each team's score under its logo with the status between.
+          let detail = "TBD";
+          if (isFinal || isLive) {
+            const st = comp.status || {};
+            const status = isFinal
+              ? ((st.period || 0) > 4 ? "F/OT" : "Final")
+              : (/half/i.test((st.type && st.type.detail) || "") ? "Half" : ((st.period || 0) > 4 ? "OT" : `Q${st.period || 1}`));
+            const scoreSpan = c => `<span class="matchup-score ${c.winner === true ? "won" : ""}">${c.score !== undefined ? c.score : ""}</span>`;
+            detail = `<span class="matchup-score-row">${scoreSpan(away)}<span class="matchup-status">${status}</span>${scoreSpan(home)}</span>`;
           } else if (comp.date) {
             // The date is on the day divider row, so just the time here.
-            time = new Date(comp.date).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+            detail = new Date(comp.date).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
           }
 
           let kickoff = new Date(8640000000000000);
@@ -396,18 +400,13 @@
           }
 
           const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "";
-          const nsSuffix = comp.neutralSite === true ? " | NS" : "";
-          const tv = tvNetwork(comp);
-          const weather = weatherNote(ev, comp);
-          const pregameExtras = `${tv ? ` | ${tv}` : ""}${weather ? ` | ${weather}` : ""}`;
-
           return {
             matchupKey: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : buildMatchupKey(teamA, teamB),
             teamA,
             teamB,
             matchupLabel,
             rawOdds,
-            detail: (isFinal || isLive) ? `${time}${nsSuffix}` : `${time} | ${rawOdds || "Line: TBD"}${nsSuffix}${pregameExtras}`,
+            detail,
             eventId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null,
             winner,
             isLive,
