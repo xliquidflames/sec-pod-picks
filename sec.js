@@ -468,6 +468,26 @@ function shortNetwork(comp) {
   return first.replace(/^SEC Network\+$/i, "SECN+").replace(/^SEC Network$/i, "SECN");
 }
 
+// An emoji for a forecast's wording. Clear skies get a moon for night games.
+function weatherIcon(desc, date) {
+  const d = (desc || "").toLowerCase();
+  if (/thunder|storm|lightning/.test(d)) return "⛈️";
+  if (/snow|flurr|sleet|ice|wintry/.test(d)) return "🌨️";
+  if (/rain|shower|drizzle/.test(d)) return "🌧️";
+  if (/fog|haze|mist|smoke/.test(d)) return "🌫️";
+  if (/wind|breez|gust/.test(d)) return "💨";
+  if (/partly|intermittent|mostly sunny|mostly clear|few clouds|scattered/.test(d)) return "⛅";
+  if (/cloud|overcast/.test(d)) return "☁️";
+  if (/sun|clear|fair/.test(d)) {
+    const hour = date instanceof Date && !isNaN(date.getTime()) ? date.getHours() : 12;
+    return hour >= 18 || hour < 6 ? "🌙" : "☀️";
+  }
+  return "";
+}
+
+// A simple dome for indoor stadiums.
+const DOME_ICON = `<svg class="dome-icon" viewBox="0 0 24 16" aria-hidden="true"><path d="M2 14 A10 10 0 0 1 22 14 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 4 V14 M7 6.5 Q9 10 9 14 M17 6.5 Q15 10 15 14" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M1 14.5 H23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+
 // A short forecast note for outdoor games, only when it's worth knowing:
 // rain, storms, snow, wind, or temperatures at either extreme.
 function weatherNote(ev, comp) {
@@ -614,15 +634,23 @@ function gameInfoHtml(s, ev, sbComp, comp) {
   const venue = info.venue || sbComp.venue || {};
   const city = venue.address ? [venue.address.city, venue.address.state].filter(Boolean).join(", ") : "";
   const where = [venue.fullName, city].filter(Boolean).join(", ");
+  const date = new Date(comp.date || ev.date || sbComp.date);
+
+  // Indoor games get the dome icon and no forecast; outdoor games get an
+  // icon for the conditions, then the temperature and the forecast text.
+  const indoor = venue.indoor === true || (sbComp.venue && sbComp.venue.indoor === true);
   const w = info.weather || ev.weather || sbComp.weather;
   let weather = "";
-  if (w && venue.indoor !== true) {
+  if (indoor) {
+    weather = `<span class="weather-chip">${DOME_ICON} Indoors</span>`;
+  } else if (w) {
+    const desc = w.displayValue || w.conditionDescription || "";
     const temp = w.temperature !== undefined ? w.temperature : w.highTemperature;
-    weather = `${w.displayValue || w.conditionDescription || ""}${temp !== undefined ? ` ${temp}°` : ""}`.trim();
+    const icon = weatherIcon(desc, date);
+    weather = `<span class="weather-chip">${icon ? `<span class="weather-icon">${icon}</span>` : ""}${temp !== undefined ? `${temp}°` : ""}${desc ? ` ${desc}` : ""}</span>`;
   }
   if (where || weather) rows.push(["Where", [where, weather].filter(Boolean).join(" · ")]);
 
-  const date = new Date(comp.date || ev.date || sbComp.date);
   const when = [];
   if (!isNaN(date.getTime())) {
     when.push(date.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" }));
