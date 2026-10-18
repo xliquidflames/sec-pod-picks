@@ -199,7 +199,11 @@
         </div>
 
         <div id="cousinSearchWrapper" style="margin-bottom: 0.75rem;">
-          <input type="text" id="cousinSearchInput" class="cousin-search-input" placeholder="Find a name" oninput="filterCousinCards()" />
+          <div class="search-row">
+            <input type="text" id="cousinSearchInput" class="cousin-search-input" placeholder="Find a name" oninput="filterCousinCards()" />
+            <button type="button" class="btn-ctrl" id="jumpToMeBtn" style="display: none;" onclick="jumpToMe()">Jump to me</button>
+          </div>
+          <div id="jumpNote" class="jump-note" style="display: none;"></div>
         </div>
 
         <div id="cousinsList">
@@ -285,6 +289,13 @@
       return logo
         ? `<img src="${logo}" alt="${name}" title="${name}" class="matchup-team-logo" ${attrs} onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="${fallbackClass}" ${attrs} style="display:none;">${name}</span>`
         : `<span class="${fallbackClass}" ${attrs}>${name}</span>`;
+    }
+
+    // "Details" link that opens the game details popup.
+    function detailsLink(g) {
+      if (!g.eventId) return "";
+      const title = `${shortenPickDisplay(g.awayName)} @ ${shortenPickDisplay(g.homeName)}`.replace(/'/g, "\\'");
+      return `<button type="button" class="details-link" onclick="openGameDetails('${g.eventId}', '${title}')">Details</button>`;
     }
 
     const scheduleAttrs = (id, name, logo) => `data-team-id="${id}" data-team-name="${name}" data-team-logo="${logo}"`;
@@ -386,6 +397,9 @@
 
           const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "";
           const nsSuffix = comp.neutralSite === true ? " | NS" : "";
+          const tv = tvNetwork(comp);
+          const weather = weatherNote(ev, comp);
+          const pregameExtras = `${tv ? ` | ${tv}` : ""}${weather ? ` | ${weather}` : ""}`;
 
           return {
             matchupKey: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : buildMatchupKey(teamA, teamB),
@@ -393,7 +407,8 @@
             teamB,
             matchupLabel,
             rawOdds,
-            detail: (isFinal || isLive) ? `${time}${nsSuffix}` : `${time} | ${rawOdds || "Line: TBD"}${nsSuffix}`,
+            detail: (isFinal || isLive) ? `${time}${nsSuffix}` : `${time} | ${rawOdds || "Line: TBD"}${nsSuffix}${pregameExtras}`,
+            eventId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null,
             winner,
             isLive,
             isFinal,
@@ -763,6 +778,7 @@
           <td class="matchup-cell">
             ${g.matchupLabel}
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
+            ${detailsLink(g)}
           </td>
           ${hosts.map(hostCell).join("")}
           <td class="pick-cell ${classCousins}">
@@ -790,7 +806,88 @@
       }
     }
 
+    // Each cousin's season so far: record by week, Lock of the Week record,
+    // and the teams they've done best and worst picking (3+ decided picks).
+    function computeSeasonBreakdowns() {
+      const out = {};
+      allWeekRows.forEach(row => {
+        if (row.is_host) return;
+        const b = out[row.user_name] || (out[row.user_name] = { weeks: [], lockC: 0, lockI: 0, teams: {} });
+        const score = gradePicks(row.picks, row.week_number);
+        if (score.correct + score.incorrect > 0) b.weeks.push({ week: row.week_number, c: score.correct, i: score.incorrect });
+        b.lockC += score.lockCorrect;
+        b.lockI += score.lockIncorrect;
+
+        const picks = parseUserPicks(row.picks);
+        (weekSchedules[row.week_number] || []).forEach(g => {
+          const winner = winnerOf(row.week_number, g);
+          const pick = getMatchedUserPick(picks, g);
+          if (!winner || !pick) return;
+          const key = normalizeTeam(pick);
+          const t = b.teams[key] || (b.teams[key] = { name: pick, w: 0, l: 0 });
+          if (key === normalizeTeam(winner)) t.w++;
+          else t.l++;
+        });
+      });
+
+      Object.values(out).forEach(b => {
+        b.weeks.sort((x, y) => x.week - y.week);
+        const pct = t => t.w / (t.w + t.l);
+        const eligible = Object.values(b.teams).filter(t => t.w + t.l >= 3);
+        b.best = eligible.slice().sort((x, y) => (pct(y) - pct(x)) || (y.w - x.w))[0] || null;
+        const worst = eligible.slice().sort((x, y) => (pct(x) - pct(y)) || (y.l - x.l))[0] || null;
+        b.worst = worst && worst !== b.best && worst.l > 0 ? worst : null;
+      });
+      return out;
+    }
+
+    function seasonBoxHtml(b) {
+      if (!b || b.weeks.length === 0) return "";
+      const facts = [];
+      if (b.lockC + b.lockI > 0) facts.push(`Locks: ${b.lockC}-${b.lockI}`);
+      if (b.best) facts.push(`Best pick: ${shortenPickDisplay(b.best.name)} ${b.best.w}-${b.best.l}`);
+      if (b.worst) facts.push(`Toughest: ${shortenPickDisplay(b.worst.name)} ${b.worst.w}-${b.worst.l}`);
+      return `
+        <div class="season-box">
+          <span class="path-line-label">Season So Far</span>
+          <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">W${w.week} ${w.c}-${w.i}</span>`).join("")}</div>
+          ${facts.length ? `<div>${facts.join(" · ")}</div>` : ""}
+        </div>`;
+    }
+
+    // Name saved on this device when picks were last submitted.
+    function savedUserName() {
+      try { return localStorage.getItem("secPickEmUserName") || ""; } catch (e) { return ""; }
+    }
+
+    // Opens and scrolls to the saved name's row for the week being shown.
+    function jumpToMe() {
+      const name = savedUserName();
+      const note = document.getElementById("jumpNote");
+      const squash = s => s.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+      document.getElementById("cousinSearchInput").value = "";
+      filterCousinCards();
+
+      const card = [...document.querySelectorAll("#cousinsList .cousin-item")]
+        .find(el => squash(el.dataset.name || "") === squash(name));
+      if (!card) {
+        note.textContent = `No Week ${activeWeek} picks from ${name} yet.`;
+        note.style.display = "block";
+        return;
+      }
+      note.style.display = "none";
+      document.querySelectorAll("#cousinsList .cousin-item.me").forEach(el => el.classList.remove("me"));
+      card.classList.add("me");
+      card.querySelector(".cousin-picks-body").classList.add("open");
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
     function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
+      const jumpBtn = document.getElementById("jumpToMeBtn");
+      if (jumpBtn) jumpBtn.style.display = savedUserName() ? "" : "none";
+      const jumpNote = document.getElementById("jumpNote");
+      if (jumpNote) jumpNote.style.display = "none";
+
       // Correct picks, then Lock of the Week hits (from Week 2), then name.
       // Everyone on the same number of wins shares a rank, with no gaps.
       cousinRows.forEach(c => c.score = gradePicks(c.picks, activeWeek));
@@ -808,6 +905,7 @@
         : "";
 
       const paths = computePathsToFirst(games);
+      const seasons = computeSeasonBreakdowns();
 
       cousinRows.forEach(c => {
         const item = document.createElement("div");
@@ -831,6 +929,7 @@
           </div>
           <div class="cousin-picks-body">
             ${path ? `<div class="path-line ${path.isLeader ? 'leader' : ''}"><span class="path-line-label">Path to First</span>${path.line}</div>` : ''}
+            ${seasonBoxHtml(seasons[c.user_name])}
             ${games.map(g => {
               const uPick = getMatchedUserPick(picks, g) || "No Pick";
               const isCousinLock = isLockActiveThisWeek && isLockMatch(picks, g);
