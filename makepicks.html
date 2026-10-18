@@ -20,6 +20,8 @@
       <p class="sub-header" id="pageSubHeading">Make your selections</p>
     </header>
 
+    <div id="lockCountdown" class="lock-countdown" style="display: none;"></div>
+
     <div class="pick-format-banner">
       <div class="pick-format-text">
         <span class="pick-format-highlight">Straight-Up Picks Only:</span> Select the outright winner for each game (not against the spread). Betting lines are shown for reference only.
@@ -160,8 +162,10 @@
             teamAId: idOf(a),
             teamBId: idOf(b),
             homeName,
+            awayName: nameOf(away),
+            eventId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null,
             kickoff,
-            detail: `${time} | ${odds} | ${venue}`,
+            detail: [time, odds, tvNetwork(comp), venue, weatherNote(ev, comp)].filter(Boolean).join(" | "),
             playedDetail: `Kickoff: ${time} | ${venue}`,
             isFinal
           };
@@ -191,6 +195,7 @@
 
       currentSchedule = await fetchEspnSchedule(targetWeek);
       renderForm();
+      startLockCountdown();
     }
 
     // Ignores case, spaces and a leading "@" (same rule as the admin duplicate check).
@@ -259,6 +264,7 @@
             </div>
             <div class="game-final-message">This game is in progress or finished so picking it is locked.</div>
             ${g.playedDetail ? `<span class="game-detail">${g.playedDetail}</span>` : ""}
+            ${detailsLink(g)}
           `;
         } else {
           card.className = "game-card";
@@ -281,10 +287,50 @@
               ${right}
             </div>
             ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
+            ${detailsLink(g)}
           `;
         }
         container.appendChild(card);
       });
+    }
+
+    function matchupTitle(g) {
+      return `${shortenPickDisplay(g.awayName)} @ ${shortenPickDisplay(g.homeName)}`;
+    }
+
+    // "Details" link that opens the game details popup.
+    function detailsLink(g) {
+      if (!g.eventId) return "";
+      return `<button type="button" class="details-link" onclick="openGameDetails('${g.eventId}', '${matchupTitle(g).replace(/'/g, "\\'")}')">Details</button>`;
+    }
+
+    // Bar at the top counting down to the next game that will lock. Updates
+    // every 30 seconds; once that game kicks off it asks for a refresh, since
+    // the page only knows which games are open as of when it loaded.
+    function startLockCountdown() {
+      const bar = document.getElementById("lockCountdown");
+      const next = currentSchedule
+        .filter(g => !g.isFinal && g.kickoff.getFullYear() < 9999)
+        .sort((a, b) => a.kickoff - b.kickoff)[0];
+      if (!bar || !next) return;
+
+      const update = () => {
+        const ms = next.kickoff - Date.now();
+        if (ms <= 0) {
+          bar.innerHTML = `<strong>${matchupTitle(next)}</strong> has kicked off. Refresh the page before submitting.`;
+          bar.classList.add("urgent");
+          clearInterval(timer);
+          return;
+        }
+        const mins = Math.floor(ms / 60000);
+        const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60), m = mins % 60;
+        const left = d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${Math.max(m, 1)}m`;
+        bar.innerHTML = `Next game locks in <strong>${left}</strong> · ${matchupTitle(next)}`;
+        bar.classList.toggle("urgent", ms < 60 * 60 * 1000);
+      };
+      bar.style.display = "block";
+      const timer = setInterval(update, 30000);
+      update();
     }
 
     function chooseTeam(matchupKey, team) {
