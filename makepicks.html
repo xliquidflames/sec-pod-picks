@@ -45,6 +45,11 @@
         </div>
       </div>
 
+      <div class="hub-action-row centered">
+        <button type="button" class="btn-ctrl" onclick="setAllCardDetails(true)">Expand All Details</button>
+        <button type="button" class="btn-ctrl" onclick="setAllCardDetails(false)">Collapse All</button>
+      </div>
+
       <div id="gamesList">
         <div style="text-align: center; color: var(--text-muted); padding: 2rem 0;">Loading schedule...</div>
       </div>
@@ -302,18 +307,26 @@
     // stay tappable while reading. Filled in the first time it's opened.
     function detailsLink(g) {
       if (!g.eventId) return "";
-      return `<button type="button" class="details-link" onclick="toggleCardDetails(this, '${g.eventId}')">Details +</button><div class="card-details" style="display: none;"></div>`;
+      return `<button type="button" class="details-link" data-event-id="${g.eventId}" onclick="toggleCardDetails(this)">Details +</button><div class="card-details" style="display: none;"></div>`;
     }
 
-    function toggleCardDetails(btn, eventId) {
+    function toggleCardDetails(btn) {
+      setCardDetails(btn, btn.nextElementSibling.style.display === "none");
+    }
+
+    function setCardDetails(btn, open) {
       const panel = btn.nextElementSibling;
-      const opening = panel.style.display === "none";
-      panel.style.display = opening ? "" : "none";
-      btn.textContent = opening ? "Details −" : "Details +";
-      if (opening && !panel.dataset.loaded) {
+      panel.style.display = open ? "" : "none";
+      btn.textContent = open ? "Details −" : "Details +";
+      if (open && !panel.dataset.loaded) {
         panel.dataset.loaded = "1";
-        renderGameDetails(panel, eventId);
+        renderGameDetails(panel, btn.dataset.eventId);
       }
+    }
+
+    // Expand All / Collapse All above the games.
+    function setAllCardDetails(open) {
+      document.querySelectorAll("#gamesList .details-link").forEach(btn => setCardDetails(btn, open));
     }
 
     // Bar at the top counting down to the next game that will lock. Updates
