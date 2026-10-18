@@ -426,3 +426,187 @@ async function openTeamSchedule(teamId, teamName, teamLogo) {
     body.innerHTML = `<div class="team-sched-note">Couldn't load this schedule right now.</div>`;
   }
 }
+
+// ---- Game extras: TV network, weather, and the game details popup ----
+
+// "CBS" or "ESPN/ESPN2" from a scoreboard competition, or "".
+function tvNetwork(comp) {
+  const names = [];
+  (comp.broadcasts || []).forEach(b => (b.names || []).forEach(n => names.push(n)));
+  if (names.length === 0) {
+    (comp.geoBroadcasts || []).forEach(b => {
+      const n = b.media && (b.media.shortName || b.media.name);
+      if (n) names.push(n);
+    });
+  }
+  return [...new Set(names)].slice(0, 2).join("/");
+}
+
+// A short forecast note for outdoor games, only when it's worth knowing:
+// rain, storms, snow, wind, or temperatures at either extreme.
+function weatherNote(ev, comp) {
+  const w = ev.weather || comp.weather;
+  if (!w || (comp.venue && comp.venue.indoor === true)) return "";
+  const desc = (w.displayValue || w.conditionDescription || "").toLowerCase();
+  const temp = parseInt(w.temperature !== undefined ? w.temperature : w.highTemperature, 10);
+  let icon = "";
+  if (/thunder|storm/.test(desc)) icon = "⛈";
+  else if (/snow|flurr|sleet|ice/.test(desc)) icon = "❄";
+  else if (/rain|shower|drizzle/.test(desc)) icon = "🌧";
+  else if (/wind/.test(desc)) icon = "💨";
+  else if (!isNaN(temp) && temp <= 40) icon = "🥶";
+  else if (!isNaN(temp) && temp >= 90) icon = "🥵";
+  if (!icon) return "";
+  return isNaN(temp) ? icon : `${icon} ${temp}°`;
+}
+
+const gameSummaryCache = {};
+
+function detailsTeamCell(team) {
+  const logo = teamLogoFrom(team);
+  return `<span class="info-team">${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}<span>${shortenPickDisplay(team.shortDisplayName || team.displayName || team.abbreviation || "")}</span></span>`;
+}
+
+// Everything ESPN knows about one game. Before kickoff: recent form, last
+// meeting and injuries. Once it starts: score by quarter, team stats and
+// win probability. Each section is left out if ESPN has no data for it.
+async function openGameDetails(eventId, title) {
+  showInfoModal(title || "Game Details");
+  const body = document.getElementById("infoBody");
+  try {
+    if (!gameSummaryCache[eventId]) {
+      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}`);
+      if (!res.ok) throw new Error("bad response");
+      gameSummaryCache[eventId] = await res.json();
+    }
+    const s = gameSummaryCache[eventId];
+    const comp = (s.header && s.header.competitions && s.header.competitions[0]) || {};
+    const competitors = comp.competitors || [];
+    const away = competitors.find(c => c.homeAway === "away") || competitors[0] || {};
+    const home = competitors.find(c => c.homeAway === "home") || competitors[1] || {};
+    const state = (comp.status && comp.status.type && comp.status.type.state) || "pre";
+    const sections = state === "pre" ? pregameSections(s, away, home) : gameSections(s, away, home, state);
+    body.innerHTML = sections.filter(Boolean).join("") || `<div class="team-sched-note">No details from ESPN for this game yet.</div>`;
+  } catch (err) {
+    console.error("Game details error:", err);
+    body.innerHTML = `<div class="team-sched-note">Couldn't load this game's details right now.</div>`;
+  }
+}
+
+function detailsSection(title, html) {
+  return `<div class="details-section"><div class="details-heading">${title}</div>${html}</div>`;
+}
+
+function pregameSections(s, away, home) {
+  const out = [];
+  const info = s.gameInfo || {};
+  const bits = [];
+  if (info.venue && info.venue.fullName) bits.push(info.venue.fullName);
+  if (info.weather) {
+    const w = info.weather;
+    const temp = w.temperature !== undefined ? w.temperature : w.highTemperature;
+    bits.push(`${w.displayValue || w.conditionDescription || ""}${temp !== undefined ? ` ${temp}°` : ""}`.trim());
+  }
+  if (bits.length) out.push(`<div class="details-note">${bits.join(" · ")}</div>`);
+
+  // Last five results for each team.
+  const lastFive = s.lastFiveGames || [];
+  if (lastFive.length) {
+    const rows = [away, home].map(c => {
+      const entry = lastFive.find(l => l.team && c.team && String(l.team.id) === String(c.team.id));
+      if (!entry || !(entry.events || []).length) return "";
+      const games = entry.events.slice(0, 5).map(e => {
+        const res = (e.gameResult || "").toUpperCase();
+        const opp = (e.opponent && (e.opponent.abbreviation || e.opponent.displayName)) || "";
+        return `<span class="form-chip ${res === "W" ? "win" : res === "L" ? "loss" : ""}" title="${e.score || ""}">${res || "-"}<small>${e.atVs || ""}${opp}</small></span>`;
+      }).join("");
+      return `<div class="details-row">${detailsTeamCell(c.team || {})}<span class="form-chips">${games}</span></div>`;
+    }).join("");
+    if (rows) out.push(detailsSection("Last 5 Games", rows));
+  }
+
+  // Most recent meeting, if ESPN includes the series.
+  const series = (s.seasonseries && s.seasonseries[0]) || null;
+  const meeting = series && series.events && series.events[series.events.length - 1];
+  if (meeting && meeting.competitors) {
+    const parts = meeting.competitors.map(c => `${(c.team && (c.team.abbreviation || c.team.displayName)) || ""} ${c.score || ""}`);
+    const when = meeting.date ? new Date(meeting.date).getFullYear() : "";
+    out.push(detailsSection("Last Meeting", `<div class="details-note">${parts.join(" - ")}${when ? ` (${when})` : ""}</div>`));
+  }
+
+  // Injury report: players listed as anything other than active.
+  const injuries = s.injuries || [];
+  if (injuries.length) {
+    const rows = [away, home].map(c => {
+      const entry = injuries.find(i => i.team && c.team && String(i.team.id) === String(c.team.id));
+      const list = (entry && entry.injuries) || [];
+      const names = list.slice(0, 8).map(p => {
+        const a = p.athlete || {};
+        const pos = a.position && a.position.abbreviation ? ` ${a.position.abbreviation}` : "";
+        return `<div class="injury-line"><span>${a.displayName || a.shortName || "Unknown"}${pos}</span><span class="injury-status">${p.status || (p.type && p.type.description) || ""}</span></div>`;
+      }).join("");
+      return `<div class="details-team-block">${detailsTeamCell(c.team || {})}${names || `<div class="details-note">None reported</div>`}</div>`;
+    }).join("");
+    out.push(detailsSection("Injury Report", rows));
+  }
+  return out;
+}
+
+function gameSections(s, away, home, state) {
+  const out = [];
+
+  // Score by quarter.
+  const lines = [away, home].map(c => (c.linescores || []).map(l => l.displayValue !== undefined ? l.displayValue : l.value));
+  const periods = Math.max(lines[0].length, lines[1].length);
+  if (periods > 0) {
+    const label = i => i < 4 ? `Q${i + 1}` : (periods > 5 ? `OT${i - 3}` : "OT");
+    const head = `<tr><th></th>${Array.from({ length: periods }, (_, i) => `<th>${label(i)}</th>`).join("")}<th>T</th></tr>`;
+    const row = (c, l) => `<tr><td>${detailsTeamCell(c.team || {})}</td>${Array.from({ length: periods }, (_, i) => `<td>${l[i] !== undefined ? l[i] : ""}</td>`).join("")}<td class="details-total">${c.score !== undefined ? c.score : ""}</td></tr>`;
+    out.push(detailsSection(state === "post" ? "Final" : "Score", `<table class="details-table">${head}${row(away, lines[0])}${row(home, lines[1])}</table>`));
+  }
+
+  // Key team stats, side by side.
+  const teams = (s.boxscore && s.boxscore.teams) || [];
+  const statsFor = c => {
+    const t = teams.find(x => x.team && c.team && String(x.team.id) === String(c.team.id));
+    const map = {};
+    ((t && t.statistics) || []).forEach(st => { map[st.name] = st; });
+    return map;
+  };
+  const a = statsFor(away), h = statsFor(home);
+  const wanted = [
+    ["totalYards", "Total Yards"], ["netPassingYards", "Passing"], ["rushingYards", "Rushing"],
+    ["firstDowns", "First Downs"], ["thirdDownEff", "3rd Down"], ["turnovers", "Turnovers"],
+    ["totalPenaltiesYards", "Penalties"], ["possessionTime", "Possession"]
+  ];
+  const statRows = wanted
+    .filter(([key]) => a[key] || h[key])
+    .map(([key, label]) => `<tr><td>${(a[key] && a[key].displayValue) || "-"}</td><th>${label}</th><td>${(h[key] && h[key].displayValue) || "-"}</td></tr>`)
+    .join("");
+  if (statRows) {
+    const abbr = c => (c.team && (c.team.abbreviation || c.team.shortDisplayName)) || "";
+    out.push(detailsSection("Team Stats", `<table class="details-table stats"><tr><th>${abbr(away)}</th><th></th><th>${abbr(home)}</th></tr>${statRows}</table>`));
+  }
+
+  // Win probability over the game, home team's chance as the line.
+  const wp = (s.winprobability || []).map(p => p.homeWinPercentage).filter(v => typeof v === "number");
+  if (wp.length > 1) {
+    const W = 300, H = 80;
+    const pts = wp.map((v, i) => `${(i / (wp.length - 1) * W).toFixed(1)},${((1 - v) * H).toFixed(1)}`).join(" ");
+    const last = wp[wp.length - 1];
+    const homeAbbr = (home.team && home.team.abbreviation) || "Home";
+    const awayAbbr = (away.team && away.team.abbreviation) || "Away";
+    const leader = last >= 0.5 ? `${homeAbbr} ${Math.round(last * 100)}%` : `${awayAbbr} ${Math.round((1 - last) * 100)}%`;
+    out.push(detailsSection("Win Probability", `
+      <div class="wp-wrap">
+        <svg class="wp-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Win probability">
+          <line x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}" class="wp-mid"/>
+          <polyline points="${pts}" class="wp-line"/>
+        </svg>
+        <span class="wp-team top">${homeAbbr}</span>
+        <span class="wp-team bottom">${awayAbbr}</span>
+      </div>
+      <div class="details-note">${state === "post" ? "At the end" : "Right now"}: ${leader}</div>`));
+  }
+  return out;
+}
