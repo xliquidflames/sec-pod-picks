@@ -1165,7 +1165,7 @@ input[type="password"].form-field {
 }
 
 .info-row.standings-row {
-  grid-template-columns: 2.2rem 1fr 3.2rem 3.4rem;
+  grid-template-columns: 1.6rem 1fr 3.2rem 3.4rem;
 }
 
 .info-row.head {
@@ -2156,7 +2156,7 @@ input[type="password"].form-field {
 
 .host-grid-table td.matchup-cell .matchup-subdetail {
   margin-top: 0.3rem;
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   white-space: nowrap;
 }
 
@@ -2249,4 +2249,27 @@ input[type="password"].form-field {
 
 .sched-record {
   margin-bottom: 0.4rem;
+}
+
+/* Makepicks: game details open inside the card. */
+.card-details {
+  margin-top: 0.6rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+  text-align: left;
+}
+
+.card-details .details-tabs {
+  gap: 0.2rem;
+}
+
+.card-details .details-tab {
+  padding: 0.4rem 0.1rem;
+  font-size: 0.66rem;
+  gap: 0.15rem;
+}
+
+.card-details .details-tab img {
+  width: 14px;
+  height: 14px;
 }
