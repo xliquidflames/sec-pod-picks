@@ -6,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=5"></script>
-  <script src="common.js?v=5"></script>
-  <script src="sec.js?v=5"></script>
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <script src="config.js?v=6"></script>
+  <script src="common.js?v=6"></script>
+  <script src="sec.js?v=6"></script>
+  <link rel="stylesheet" href="styles.css?v=6" />
 </head>
 <body>
 
@@ -97,8 +97,7 @@
           <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
-        <p style="font-size: 0.8rem; color: var(--text-main); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Click a team logo to see their season schedule and more.</p>
-        <div class="hub-action-row">
+        <div class="hub-action-row" style="margin-top: 0.6rem;">
           <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
           <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
         </div>
@@ -372,7 +371,7 @@
           // after the logo's text fallback so the fallback still works.
           const rankSpan = r => (r >= 1 && r <= 25) ? `<span class="matchup-rank">#${r}</span>` : "";
           const logoCell = (c, name, logo, isSec) =>
-            `<span class="matchup-logo-wrap">${teamLogoHtml(name, logo, isSec, scheduleAttrs(c.team.id || "", name, logo))}${rankSpan(c.curatedRank && c.curatedRank.current)}</span>`;
+            `<span class="matchup-logo-wrap">${teamLogoHtml(name, logo, isSec)}${rankSpan(c.curatedRank && c.curatedRank.current)}</span>`;
           const matchupLabel = `<span class="matchup-logo-row">${logoCell(away, awayName, awayLogo, awayIsSec)}<span class="matchup-at-symbol">@</span>${logoCell(home, homeName, homeLogo, homeIsSec)}</span>`;
 
           // One short line under the logos: kickoff time before the game,
@@ -791,7 +790,7 @@
       if (byeBox) {
         if (games.length > 0 && byeTeams.length > 0) {
           byeBox.innerHTML = `
-            <span class="bye-label">On A Bye:</span>
+            <span class="bye-label">On A Bye:<small>Tap for schedule</small></span>
             <span class="bye-logos">${byeTeams.map(t => teamLogoHtml(t.name, t.logo, true, scheduleAttrs(t.id, t.name, t.logo))).join("")}</span>
           `;
           byeBox.style.display = "flex";
