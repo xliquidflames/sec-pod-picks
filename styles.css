@@ -2722,3 +2722,25 @@ a.btn-submit.bk-cta {
   width: 1.4em;
   height: 1em;
 }
+
+/* Week Info Hub: links to that week's full pod episodes. */
+.week-pod-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.week-pod-links a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-main);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.week-pod-links .yt-icon {
+  flex-shrink: 0;
+}
