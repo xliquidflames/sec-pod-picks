@@ -910,14 +910,18 @@ async function fillPodLinks(body, teamA, teamB, kickoffDate) {
   try {
     const teams = [seriesName(teamA), seriesName(teamB)].filter(Boolean);
     const weekBefore = kickoff.getTime() - 9 * 86400000;
-    const links = (await loadEpisodes())
+    // One link per show: its newest episode before kickoff that has a
+    // chapter on this game.
+    const latest = new Map();
+    (await loadEpisodes())
       .filter(ep => { const t = new Date(ep.published).getTime(); return t >= weekBefore && t <= kickoff.getTime(); })
       .sort((x, y) => new Date(x.published) - new Date(y.published))
-      .map(ep => {
+      .forEach(ep => {
         const ch = (ep.chapters || []).find(c => chapterNamesGame(c.label, teams));
-        return ch && `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}&t=${ch.seconds}s" target="_blank" rel="noopener noreferrer"><span>${episodeShortTitle(ep.title)}</span><span class="pod-time">▶ ${clockText(ch.seconds)}</span></a>`;
-      })
-      .filter(Boolean);
+        if (ch) latest.set(episodeShortTitle(ep.title), { ep, ch });
+      });
+    const links = [...latest].map(([label, { ep, ch }]) =>
+      `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}&t=${ch.seconds}s" target="_blank" rel="noopener noreferrer"><span>${label}</span><span class="pod-time">▶ ${clockText(ch.seconds)}</span></a>`);
     if (!links.length) return;
     box.innerHTML = `<div class="pod-label">This Matchup on the Pod:</div>${links.join("")}`;
     box.style.display = "";
