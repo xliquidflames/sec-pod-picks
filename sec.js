@@ -892,15 +892,24 @@ const clockText = sec => {
   return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 };
 
-// The link text: the label from config.js podEpisodes whose word is in the
-// episode title, or else a shortened title ("Week 7 Preview").
-function episodeShortTitle(title) {
-  const named = (SITE.podEpisodes || []).find(e => title.toLowerCase().includes(e.titleHas.toLowerCase()));
-  if (named) return named.label;
-  const m = title.match(/^\s*week\s*(\d+)[^:]*?\b(preview|predictions?)\b/i);
-  if (m) return `Week ${m[1]} ${m[2][0].toUpperCase()}${m[2].slice(1).toLowerCase()}`;
-  const short = title.split(/[:!?|]/)[0].trim();
-  return short.length > 34 ? `${short.slice(0, 32).trim()}…` : short;
+// Which config.js podEpisodes show an episode belongs to, if any.
+function podShowFor(title) {
+  const shows = SITE.podEpisodes || [];
+  const i = shows.findIndex(show => {
+    const pattern = show.titleStarts.trim().split("#")
+      .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"))
+      .join("\\d+");
+    return new RegExp(`^\\s*${pattern}`, "i").test(title);
+  });
+  return i < 0 ? null : { index: i, show: shows[i] };
+}
+
+// The link text: the show's label, unless the episode doesn't mention who it
+// needs to (a guest who wasn't on that week), then the title up to the colon.
+function podLinkLabel(show, ep) {
+  const text = [ep.title, ...(ep.chapters || []).map(c => c.label)].join(" ").toLowerCase();
+  if (!show.mentions || text.includes(show.mentions.toLowerCase())) return show.label;
+  return ep.title.split(/[:!?|]/)[0].trim();
 }
 
 async function fillPodLinks(body, teamA, teamB, kickoffDate) {
@@ -912,18 +921,19 @@ async function fillPodLinks(body, teamA, teamB, kickoffDate) {
     const weekBefore = kickoff.getTime() - 9 * 86400000;
     // One link per show: its newest episode before kickoff that has a
     // chapter on this game.
-    const latest = new Map();
+    const latest = [];
     (await loadEpisodes())
       .filter(ep => { const t = new Date(ep.published).getTime(); return t >= weekBefore && t <= kickoff.getTime(); })
       .sort((x, y) => new Date(x.published) - new Date(y.published))
       .forEach(ep => {
-        const ch = (ep.chapters || []).find(c => chapterNamesGame(c.label, teams));
-        if (ch) latest.set(episodeShortTitle(ep.title), { ep, ch });
+        const match = podShowFor(ep.title);
+        const ch = match && (ep.chapters || []).find(c => chapterNamesGame(c.label, teams));
+        if (ch) latest[match.index] = { label: podLinkLabel(match.show, ep), ep, ch };
       });
-    const links = [...latest].map(([label, { ep, ch }]) =>
+    const links = latest.filter(Boolean).map(({ label, ep, ch }) =>
       `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}&t=${ch.seconds}s" target="_blank" rel="noopener noreferrer"><span>${label}</span><span class="pod-time">▶ ${clockText(ch.seconds)}</span></a>`);
     if (!links.length) return;
-    box.innerHTML = `<div class="pod-label">This Matchup on the Pod:</div>${links.join("")}`;
+    box.innerHTML = `<div class="pod-label">🎙️ On the Pod 🎙️</div>${links.join("")}`;
     box.style.display = "";
   } catch (err) {
     console.error("Episodes error:", err);
