@@ -2584,3 +2584,96 @@ a.btn-submit.bk-cta {
   font-weight: 800;
   margin-right: 0.15rem;
 }
+
+/* Series History box in game details. */
+.series-box {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.8rem;
+  border: 1.5px solid var(--accent-gold);
+  border-radius: 8px;
+  background: var(--bg-card-alt);
+}
+
+.series-heading {
+  color: var(--accent-gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.35rem;
+}
+
+.series-line {
+  color: var(--text-main);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.series-label {
+  font-weight: 700;
+}
+
+.series-counts {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.series-side,
+.series-ties {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.series-side img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  align-self: center;
+}
+
+.series-side.right {
+  flex-direction: row-reverse;
+}
+
+.series-wins {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--text-main);
+  line-height: 1;
+}
+
+.series-wins-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.series-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--border-color);
+  margin-bottom: 0.5rem;
+}
+
+.series-bar span {
+  display: block;
+  height: 100%;
+}
+
+.series-bar-ties {
+  background: #94a3b8;
+}
+
+.series-note {
+  margin: -0.2rem 0 0.4rem;
+  font-size: 0.72rem;
+  font-style: italic;
+  opacity: 0.75;
+}
