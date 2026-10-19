@@ -6,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=15"></script>
-  <script src="common.js?v=15"></script>
-  <script src="sec.js?v=15"></script>
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <script src="config.js?v=16"></script>
+  <script src="common.js?v=16"></script>
+  <script src="sec.js?v=16"></script>
+  <link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
 
@@ -101,6 +101,7 @@
           <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
           <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
         </div>
+        <div class="week-pod-links" id="weekPodLinks" style="display: none;"></div>
         <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.4rem;">
           <table class="host-grid-table">
             <thead>
@@ -570,6 +571,7 @@
       if (dropdown) dropdown.value = weekNum;
 
       document.getElementById("weekHostTitle").textContent = `Week ${weekNum} Info Hub`;
+      fillWeekPodLinks(document.getElementById("weekPodLinks"), weekNum);
       document.getElementById("weekCousinsTitle").textContent = `The ${possessive(SITE.players.many)} Week ${weekNum} Picks`;
 
       const sortDesc = document.getElementById("leaderboardSortDesc");
