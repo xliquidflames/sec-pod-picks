@@ -2683,11 +2683,16 @@ a.btn-submit.bk-cta {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  margin-top: 0.6rem;
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.8rem;
+  border: 1.5px solid var(--accent-gold);
+  border-radius: 8px;
+  background: var(--bg-card-alt);
   font-size: 0.82rem;
 }
 
 .pod-label {
+  text-align: center;
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
