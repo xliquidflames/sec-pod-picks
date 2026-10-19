@@ -625,6 +625,7 @@ async function renderGameDetails(body, eventId) {
     </div>
     ${tabs.map(() => `<div class="details-pane" style="display: none;"></div>`).join("")}`;
   selectDetailsTab(body.querySelector(".details-tab"), 0);
+  fillSeries(body, away.team, home.team);
 }
 
 // Each tab fills its pane the first time it's opened.
@@ -692,8 +693,89 @@ function gameInfoHtml(s, ev, sbComp, comp) {
     rows.push(["Line", [pick.details, pick.overUnder ? `O/U ${pick.overUnder}` : ""].filter(Boolean).join(" · ")]);
   }
 
-  if (!rows.length) return "";
-  return `<div class="details-info">${rows.map(([k, v]) => `<div class="details-info-row"><span class="details-info-label">${k}</span><span>${v}</span></div>`).join("")}</div>`;
+  // Filled in by fillSeries once the all-time history arrives.
+  rows.push(["Series", `<span class="series-text">Loading...</span>`]);
+  return `<div class="details-info">${rows.map(([k, v]) => `<div class="details-info-row${k === "Series" ? " series-row" : ""}"><span class="details-info-label">${k}</span><span>${v}</span></div>`).join("")}</div>`;
+}
+
+// ---- All-time series, from CollegeFootballData.com ----
+// The "series" Supabase Edge Function asks CFBD with the show's hidden key
+// and caches each matchup for a day. Team names are CFBD's school names,
+// which match ESPN's "location" names ("LSU", "Ole Miss", "Texas A&M").
+
+const seriesCache = {};
+const seriesName = t => (t && (t.location || t.shortDisplayName || t.displayName)) || "";
+
+async function loadSeries(name1, name2) {
+  const key = [name1, name2].sort().join("|");
+  if (!seriesCache[key]) {
+    seriesCache[key] = supabaseClient.functions.invoke("series", { body: { team1: name1, team2: name2 } })
+      .then(({ data, error }) => {
+        if (error || !data || !Array.isArray(data.games)) throw error || new Error("no series data");
+        return data;
+      });
+    seriesCache[key].catch(() => { delete seriesCache[key]; });
+  }
+  return seriesCache[key];
+}
+
+// "LSU leads 33-23-1 · LSU has won 3 straight" and the last meeting.
+function seriesSummary(data, nameA, nameB) {
+  const played = data.games
+    .filter(g => g.homeScore !== null && g.homeScore !== undefined && g.awayScore !== null && g.awayScore !== undefined)
+    .sort((x, y) => (x.season - y.season) || (new Date(x.date) - new Date(y.date)));
+  if (!played.length) return { record: "First meeting", last: "" };
+
+  const won = (g, team) => g.winner ? g.winner === team : (g.homeTeam === team ? g.homeScore > g.awayScore : g.awayScore > g.homeScore);
+  let a = 0, b = 0, ties = 0;
+  played.forEach(g => {
+    if (g.homeScore === g.awayScore) ties++;
+    else if (won(g, nameA)) a++;
+    else b++;
+  });
+  const tieText = ties ? `-${ties}` : "";
+  const leader = a === b ? `Series tied ${a}-${b}${tieText}`
+    : a > b ? `${nameA} leads ${a}-${b}${tieText}` : `${nameB} leads ${b}-${a}${tieText}`;
+
+  // Current streak: same winner in a row, ending with the latest game.
+  const latest = played[played.length - 1];
+  let streak = "";
+  if (latest.homeScore !== latest.awayScore) {
+    const team = won(latest, nameA) ? nameA : nameB;
+    let n = 0;
+    for (let i = played.length - 1; i >= 0; i--) {
+      const g = played[i];
+      if (g.homeScore === g.awayScore || !won(g, team)) break;
+      n++;
+    }
+    streak = n > 1 ? ` · ${team} has won ${n} straight` : ` · ${team} won the last one`;
+  }
+
+  const winnerFirst = latest.homeScore >= latest.awayScore
+    ? `${latest.homeTeam} ${latest.homeScore}-${latest.awayScore}`
+    : `${latest.awayTeam} ${latest.awayScore}-${latest.homeScore}`;
+  return {
+    record: `${leader}${streak}`,
+    last: `${latest.homeScore === latest.awayScore ? `Tied ${latest.homeScore}-${latest.awayScore}` : winnerFirst} (${latest.season}) · First met ${played[0].season}`
+  };
+}
+
+async function fillSeries(body, teamA, teamB) {
+  const row = body.querySelector(".series-row");
+  if (!row) return;
+  const nameA = seriesName(teamA), nameB = seriesName(teamB);
+  if (!nameA || !nameB) { row.remove(); return; }
+  try {
+    const data = await loadSeries(nameA, nameB);
+    const { record, last } = seriesSummary(data, nameA, nameB);
+    row.querySelector(".series-text").textContent = record;
+    if (last) {
+      row.insertAdjacentHTML("afterend", `<div class="details-info-row"><span class="details-info-label">Last</span><span>${last}</span></div>`);
+    }
+  } catch (err) {
+    console.error("Series error:", err);
+    row.remove();
+  }
 }
 
 function ordinal(n) {
