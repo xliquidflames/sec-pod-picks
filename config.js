@@ -31,6 +31,16 @@ const SITE = {
     key: "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd"
   },
 
+  // The show's YouTube channel ID (starts with "UC"). Game details link to
+  // the episode chapter where the hosts discuss that game. "" turns it off.
+  youtubeChannelId: "UC8aQL-yFS2ZoSkUBeMfYesA",
+
+  // What each episode's link says, by a word in its YouTube title.
+  podEpisodes: [
+    { titleHas: "Preview", label: "Steven Lassan's Take & Pick" },
+    { titleHas: "Prediction", label: "SEC Mike and Cousin Shane's Takes & Picks" }
+  ],
+
   // GoatCounter visitor stats. Set to "" to turn off.
   analytics: "https://liquidflames.goatcounter.com/count",
 
