@@ -732,6 +732,20 @@ async function loadSeries(name1, name2) {
   return seriesCache[key];
 }
 
+// Start loading series history and the episode list in the background, so
+// the details popup usually has them ready by the time someone taps it.
+function preloadDetails(eventIds) {
+  setTimeout(() => {
+    loadEpisodes().catch(() => {});
+    (eventIds || []).forEach(id => {
+      const ev = id && findScoreboardEvent(String(id));
+      const comp = ev && ev.competitions && ev.competitions[0];
+      const teams = ((comp && comp.competitors) || []).map(c => seriesName(c.team));
+      if (teams.length === 2 && teams.every(Boolean)) loadSeries(teams[0], teams[1]).catch(() => {});
+    });
+  }, 500);
+}
+
 // Series the two schools count differently. The other side's record is
 // worked out from the games each time, so it stays right in future seasons.
 const DISPUTED_SERIES = [
