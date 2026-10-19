@@ -58,7 +58,15 @@ addSecAliases({
   tennessee: ["Tennessee"],
   texas: ["Texas"],
   texasam: ["Texas A&M", "Texas AM"],
-  vanderbilt: ["Vanderbilt"]
+  vanderbilt: ["Vanderbilt", "Vandy"]
+});
+addSecAliases({
+  alabama: ["Bama"],
+  georgia: ["UGA"],
+  texasam: ["A&M"],
+  kentucky: ["UK"],
+  oklahoma: ["OU"],
+  tennessee: ["Tenn"]
 });
 
 function isSecTeam(teamName) {
@@ -623,6 +631,7 @@ async function renderGameDetails(body, eventId) {
       <div class="series-heading">Series History</div>
       <div class="series-lines"><div class="series-line">Loading...</div></div>
     </div>
+    <div class="pod-links" style="display: none;"></div>
     ${s ? "" : `<div class="team-sched-note">Couldn't load this game's details right now.</div>`}
     <div class="details-tabs" role="tablist">
       ${tabs.map((t, i) => `<button type="button" class="details-tab" role="tab" onclick="selectDetailsTab(this, ${i})">${t.label}</button>`).join("")}
@@ -630,6 +639,7 @@ async function renderGameDetails(body, eventId) {
     ${tabs.map(() => `<div class="details-pane" style="display: none;"></div>`).join("")}`;
   selectDetailsTab(body.querySelector(".details-tab"), 0);
   fillSeries(body, away.team, home.team);
+  fillPodLinks(body, away.team, home.team, comp.date || ev.date);
 }
 
 // Each tab fills its pane the first time it's opened.
@@ -847,6 +857,72 @@ async function fillSeries(body, teamA, teamB) {
   } catch (err) {
     console.error("Series error:", err);
     box.remove();
+  }
+}
+
+// ---- "On the pod": links to where the hosts talk about this game ----
+// The "episodes" Edge Function reads the show's YouTube feed. A game gets a
+// link when an episode from the week before kickoff has a chapter naming its
+// SEC team(s), e.g. "6:30 -- Mizzou at Ole Miss".
+
+let episodesPromise = null;
+
+function loadEpisodes() {
+  if (!SITE.youtubeChannelId) return Promise.resolve([]);
+  if (!episodesPromise) {
+    episodesPromise = supabaseClient.functions.invoke("episodes", { body: { channel: SITE.youtubeChannelId } })
+      .then(({ data, error }) => {
+        if (error || !data) throw error || new Error("no episodes");
+        return data.episodes || [];
+      });
+    episodesPromise.catch(() => { episodesPromise = null; });
+  }
+  return episodesPromise;
+}
+
+function chapterNamesGame(label, teams) {
+  const sides = label.split(/\s+(?:at|vs\.?|v\.?|@|versus)\s+|\s+[-–—]\s+/i).map(normalizeTeam);
+  const secTeams = teams.filter(isSecTeam);
+  const needed = (secTeams.length ? secTeams : teams).map(normalizeTeam);
+  return needed.length > 0 && needed.every(t => sides.includes(t));
+}
+
+const clockText = sec => {
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = String(sec % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
+};
+
+// The link text: the label from config.js podEpisodes whose word is in the
+// episode title, or else a shortened title ("Week 7 Preview").
+function episodeShortTitle(title) {
+  const named = (SITE.podEpisodes || []).find(e => title.toLowerCase().includes(e.titleHas.toLowerCase()));
+  if (named) return named.label;
+  const m = title.match(/^\s*week\s*(\d+)[^:]*?\b(preview|predictions?)\b/i);
+  if (m) return `Week ${m[1]} ${m[2][0].toUpperCase()}${m[2].slice(1).toLowerCase()}`;
+  const short = title.split(/[:!?|]/)[0].trim();
+  return short.length > 34 ? `${short.slice(0, 32).trim()}…` : short;
+}
+
+async function fillPodLinks(body, teamA, teamB, kickoffDate) {
+  const box = body.querySelector(".pod-links");
+  const kickoff = new Date(kickoffDate);
+  if (!box || isNaN(kickoff.getTime())) return;
+  try {
+    const teams = [seriesName(teamA), seriesName(teamB)].filter(Boolean);
+    const weekBefore = kickoff.getTime() - 9 * 86400000;
+    const links = (await loadEpisodes())
+      .filter(ep => { const t = new Date(ep.published).getTime(); return t >= weekBefore && t <= kickoff.getTime(); })
+      .sort((x, y) => new Date(x.published) - new Date(y.published))
+      .map(ep => {
+        const ch = (ep.chapters || []).find(c => chapterNamesGame(c.label, teams));
+        return ch && `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}&t=${ch.seconds}s" target="_blank" rel="noopener noreferrer"><span>${episodeShortTitle(ep.title)}</span><span class="pod-time">▶ ${clockText(ch.seconds)}</span></a>`;
+      })
+      .filter(Boolean);
+    if (!links.length) return;
+    box.innerHTML = `<div class="pod-label">This Matchup on the Pod:</div>${links.join("")}`;
+    box.style.display = "";
+  } catch (err) {
+    console.error("Episodes error:", err);
   }
 }
 
