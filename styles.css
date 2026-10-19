@@ -2712,5 +2712,13 @@ a.btn-submit.bk-cta {
 
 .pod-time {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   color: var(--accent-gold);
+}
+
+.yt-icon {
+  width: 1.4em;
+  height: 1em;
 }
