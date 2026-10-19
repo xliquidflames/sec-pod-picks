@@ -904,6 +904,9 @@ function podShowFor(title) {
   return i < 0 ? null : { index: i };
 }
 
+// A small red YouTube-style play button (there's no emoji for it).
+const YT_ICON = `<svg class="yt-icon" viewBox="0 0 28 20" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#FF0000"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>`;
+
 // The link text: the episode title up to the colon ("Week 7 SEC Preview").
 const podLinkLabel = ep => ep.title.split(/[:!?|]/)[0].trim();
 
@@ -926,7 +929,7 @@ async function fillPodLinks(body, teamA, teamB, kickoffDate) {
         if (ch) latest[match.index] = { label: podLinkLabel(ep), ep, ch };
       });
     const links = latest.filter(Boolean).map(({ label, ep, ch }) =>
-      `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}&t=${ch.seconds}s" target="_blank" rel="noopener noreferrer"><span>${label}</span><span class="pod-time">▶️ ${clockText(ch.seconds)}</span></a>`);
+      `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}&t=${ch.seconds}s" target="_blank" rel="noopener noreferrer"><span>${label}</span><span class="pod-time">${YT_ICON}${clockText(ch.seconds)}</span></a>`);
     if (!links.length) return;
     box.innerHTML = `<div class="pod-label">🎙️ On the Pod</div>${links.join("")}`;
     box.style.display = "";
