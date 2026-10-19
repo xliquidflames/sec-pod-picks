@@ -926,7 +926,7 @@ async function fillPodLinks(body, teamA, teamB, kickoffDate) {
         if (ch) latest[match.index] = { label: podLinkLabel(ep), ep, ch };
       });
     const links = latest.filter(Boolean).map(({ label, ep, ch }) =>
-      `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}&t=${ch.seconds}s" target="_blank" rel="noopener noreferrer"><span>${label}</span><span class="pod-time">▶ ${clockText(ch.seconds)}</span></a>`);
+      `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}&t=${ch.seconds}s" target="_blank" rel="noopener noreferrer"><span>${label}</span><span class="pod-time">▶️ ${clockText(ch.seconds)}</span></a>`);
     if (!links.length) return;
     box.innerHTML = `<div class="pod-label">🎙️ On the Pod</div>${links.join("")}`;
     box.style.display = "";
