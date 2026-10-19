@@ -819,6 +819,7 @@ function seriesSummary(data, nameA, nameB) {
   }
 
   return {
+    meetings: String(played.length),
     first: String(played[0].season),
     last: `${latest.season} ${lastWinner ? `${lastWinner} won ${hi}-${lo}` : `Tied ${hi}-${lo}`}`,
     counts: seriesCounts(played, nameA, won),
@@ -881,7 +882,7 @@ async function fillSeries(body, teamA, teamB) {
         <span style="width: ${pct(b)}; background: ${colorB};"></span>
       </div>
       ${sum.note ? `<div class="series-note">${sum.note}</div>` : ""}
-      ${line("First", sum.first)}${line("Last", sum.last)}${line("Streak", sum.streak)}`;
+      ${line("Meetings", sum.meetings)}${line("First", sum.first)}${line("Last", sum.last)}${line("Streak", sum.streak)}`;
   } catch (err) {
     console.error("Series error:", err);
     box.remove();
