@@ -2753,18 +2753,30 @@ a.btn-submit.bk-cta {
 }
 
 .sched-col-head {
-  padding-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding-bottom: 0.35rem;
   margin-bottom: 0.15rem;
   border-bottom: 1px solid var(--border-color);
-  font-size: 0.85rem;
 }
 
-.sched-col-head small {
-  display: block;
-  margin-top: 0.1rem;
-  font-size: 0.74rem;
-  font-weight: 600;
-  opacity: 0.75;
+.sched-col-head img {
+  width: 2.6rem;
+  height: 2.6rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.sched-col-lines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 .mini-sched-row {
