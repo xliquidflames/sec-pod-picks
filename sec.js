@@ -910,6 +910,25 @@ const YT_ICON = `<svg class="yt-icon" viewBox="0 0 28 20" aria-hidden="true"><re
 // The link text: the episode title up to the colon ("Week 7 SEC Preview").
 const podLinkLabel = ep => ep.title.split(/[:!?|]/)[0].trim();
 
+// Week Info Hub: the full Preview and Predictions episodes for that week.
+async function fillWeekPodLinks(box, week) {
+  if (!box) return;
+  box.dataset.week = week;
+  box.style.display = "none";
+  box.innerHTML = "";
+  try {
+    const episodes = (await loadEpisodes())
+      .filter(ep => podShowFor(ep.title) && Number((ep.title.match(/^\s*week\s*(\d+)/i) || [])[1]) === Number(week))
+      .sort((x, y) => new Date(x.published) - new Date(y.published));
+    if (String(box.dataset.week) !== String(week) || !episodes.length) return;
+    box.innerHTML = episodes.map(ep =>
+      `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}" target="_blank" rel="noopener noreferrer">${YT_ICON}<span>${ep.title}</span></a>`).join("");
+    box.style.display = "";
+  } catch (err) {
+    console.error("Episodes error:", err);
+  }
+}
+
 async function fillPodLinks(body, teamA, teamB, kickoffDate) {
   const box = body.querySelector(".pod-links");
   const kickoff = new Date(kickoffDate);
