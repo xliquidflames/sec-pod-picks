@@ -411,8 +411,10 @@ async function renderTeamSchedule(body, teamId, onRecord, autoScroll, opts = {})
       } else if (statusType.state === "in") {
         miniResult = `<b style="color: var(--accent-gold);">Live</b>`;
       } else {
-        // "12PM" or "3:30PM", to leave room for the opponent.
-        miniResult = validDate ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).replace(":00", "").replace(/\s/g, "") : "TBD";
+        // "12PM" or "3:30PM", to leave room for the opponent. ESPN marks
+        // unset kickoffs with timeValid false (they'd read 12AM).
+        const timeSet = validDate && comp.timeValid !== false && !(d.getHours() === 0 && d.getMinutes() === 0);
+        miniResult = timeSet ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).replace(":00", "").replace(/\s/g, "") : "TBD";
       }
 
       return {
@@ -625,9 +627,16 @@ async function renderGameDetails(body, eventId) {
     // The summary lists the rank as "rank"; the scoreboard as curatedRank.
     const sbTeam = (sbComp.competitors || []).find(x => x.team && String(x.team.id) === String(t.id)) || {};
     const rank = Number((c.curatedRank && c.curatedRank.current) || c.rank || (sbTeam.curatedRank && sbTeam.curatedRank.current));
-    const name = shortenPickDisplay(t.location || t.shortDisplayName || t.displayName || "");
+    const logo = teamLogoFrom(t);
     return `<div class="sched-col" data-team="${t.id}">
-        <div class="sched-col-head"><b>${rank >= 1 && rank <= 25 ? `#${rank} ` : ""}${name}</b><small class="sched-place"></small></div>
+        <div class="sched-col-head">
+          ${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}
+          <div class="sched-col-lines">
+            <span class="sched-rec"></span>
+            <span>${rank >= 1 && rank <= 25 ? `#${rank} Nationally` : "Unranked Nationally"}</span>
+            <span class="sched-place"></span>
+          </div>
+        </div>
         <div class="sched-mini-list"><div class="team-sched-note">Loading...</div></div>
       </div>`;
   };
@@ -648,15 +657,16 @@ async function renderGameDetails(body, eventId) {
     const col = body.querySelector(`.sched-col[data-team="${t.id}"]`);
     if (!col) return;
     renderTeamSchedule(col.querySelector(".sched-mini-list"), t.id, async (record, standing) => {
-      // SEC teams show their spot in the SEC Standings list so the two always
-      // match; anyone else keeps ESPN's summary.
-      let place = standing;
+      // SEC teams: overall (conference) record and their spot in the SEC
+      // Standings list, so the two always match. Anyone else: ESPN's summary.
+      let place = standing, conf = "";
       try {
         const names = [t.location, t.shortDisplayName, t.displayName, t.name].filter(Boolean).map(normalizeTeam);
         const row = (await loadSecStandings()).find(r => (r.id && r.id === String(t.id)) || names.includes(normalizeTeam(r.name)));
-        if (row) place = `${ordinal(row.place)} in SEC`;
+        if (row) { place = `#${row.place} SEC`; conf = row.conf; }
       } catch (e) {}
-      col.querySelector(".sched-place").textContent = place || record || "";
+      col.querySelector(".sched-rec").textContent = `${record || ""}${conf && conf !== "-" ? ` (${conf})` : ""}`;
+      col.querySelector(".sched-place").textContent = place || "";
     }, false, { compact: true, eventId });
   });
   fillSeries(body, away.team, home.team);
