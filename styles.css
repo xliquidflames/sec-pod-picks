@@ -2677,3 +2677,38 @@ a.btn-submit.bk-cta {
   font-style: italic;
   opacity: 0.75;
 }
+
+/* "This Matchup on the Pod" episode links in game details. */
+.pod-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+}
+
+.pod-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-gold);
+}
+
+.pod-links a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--accent-gold);
+  border-radius: 8px;
+  color: var(--text-main);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.pod-time {
+  flex-shrink: 0;
+  color: var(--accent-gold);
+}
