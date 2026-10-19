@@ -619,6 +619,10 @@ async function renderGameDetails(body, eventId) {
 
   body.innerHTML = `
     ${gameInfoHtml(s, ev, sbComp, comp)}
+    <div class="series-box">
+      <div class="series-heading">Series History</div>
+      <div class="series-lines"><div class="series-line">Loading...</div></div>
+    </div>
     ${s ? "" : `<div class="team-sched-note">Couldn't load this game's details right now.</div>`}
     <div class="details-tabs" role="tablist">
       ${tabs.map((t, i) => `<button type="button" class="details-tab" role="tab" onclick="selectDetailsTab(this, ${i})">${t.label}</button>`).join("")}
@@ -693,9 +697,8 @@ function gameInfoHtml(s, ev, sbComp, comp) {
     rows.push(["Line", [pick.details, pick.overUnder ? `O/U ${pick.overUnder}` : ""].filter(Boolean).join(" · ")]);
   }
 
-  // Filled in by fillSeries once the all-time history arrives.
-  rows.push(["Series", `<span class="series-text">Loading...</span>`]);
-  return `<div class="details-info">${rows.map(([k, v]) => `<div class="details-info-row${k === "Series" ? " series-row" : ""}"><span class="details-info-label">${k}</span><span>${v}</span></div>`).join("")}</div>`;
+  if (!rows.length) return "";
+  return `<div class="details-info">${rows.map(([k, v]) => `<div class="details-info-row"><span class="details-info-label">${k}</span><span>${v}</span></div>`).join("")}</div>`;
 }
 
 // ---- All-time series, from CollegeFootballData.com ----
@@ -719,62 +722,131 @@ async function loadSeries(name1, name2) {
   return seriesCache[key];
 }
 
-// "LSU leads 33-23-1 · LSU has won 3 straight" and the last meeting.
-function seriesSummary(data, nameA, nameB) {
-  const played = data.games
-    .filter(g => g.homeScore !== null && g.homeScore !== undefined && g.awayScore !== null && g.awayScore !== undefined)
-    .sort((x, y) => (x.season - y.season) || (new Date(x.date) - new Date(y.date)));
-  if (!played.length) return { record: "First meeting", last: "" };
+// Series the two schools count differently. The other side's record is
+// worked out from the games each time, so it stays right in future seasons.
+const DISPUTED_SERIES = [
+  {
+    teams: ["Florida", "Georgia"],
+    season: 1904,
+    note: altRecord => `Georgia counts a 1904 win that Florida doesn't. Without it: ${altRecord}.`
+  }
+];
 
-  const won = (g, team) => g.winner ? g.winner === team : (g.homeTeam === team ? g.homeScore > g.awayScore : g.awayScore > g.homeScore);
+// "LSU leads 33-23-1", or "Series tied 10-10".
+function seriesCounts(played, nameA, won) {
   let a = 0, b = 0, ties = 0;
   played.forEach(g => {
     if (g.homeScore === g.awayScore) ties++;
     else if (won(g, nameA)) a++;
     else b++;
   });
-  const tieText = ties ? `-${ties}` : "";
-  const leader = a === b ? `Series tied ${a}-${b}${tieText}`
-    : a > b ? `${nameA} leads ${a}-${b}${tieText}` : `${nameB} leads ${b}-${a}${tieText}`;
+  return { a, b, ties };
+}
 
-  // Current streak: same winner in a row, ending with the latest game.
-  const latest = played[played.length - 1];
-  let streak = "";
-  if (latest.homeScore !== latest.awayScore) {
-    const team = won(latest, nameA) ? nameA : nameB;
-    let n = 0;
-    for (let i = played.length - 1; i >= 0; i--) {
-      const g = played[i];
-      if (g.homeScore === g.awayScore || !won(g, team)) break;
-      n++;
-    }
-    streak = n > 1 ? ` · ${team} has won ${n} straight` : ` · ${team} won the last one`;
+function seriesRecordText(played, nameA, nameB, won) {
+  const { a, b, ties } = seriesCounts(played, nameA, won);
+  const tieText = ties ? `-${ties}` : "";
+  return a === b ? `Series tied ${a}-${b}${tieText}`
+    : a > b ? `${nameA} leads ${a}-${b}${tieText}` : `${nameB} leads ${b}-${a}${tieText}`;
+}
+
+// What the Series History box shows: win counts for the bar, first and last
+// meeting, current streak, and a note for disputed series.
+function seriesSummary(data, nameA, nameB) {
+  const played = data.games
+    .filter(g => g.homeScore !== null && g.homeScore !== undefined && g.awayScore !== null && g.awayScore !== undefined)
+    .sort((x, y) => (x.season - y.season) || (new Date(x.date) - new Date(y.date)));
+  if (!played.length) return null;
+
+  const won = (g, team) => g.winner ? g.winner === team : (g.homeTeam === team ? g.homeScore > g.awayScore : g.awayScore > g.homeScore);
+  const isTie = g => g.homeScore === g.awayScore;
+
+  // Only noted when the disputed game is actually in the data.
+  let note = "";
+  const dispute = DISPUTED_SERIES.find(d => d.teams.includes(nameA) && d.teams.includes(nameB));
+  if (dispute && played.some(g => g.season === dispute.season)) {
+    note = dispute.note(seriesRecordText(played.filter(g => g.season !== dispute.season), nameA, nameB, won));
   }
 
-  const winnerFirst = latest.homeScore >= latest.awayScore
-    ? `${latest.homeTeam} ${latest.homeScore}-${latest.awayScore}`
-    : `${latest.awayTeam} ${latest.awayScore}-${latest.homeScore}`;
+  const latest = played[played.length - 1];
+  const hi = Math.max(latest.homeScore, latest.awayScore), lo = Math.min(latest.homeScore, latest.awayScore);
+  const lastWinner = isTie(latest) ? null : (won(latest, nameA) ? nameA : nameB);
+
+  // Same winner in a row, ending with the latest game.
+  let streak = "Last game was a tie";
+  if (lastWinner) {
+    let n = 0;
+    for (let i = played.length - 1; i >= 0 && !isTie(played[i]) && won(played[i], lastWinner); i--) n++;
+    streak = n > 1 ? `${lastWinner} has won ${n} straight` : `${lastWinner} won the last one`;
+  }
+
   return {
-    record: `${leader}${streak}`,
-    last: `${latest.homeScore === latest.awayScore ? `Tied ${latest.homeScore}-${latest.awayScore}` : winnerFirst} (${latest.season}) · First met ${played[0].season}`
+    first: String(played[0].season),
+    last: `${latest.season} ${lastWinner ? `${lastWinner} won ${hi}-${lo}` : `Tied ${hi}-${lo}`}`,
+    counts: seriesCounts(played, nameA, won),
+    streak,
+    note
   };
 }
 
+// Team colors for the bar, from ESPN. A color too dark to see on the card
+// uses the team's alternate color, and if the two teams still look alike
+// the second team switches too.
+const HEX = /^[0-9a-f]{6}$/i;
+const rgbOf = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+const colorGap = (c1, c2) => {
+  const [x, y] = [rgbOf(c1), rgbOf(c2)];
+  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+};
+const colorsTooClose = (c1, c2) => colorGap(c1, c2) < 90;
+const tooDark = c => colorGap(c, "#162032") < 75 || rgbOf(c).reduce((sum, v) => sum + v, 0) < 120;
+
+function teamColors(t) {
+  return [t && t.color, t && t.alternateColor].filter(c => c && HEX.test(c)).map(c => `#${c}`);
+}
+
+function barColors(teamA, teamB) {
+  const pick = (options, avoid) => options.find(c => !tooDark(c) && !(avoid && colorsTooClose(c, avoid)));
+  const a = pick(teamColors(teamA)) || "#60a5fa";
+  const b = pick(teamColors(teamB), a) || (colorsTooClose(a, "#fbbf24") ? "#f8fafc" : "#fbbf24");
+  return [a, b];
+}
+
 async function fillSeries(body, teamA, teamB) {
-  const row = body.querySelector(".series-row");
-  if (!row) return;
+  const box = body.querySelector(".series-box");
+  if (!box) return;
   const nameA = seriesName(teamA), nameB = seriesName(teamB);
-  if (!nameA || !nameB) { row.remove(); return; }
+  if (!nameA || !nameB) { box.remove(); return; }
   try {
-    const data = await loadSeries(nameA, nameB);
-    const { record, last } = seriesSummary(data, nameA, nameB);
-    row.querySelector(".series-text").textContent = record;
-    if (last) {
-      row.insertAdjacentHTML("afterend", `<div class="details-info-row"><span class="details-info-label">Last</span><span>${last}</span></div>`);
-    }
+    const sum = seriesSummary(await loadSeries(nameA, nameB), nameA, nameB);
+    const lines = box.querySelector(".series-lines");
+    if (!sum) { lines.innerHTML = `<div class="series-line">First meeting</div>`; return; }
+
+    const [colorA, colorB] = barColors(teamA, teamB);
+
+    const { a, b, ties } = sum.counts;
+    const total = a + b + ties;
+    const pct = n => `${(n / total * 100).toFixed(2)}%`;
+    const logo = t => { const l = teamLogoFrom(t); return l ? `<img src="${l}" alt="" onerror="this.style.display='none'">` : ""; };
+    const side = (t, wins, cls) => `<div class="series-side ${cls}">${logo(t)}<span class="series-wins">${wins}</span><span class="series-wins-label">${wins === 1 ? "Win" : "Wins"}</span></div>`;
+    const line = (label, value) => `<div class="series-line"><span class="series-label">${label}:</span> ${value}</div>`;
+
+    lines.innerHTML = `
+      <div class="series-counts">
+        ${side(teamA, a, "left")}
+        ${ties ? `<div class="series-ties"><span class="series-wins">${ties}</span><span class="series-wins-label">${ties === 1 ? "Tie" : "Ties"}</span></div>` : ""}
+        ${side(teamB, b, "right")}
+      </div>
+      <div class="series-bar" role="img" aria-label="${nameA} ${a}, ${nameB} ${b}${ties ? `, ${ties} ties` : ""}">
+        <span style="width: ${pct(a)}; background: ${colorA};"></span>
+        ${ties ? `<span class="series-bar-ties" style="width: ${pct(ties)};"></span>` : ""}
+        <span style="width: ${pct(b)}; background: ${colorB};"></span>
+      </div>
+      ${sum.note ? `<div class="series-note">${sum.note}</div>` : ""}
+      ${line("First", sum.first)}${line("Last", sum.last)}${line("Streak", sum.streak)}`;
   } catch (err) {
     console.error("Series error:", err);
-    row.remove();
+    box.remove();
   }
 }
 
