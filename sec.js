@@ -1,6 +1,7 @@
 // SEC pages (index, makepicks, hostpicks): team names, ESPN feeds, and the
 // Top 25 / SEC Standings / team schedule popups. Loads after common.js.
 
+
 const TOTAL_WEEKS = 14;
 const WEEK_NUMS = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1);
 const PICKS_TABLE = "picks";
