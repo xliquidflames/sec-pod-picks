@@ -896,21 +896,16 @@ const clockText = sec => {
 function podShowFor(title) {
   const shows = SITE.podEpisodes || [];
   const i = shows.findIndex(show => {
-    const pattern = show.titleStarts.trim().split("#")
+    const pattern = show.trim().split("#")
       .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"))
       .join("\\d+");
     return new RegExp(`^\\s*${pattern}`, "i").test(title);
   });
-  return i < 0 ? null : { index: i, show: shows[i] };
+  return i < 0 ? null : { index: i };
 }
 
-// The link text: the show's label, unless the episode doesn't mention who it
-// needs to (a guest who wasn't on that week), then the title up to the colon.
-function podLinkLabel(show, ep) {
-  const text = [ep.title, ...(ep.chapters || []).map(c => c.label)].join(" ").toLowerCase();
-  if (!show.mentions || text.includes(show.mentions.toLowerCase())) return show.label;
-  return ep.title.split(/[:!?|]/)[0].trim();
-}
+// The link text: the episode title up to the colon ("Week 7 SEC Preview").
+const podLinkLabel = ep => ep.title.split(/[:!?|]/)[0].trim();
 
 async function fillPodLinks(body, teamA, teamB, kickoffDate) {
   const box = body.querySelector(".pod-links");
@@ -928,12 +923,12 @@ async function fillPodLinks(body, teamA, teamB, kickoffDate) {
       .forEach(ep => {
         const match = podShowFor(ep.title);
         const ch = match && (ep.chapters || []).find(c => chapterNamesGame(c.label, teams));
-        if (ch) latest[match.index] = { label: podLinkLabel(match.show, ep), ep, ch };
+        if (ch) latest[match.index] = { label: podLinkLabel(ep), ep, ch };
       });
     const links = latest.filter(Boolean).map(({ label, ep, ch }) =>
       `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}&t=${ch.seconds}s" target="_blank" rel="noopener noreferrer"><span>${label}</span><span class="pod-time">▶ ${clockText(ch.seconds)}</span></a>`);
     if (!links.length) return;
-    box.innerHTML = `<div class="pod-label">🎙️ On the Pod 🎙️</div>${links.join("")}`;
+    box.innerHTML = `<div class="pod-label">🎙️ On the Pod</div>${links.join("")}`;
     box.style.display = "";
   } catch (err) {
     console.error("Episodes error:", err);
