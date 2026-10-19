@@ -935,7 +935,7 @@ async function fillWeekPodLinks(box, week) {
       .filter(ep => podShowFor(ep.title) && Number((ep.title.match(/^\s*week\s*(\d+)/i) || [])[1]) === Number(week))
       .sort((x, y) => new Date(x.published) - new Date(y.published));
     if (String(box.dataset.week) !== String(week) || !episodes.length) return;
-    box.innerHTML = episodes.map(ep =>
+    box.innerHTML = `<div class="pod-label">🎙️ On the Pod</div>` + episodes.map(ep =>
       `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}" target="_blank" rel="noopener noreferrer">${YT_ICON}<span>${ep.title}</span></a>`).join("");
     box.style.display = "";
   } catch (err) {
