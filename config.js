@@ -35,10 +35,13 @@ const SITE = {
   // the episode chapter where the hosts discuss that game. "" turns it off.
   youtubeChannelId: "UC8aQL-yFS2ZoSkUBeMfYesA",
 
-  // What each episode's link says, by a word in its YouTube title.
+  // Which episodes get linked from a game's Details. An episode counts when
+  // its YouTube title starts with titleStarts (# stands for the week number)
+  // and it has a chapter naming the game. The link shows label, but only if
+  // the title or a chapter mentions "mentions"; otherwise it shows the title.
   podEpisodes: [
-    { titleHas: "Preview", label: "Steven Lassan's Take & Pick" },
-    { titleHas: "Prediction", label: "SEC Mike and Cousin Shane's Takes & Picks" }
+    { titleStarts: "Week # SEC Preview", label: "Steven Lassan's Take & Pick", mentions: "Lassan" },
+    { titleStarts: "Week # SEC Predictions", label: "SEC Mike and Cousin Shane's Takes & Picks" }
   ],
 
   // GoatCounter visitor stats. Set to "" to turn off.
