@@ -346,7 +346,9 @@ function openTeamSchedule(teamId, teamName, teamLogo) {
 
 // Fills body with a team's schedule. onRecord(record, standing) gets the
 // team's record line; autoScroll centers the current week in body.
-async function renderTeamSchedule(body, teamId, onRecord, autoScroll) {
+// opts.compact draws the short side-by-side version used in game details,
+// with opts.eventId's row highlighted instead of the current week.
+async function renderTeamSchedule(body, teamId, onRecord, autoScroll, opts = {}) {
   body.innerHTML = `<div class="team-sched-note">Loading schedule...</div>`;
   try {
     if (!teamScheduleCache[teamId]) {
@@ -401,9 +403,23 @@ async function renderTeamSchedule(body, teamId, onRecord, autoScroll) {
         resultHtml = `<span class="team-sched-result">${validDate ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : ""}</span>`;
       }
 
+      const oppShort = oppTeam.abbreviation || shortenPickDisplay(oppName);
+      let miniResult;
+      if (statusType.completed === true && me && opp) {
+        const won = me.winner === true, lost = opp.winner === true;
+        miniResult = `<b class="${won ? "win" : (lost ? "loss" : "")}">${won ? "W" : (lost ? "L" : "T")} ${schedScore(me.score)}-${schedScore(opp.score)}</b>`;
+      } else if (statusType.state === "in") {
+        miniResult = `<b style="color: var(--accent-gold);">Live</b>`;
+      } else {
+        // "12PM" or "3:30PM", to leave room for the opponent.
+        miniResult = validDate ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).replace(":00", "").replace(/\s/g, "") : "TBD";
+      }
+
       return {
         week,
+        eventId: String(ev.id),
         sortTime: validDate ? d.getTime() : Infinity,
+        mini: `<span class="d">${validDate ? `${d.getMonth() + 1}/${d.getDate()}` : ""}</span><span class="o">${prefix} ${oppShort}</span><span class="r">${miniResult}</span>`,
         html: `
           <span class="team-sched-date">${dateText}</span>
           <span class="team-sched-opp">
@@ -429,7 +445,9 @@ async function renderTeamSchedule(body, teamId, onRecord, autoScroll) {
         if (!byeDate) continue;
         items.push({
           week: w,
+          bye: true,
           sortTime: byeDate.getTime(),
+          mini: `<span class="d">${byeDate.getMonth() + 1}/${byeDate.getDate()}</span><span class="o">Bye</span><span class="r"></span>`,
           html: `
             <span class="team-sched-date">${byeDate.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" })}</span>
             <span class="team-sched-opp"><span style="font-style: italic;">Bye Week</span></span>
@@ -439,6 +457,11 @@ async function renderTeamSchedule(body, teamId, onRecord, autoScroll) {
     }
 
     items.sort((a, b) => a.sortTime - b.sortTime);
+
+    if (opts.compact) {
+      body.innerHTML = items.map(it => `<div class="mini-sched-row${it.bye ? " bye" : ""}${opts.eventId && it.eventId === String(opts.eventId) ? " now" : ""}">${it.mini}</div>`).join("");
+      return;
+    }
 
     const currentWeek = scheduleOptions.currentWeek();
     body.innerHTML = items.map(it => `
@@ -590,40 +613,25 @@ async function renderGameDetails(body, eventId) {
   const home = competitors.find(c => c.homeAway === "home") || competitors[1] || {};
   const state = (comp.status && comp.status.type && comp.status.type.state) || "pre";
 
-  const tabs = [];
-  if (s && state !== "pre") {
-    const html = gameSections(s, away, home, state, comp).join("");
-    if (html) tabs.push({ label: "Game", render: el => { el.innerHTML = html; } });
-  }
-  [away, home].forEach(c => {
-    const t = c.team || {};
-    if (!t.id) return;
-    const logo = teamLogoFrom(t);
-    tabs.push({
-      label: `${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}${t.abbreviation || shortenPickDisplay(t.shortDisplayName || "")}`,
-      render: el => {
-        el.innerHTML = `<div class="details-note sched-record"></div><div class="sched-list"></div>`;
-        renderTeamSchedule(el.querySelector(".sched-list"), t.id, async (record, standing) => {
-          // SEC teams show their spot in the SEC tab's list so the two always
-          // match; anyone else keeps ESPN's summary.
-          let place = standing;
-          try {
-            const names = [t.location, t.shortDisplayName, t.displayName, t.name].filter(Boolean).map(normalizeTeam);
-            const row = (await loadSecStandings()).find(r => (r.id && r.id === String(t.id)) || names.includes(normalizeTeam(r.name)));
-            if (row) place = `${ordinal(row.place)} in SEC`;
-          } catch (e) {}
-          el.querySelector(".sched-record").textContent = `${shortenPickDisplay(t.location || t.shortDisplayName || t.displayName || "")}: ${record}${place ? " | " + place : ""}`;
-        }, false);
-      }
-    });
-  });
-  if (s && state === "pre") {
-    const html = pregameSections(s, away, home).join("");
-    if (html) tabs.push({ label: "Preview", render: el => { el.innerHTML = html; } });
-  }
-  tabs.push({ label: "Top 25", render: renderRankings });
-  tabs.push({ label: "SEC", render: renderStandings });
-  body.detailsTabs = tabs;
+  // Everything shows at once: the game (or preview), then both schedules
+  // side by side, each headed by its AP rank and SEC place.
+  const sections = [];
+  if (s && state !== "pre") sections.push(...gameSections(s, away, home, state, comp));
+  if (s && state === "pre") sections.push(...pregameSections(s, away, home));
+
+  const teams = [away, home].filter(c => c.team && c.team.id);
+  const scheduleCol = c => {
+    const t = c.team;
+    // The summary lists the rank as "rank"; the scoreboard as curatedRank.
+    const sbTeam = (sbComp.competitors || []).find(x => x.team && String(x.team.id) === String(t.id)) || {};
+    const rank = Number((c.curatedRank && c.curatedRank.current) || c.rank || (sbTeam.curatedRank && sbTeam.curatedRank.current));
+    const name = shortenPickDisplay(t.location || t.shortDisplayName || t.displayName || "");
+    return `<div class="sched-col" data-team="${t.id}">
+        <div class="sched-col-head"><b>${rank >= 1 && rank <= 25 ? `#${rank} ` : ""}${name}</b><small class="sched-place"></small></div>
+        <div class="sched-mini-list"><div class="team-sched-note">Loading...</div></div>
+      </div>`;
+  };
+  if (teams.length) sections.push(detailsSection("Schedules", `<div class="sched-pair">${teams.map(scheduleCol).join("")}</div>`));
 
   body.innerHTML = `
     ${gameInfoHtml(s, ev, sbComp, comp)}
@@ -633,30 +641,26 @@ async function renderGameDetails(body, eventId) {
     </div>
     <div class="pod-links" style="display: none;"></div>
     ${s ? "" : `<div class="team-sched-note">Couldn't load this game's details right now.</div>`}
-    <div class="details-tabs" role="tablist">
-      ${tabs.map((t, i) => `<button type="button" class="details-tab" role="tab" onclick="selectDetailsTab(this, ${i})">${t.label}</button>`).join("")}
-    </div>
-    ${tabs.map(() => `<div class="details-pane" style="display: none;"></div>`).join("")}`;
-  selectDetailsTab(body.querySelector(".details-tab"), 0);
+    ${sections.join("")}`;
+
+  teams.forEach(c => {
+    const t = c.team;
+    const col = body.querySelector(`.sched-col[data-team="${t.id}"]`);
+    if (!col) return;
+    renderTeamSchedule(col.querySelector(".sched-mini-list"), t.id, async (record, standing) => {
+      // SEC teams show their spot in the SEC Standings list so the two always
+      // match; anyone else keeps ESPN's summary.
+      let place = standing;
+      try {
+        const names = [t.location, t.shortDisplayName, t.displayName, t.name].filter(Boolean).map(normalizeTeam);
+        const row = (await loadSecStandings()).find(r => (r.id && r.id === String(t.id)) || names.includes(normalizeTeam(r.name)));
+        if (row) place = `${ordinal(row.place)} in SEC`;
+      } catch (e) {}
+      col.querySelector(".sched-place").textContent = place || record || "";
+    }, false, { compact: true, eventId });
+  });
   fillSeries(body, away.team, home.team);
   fillPodLinks(body, away.team, home.team, comp.date || ev.date);
-}
-
-// Each tab fills its pane the first time it's opened.
-function selectDetailsTab(tabButton, index) {
-  const body = tabButton && tabButton.closest(".details-tabs").parentElement;
-  if (!body) return;
-  const buttons = body.querySelectorAll(".details-tab");
-  const panes = body.querySelectorAll(".details-pane");
-  buttons.forEach((b, i) => b.classList.toggle("active", i === index));
-  panes.forEach((p, i) => { p.style.display = i === index ? "" : "none"; });
-  const pane = panes[index];
-  const tabs = body.detailsTabs || [];
-  if (pane && !pane.dataset.loaded && tabs[index]) {
-    pane.dataset.loaded = "1";
-    pane.innerHTML = `<div class="team-sched-note">Loading...</div>`;
-    tabs[index].render(pane);
-  }
 }
 
 // Where, when, TV and the betting line, from the summary or the scoreboard.
