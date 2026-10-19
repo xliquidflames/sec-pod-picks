@@ -2744,3 +2744,78 @@ a.btn-submit.bk-cta {
 .week-pod-links .yt-icon {
   flex-shrink: 0;
 }
+
+/* Game details: both teams' schedules side by side. */
+.sched-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.9rem;
+}
+
+.sched-col-head {
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.85rem;
+}
+
+.sched-col-head small {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.mini-sched-row {
+  display: grid;
+  grid-template-columns: 2.8em minmax(0, 1fr) auto;
+  gap: 0.3rem;
+  align-items: baseline;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.mini-sched-row .d {
+  opacity: 0.7;
+}
+
+.mini-sched-row .o {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-sched-row .r {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.mini-sched-row .r b {
+  font-size: 0.78rem;
+}
+
+.mini-sched-row .r:has(b) {
+  opacity: 1;
+}
+
+.mini-sched-row b.win {
+  color: var(--success);
+}
+
+.mini-sched-row b.loss {
+  color: var(--danger);
+}
+
+.mini-sched-row.bye .o {
+  font-weight: 600;
+  opacity: 0.6;
+}
+
+.mini-sched-row.now {
+  padding-left: 4px;
+  background: rgba(251, 191, 36, 0.12);
+  box-shadow: inset 3px 0 var(--accent-gold);
+}
