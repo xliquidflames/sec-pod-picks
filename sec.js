@@ -640,7 +640,7 @@ async function renderGameDetails(body, eventId) {
         <div class="sched-mini-list"><div class="team-sched-note">Loading...</div></div>
       </div>`;
   };
-  if (teams.length) sections.push(detailsSection("Schedules", `<div class="sched-pair">${teams.map(scheduleCol).join("")}</div>`));
+  if (teams.length) sections.push(`<div class="sched-box"><div class="details-heading">Schedules</div><div class="sched-pair">${teams.map(scheduleCol).join("")}</div></div>`);
 
   body.innerHTML = `
     ${gameInfoHtml(s, ev, sbComp, comp)}
@@ -1057,29 +1057,32 @@ async function fillStatRanks(body, teamA, teamB) {
     };
     const pill = (rank, key) => rank ? `<span class="stat-rank ${tier(rank, key)}">#${rank}</span>` : `<span class="stat-rank none">-</span>`;
     const logo = t => { const l = teamLogoFrom(t); return l ? `<img src="${l}" alt="" onerror="this.style.display='none'">` : ""; };
-    const short = t => shortenPickDisplay(t.location || t.shortDisplayName || t.displayName || "");
 
-    const half = (offTeam, off, defTeam, def) => {
+    // The away team always stays on the left and the home team on the
+    // right; each half says which side is on offense.
+    const half = (left, right) => {
+      const keyFor = (side, [o, d]) => side.role === "Offense" ? o : d;
       const rows = STAT_MATCHUPS
-        .filter(([o, d]) => off[o] || def[d])
-        .map(([o, d, label]) => {
-          const ro = off[o], rd = def[d];
-          const ballO = ro && (!rd || ro < rd), ballD = rd && (!ro || rd < ro);
+        .filter(m => left.ranks[keyFor(left, m)] || right.ranks[keyFor(right, m)])
+        .map(m => {
+          const kl = keyFor(left, m), kr = keyFor(right, m);
+          const rl = left.ranks[kl], rr = right.ranks[kr];
+          const ballL = rl && (!rr || rl < rr), ballR = rr && (!rl || rr < rl);
           return `<div class="stat-rank-row">
-            <span class="stat-ball">${ballO ? FOOTBALL_ICON : ""}</span>
-            ${pill(ro, o)}
-            <span class="stat-rank-label">${label}</span>
-            ${pill(rd, d)}
-            <span class="stat-ball">${ballD ? FOOTBALL_ICON : ""}</span>
+            <span class="stat-ball">${ballL ? FOOTBALL_ICON : ""}</span>
+            ${pill(rl, kl)}
+            <span class="stat-rank-label">${m[2]}</span>
+            ${pill(rr, kr)}
+            <span class="stat-ball">${ballR ? FOOTBALL_ICON : ""}</span>
           </div>`;
         }).join("");
       if (!rows) return "";
-      return `<div class="stat-rank-head">
-          ${logo(offTeam)}<span>${short(offTeam)} Offense <small>vs</small> ${short(defTeam)} Defense</span>${logo(defTeam)}
-        </div>${rows}`;
+      const head = side => `<span class="stat-side">${logo(side.team)}<span>${side.role}</span></span>`;
+      return `<div class="stat-rank-row stat-rank-head">${head(left)}<span></span>${head(right)}</div>${rows}`;
     };
 
-    const html = half(teamA, a, teamB, b) + half(teamB, b, teamA, a);
+    const html = half({ team: teamA, ranks: a, role: "Offense" }, { team: teamB, ranks: b, role: "Defense" })
+      + half({ team: teamA, ranks: a, role: "Defense" }, { team: teamB, ranks: b, role: "Offense" });
     if (!html) return;
     box.innerHTML = html;
     box.style.display = "";
