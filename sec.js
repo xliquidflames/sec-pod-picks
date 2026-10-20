@@ -649,6 +649,7 @@ async function renderGameDetails(body, eventId) {
       <div class="series-lines"><div class="series-line">Loading...</div></div>
     </div>
     <div class="pod-links" style="display: none;"></div>
+    <div class="stat-ranks" style="display: none;"></div>
     ${s ? "" : `<div class="team-sched-note">Couldn't load this game's details right now.</div>`}
     ${sections.join("")}`;
 
@@ -671,6 +672,7 @@ async function renderGameDetails(body, eventId) {
   });
   fillSeries(body, away.team, home.team, playedSeason(comp));
   fillPodLinks(body, away.team, home.team, comp.date || ev.date);
+  fillStatRanks(body, away.team, home.team);
 }
 
 // Where, when, TV and the betting line, from the summary or the scoreboard.
@@ -1004,6 +1006,72 @@ async function fillPodLinks(body, teamA, teamB, kickoffDate) {
     box.style.display = "";
   } catch (err) {
     console.error("Episodes error:", err);
+  }
+}
+
+// ---- Stat Rankings: each team's national rank in a few season stats ----
+// The "teamstats" Edge Function ranks every FBS team from CollegeFootballData
+// season totals (one call, saved for 12 hours). Names are CFBD's school
+// names, the same as the series history uses.
+
+const STAT_ROWS = [
+  ["scoringOffense", "Scoring Offense"], ["scoringDefense", "Scoring Defense"],
+  ["passingOffense", "Passing Offense"], ["passingDefense", "Passing Defense"],
+  ["rushingOffense", "Rushing Offense"], ["rushingDefense", "Rushing Defense"],
+  ["thirdDownOffense", "3rd Down Offense"], ["thirdDownDefense", "3rd Down Defense"]
+];
+
+// A small football, marking the better rank in each row.
+const FOOTBALL_ICON = `<svg class="football-icon" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(-35 12 12)"><ellipse cx="12" cy="12" rx="11" ry="6.6" fill="#8b4513"/><path d="M4.2 8.6 Q4.9 12 4.2 15.4 M19.8 8.6 Q19.1 12 19.8 15.4" stroke="#fff" stroke-width="1.3" fill="none"/><path d="M8.5 12 H15.5 M9.5 10.6 V13.4 M11.2 10.6 V13.4 M12.8 10.6 V13.4 M14.5 10.6 V13.4" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/></g></svg>`;
+
+let teamStatsPromise = null;
+
+function loadTeamStats() {
+  if (!teamStatsPromise) {
+    teamStatsPromise = supabaseClient.functions.invoke("teamstats", { body: { year: 2026 } })
+      .then(({ data, error }) => {
+        if (error || !data || !data.ranks) throw error || new Error("no team stats");
+        return data;
+      });
+    teamStatsPromise.catch(() => { teamStatsPromise = null; });
+  }
+  return teamStatsPromise;
+}
+
+async function fillStatRanks(body, teamA, teamB) {
+  const box = body.querySelector(".stat-ranks");
+  const nameA = seriesName(teamA), nameB = seriesName(teamB);
+  if (!box || !nameA || !nameB) return;
+  try {
+    const { ranks, counts } = await loadTeamStats();
+    const a = ranks[nameA] || {}, b = ranks[nameB] || {};
+    // Top third green, middle third pale green, bottom third red.
+    const tier = (rank, key) => {
+      const share = rank / (counts[key] || 134);
+      return share <= 1 / 3 ? "good" : share <= 2 / 3 ? "ok" : "bad";
+    };
+    const pill = (rank, key) => rank ? `<span class="stat-rank ${tier(rank, key)}">#${rank}</span>` : `<span class="stat-rank none">-</span>`;
+    const rows = STAT_ROWS
+      .filter(([key]) => a[key] || b[key])
+      .map(([key, label]) => {
+        const ra = a[key], rb = b[key];
+        const ballA = ra && (!rb || ra < rb), ballB = rb && (!ra || rb < ra);
+        return `<div class="stat-rank-row">
+          <span class="stat-ball">${ballA ? FOOTBALL_ICON : ""}</span>
+          ${pill(ra, key)}
+          <span class="stat-rank-label">${label}</span>
+          ${pill(rb, key)}
+          <span class="stat-ball">${ballB ? FOOTBALL_ICON : ""}</span>
+        </div>`;
+      }).join("");
+    if (!rows) return;
+    const logo = t => { const l = teamLogoFrom(t); return l ? `<img src="${l}" alt="" onerror="this.style.display='none'">` : ""; };
+    box.innerHTML = `
+      <div class="stat-rank-head">${logo(teamA)}<span>Stat Rankings</span>${logo(teamB)}</div>
+      ${rows}`;
+    box.style.display = "";
+  } catch (err) {
+    console.error("Team stats error:", err);
   }
 }
 
