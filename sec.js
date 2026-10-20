@@ -1,7 +1,6 @@
 // SEC pages (index, makepicks, hostpicks): team names, ESPN feeds, and the
 // Top 25 / SEC Standings / team schedule popups. Loads after common.js.
 
-
 const TOTAL_WEEKS = 14;
 const WEEK_NUMS = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1);
 const PICKS_TABLE = "picks";
@@ -670,7 +669,7 @@ async function renderGameDetails(body, eventId) {
       col.querySelector(".sched-place").textContent = place || "";
     }, false, { compact: true, eventId });
   });
-  fillSeries(body, away.team, home.team);
+  fillSeries(body, away.team, home.team, playedSeason(comp));
   fillPodLinks(body, away.team, home.team, comp.date || ev.date);
 }
 
@@ -734,10 +733,12 @@ function gameInfoHtml(s, ev, sbComp, comp) {
 const seriesCache = {};
 const seriesName = t => (t && (t.location || t.shortDisplayName || t.displayName)) || "";
 
-async function loadSeries(name1, name2) {
+// played: the season of a finished game between them, so the function knows
+// to fetch fresh history if its saved copy doesn't have that game yet.
+async function loadSeries(name1, name2, played) {
   const key = [name1, name2].sort().join("|");
   if (!seriesCache[key]) {
-    seriesCache[key] = supabaseClient.functions.invoke("series", { body: { team1: name1, team2: name2 } })
+    seriesCache[key] = supabaseClient.functions.invoke("series", { body: { team1: name1, team2: name2, played: played || 0 } })
       .then(({ data, error }) => {
         if (error || !data || !Array.isArray(data.games)) throw error || new Error("no series data");
         return data;
@@ -756,7 +757,7 @@ function preloadDetails(eventIds) {
       const ev = id && findScoreboardEvent(String(id));
       const comp = ev && ev.competitions && ev.competitions[0];
       const teams = ((comp && comp.competitors) || []).map(c => seriesName(c.team));
-      if (teams.length === 2 && teams.every(Boolean)) loadSeries(teams[0], teams[1]).catch(() => {});
+      if (teams.length === 2 && teams.every(Boolean)) loadSeries(teams[0], teams[1], playedSeason(comp)).catch(() => {});
     });
   }, 500);
 }
@@ -852,13 +853,30 @@ function barColors(teamA, teamB) {
   return [a, b];
 }
 
-async function fillSeries(body, teamA, teamB) {
+// The season a finished game counts toward (January bowls belong to the
+// season before), or 0 if the game hasn't been played.
+function playedSeason(comp) {
+  const state = comp && comp.status && comp.status.type && comp.status.type.state;
+  const d = new Date(comp && comp.date);
+  if (state !== "post" || isNaN(d.getTime())) return 0;
+  return d.getMonth() < 6 ? d.getFullYear() - 1 : d.getFullYear();
+}
+
+const SERIES_WAIT = 10000;
+
+async function fillSeries(body, teamA, teamB, played) {
   const box = body.querySelector(".series-box");
   if (!box) return;
   const nameA = seriesName(teamA), nameB = seriesName(teamB);
   if (!nameA || !nameB) { box.remove(); return; }
+  // After 10 seconds with no answer, say so instead of "Loading..." forever.
+  const slow = setTimeout(() => {
+    const lines = box.querySelector(".series-lines");
+    if (lines && !box.querySelector(".series-bar")) lines.innerHTML = `<div class="series-line">Series history unavailable right now.</div>`;
+  }, SERIES_WAIT);
   try {
-    const sum = seriesSummary(await loadSeries(nameA, nameB), nameA, nameB);
+    const sum = seriesSummary(await loadSeries(nameA, nameB, played), nameA, nameB);
+    clearTimeout(slow);
     const lines = box.querySelector(".series-lines");
     if (!sum) { lines.innerHTML = `<div class="series-line">First meeting</div>`; return; }
 
@@ -885,6 +903,7 @@ async function fillSeries(body, teamA, teamB) {
       ${sum.note ? `<div class="series-note">${sum.note}</div>` : ""}
       ${line("Meetings", sum.meetings)}${line("First", sum.first)}${line("Last", sum.last)}${line("Streak", sum.streak)}`;
   } catch (err) {
+    clearTimeout(slow);
     console.error("Series error:", err);
     box.remove();
   }
