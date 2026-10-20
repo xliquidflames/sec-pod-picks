@@ -36,9 +36,9 @@ const SITE = {
   youtubeChannelId: "UC8aQL-yFS2ZoSkUBeMfYesA",
 
   // Which episodes get linked from a game's Details: those whose YouTube
-  // title starts with one of these (# stands for the week number) and that
+  // title has the game's week ("Week 8") and one of these words, and that
   // have a chapter naming the game. The link shows the title up to the colon.
-  podEpisodes: ["Week # SEC Preview", "Week # SEC Predictions"],
+  podEpisodes: ["Preview", "Prediction"],
 
   // GoatCounter visitor stats. Set to "" to turn off.
   analytics: "https://liquidflames.goatcounter.com/count",
