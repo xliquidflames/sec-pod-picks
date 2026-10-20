@@ -1015,11 +1015,12 @@ async function fillPodLinks(body, teamA, teamB, kickoffDate, week) {
 // season totals (one call, saved for 12 hours). Names are CFBD's school
 // names, the same as the series history uses.
 
-const STAT_ROWS = [
-  ["scoringOffense", "Scoring Offense"], ["scoringDefense", "Scoring Defense"],
-  ["passingOffense", "Passing Offense"], ["passingDefense", "Passing Defense"],
-  ["rushingOffense", "Rushing Offense"], ["rushingDefense", "Rushing Defense"],
-  ["thirdDownOffense", "3rd Down Offense"], ["thirdDownDefense", "3rd Down Defense"]
+// Each row puts one team's offense against the other's defense.
+const STAT_MATCHUPS = [
+  ["scoringOffense", "scoringDefense", "Scoring"],
+  ["passingOffense", "passingDefense", "Passing"],
+  ["rushingOffense", "rushingDefense", "Rushing"],
+  ["thirdDownOffense", "thirdDownDefense", "3rd Down"]
 ];
 
 // A small football, marking the better rank in each row.
@@ -1039,6 +1040,9 @@ function loadTeamStats() {
   return teamStatsPromise;
 }
 
+// Two halves, one for each team's possessions: its offense on the left,
+// the other team's defense on the right, and a football by whichever side
+// ranks better in that matchup.
 async function fillStatRanks(body, teamA, teamB) {
   const box = body.querySelector(".stat-ranks");
   const nameA = seriesName(teamA), nameB = seriesName(teamB);
@@ -1052,24 +1056,32 @@ async function fillStatRanks(body, teamA, teamB) {
       return share <= 1 / 3 ? "good" : share <= 2 / 3 ? "ok" : "bad";
     };
     const pill = (rank, key) => rank ? `<span class="stat-rank ${tier(rank, key)}">#${rank}</span>` : `<span class="stat-rank none">-</span>`;
-    const rows = STAT_ROWS
-      .filter(([key]) => a[key] || b[key])
-      .map(([key, label]) => {
-        const ra = a[key], rb = b[key];
-        const ballA = ra && (!rb || ra < rb), ballB = rb && (!ra || rb < ra);
-        return `<div class="stat-rank-row">
-          <span class="stat-ball">${ballA ? FOOTBALL_ICON : ""}</span>
-          ${pill(ra, key)}
-          <span class="stat-rank-label">${label}</span>
-          ${pill(rb, key)}
-          <span class="stat-ball">${ballB ? FOOTBALL_ICON : ""}</span>
-        </div>`;
-      }).join("");
-    if (!rows) return;
     const logo = t => { const l = teamLogoFrom(t); return l ? `<img src="${l}" alt="" onerror="this.style.display='none'">` : ""; };
-    box.innerHTML = `
-      <div class="stat-rank-head">${logo(teamA)}<span>Stat Rankings</span>${logo(teamB)}</div>
-      ${rows}`;
+    const short = t => shortenPickDisplay(t.location || t.shortDisplayName || t.displayName || "");
+
+    const half = (offTeam, off, defTeam, def) => {
+      const rows = STAT_MATCHUPS
+        .filter(([o, d]) => off[o] || def[d])
+        .map(([o, d, label]) => {
+          const ro = off[o], rd = def[d];
+          const ballO = ro && (!rd || ro < rd), ballD = rd && (!ro || rd < ro);
+          return `<div class="stat-rank-row">
+            <span class="stat-ball">${ballO ? FOOTBALL_ICON : ""}</span>
+            ${pill(ro, o)}
+            <span class="stat-rank-label">${label}</span>
+            ${pill(rd, d)}
+            <span class="stat-ball">${ballD ? FOOTBALL_ICON : ""}</span>
+          </div>`;
+        }).join("");
+      if (!rows) return "";
+      return `<div class="stat-rank-head">
+          ${logo(offTeam)}<span>${short(offTeam)} Offense <small>vs</small> ${short(defTeam)} Defense</span>${logo(defTeam)}
+        </div>${rows}`;
+    };
+
+    const html = half(teamA, a, teamB, b) + half(teamB, b, teamA, a);
+    if (!html) return;
+    box.innerHTML = html;
     box.style.display = "";
   } catch (err) {
     console.error("Team stats error:", err);
