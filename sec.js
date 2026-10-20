@@ -671,7 +671,7 @@ async function renderGameDetails(body, eventId) {
     }, false, { compact: true, eventId });
   });
   fillSeries(body, away.team, home.team, playedSeason(comp));
-  fillPodLinks(body, away.team, home.team, comp.date || ev.date);
+  fillPodLinks(body, away.team, home.team, comp.date || ev.date, (ev.week && ev.week.number) || (s && s.header && s.header.week) || null);
   fillStatRanks(body, away.team, home.team);
 }
 
@@ -943,23 +943,24 @@ const clockText = sec => {
   return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 };
 
-// Which config.js podEpisodes show an episode belongs to, if any.
-function podShowFor(title) {
-  const shows = SITE.podEpisodes || [];
-  const i = shows.findIndex(show => {
-    const pattern = show.trim().split("#")
-      .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"))
-      .join("\\d+");
-    return new RegExp(`^\\s*${pattern}`, "i").test(title);
-  });
-  return i < 0 ? null : { index: i };
+// Whether an episode is about a given week: its title names that week
+// ("Week 8", anywhere) and has one of the config.js podEpisodes words
+// ("Preview", "Prediction"). With no week given, any week number counts.
+function podShowFor(title, week) {
+  const weeks = [...title.matchAll(/\bweek\s*(\d+)/gi)].map(m => Number(m[1]));
+  if (!weeks.length || (week && !weeks.includes(Number(week)))) return false;
+  return (SITE.podEpisodes || []).some(word => title.toLowerCase().includes(word.toLowerCase()));
 }
 
 // A small red YouTube-style play button (there's no emoji for it).
 const YT_ICON = `<svg class="yt-icon" viewBox="0 0 28 20" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#FF0000"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>`;
 
-// The link text: the episode title up to the colon ("Week 7 SEC Preview").
-const podLinkLabel = ep => ep.title.split(/[:!?|]/)[0].trim();
+// The link text: the episode title up to the colon ("Week 7 SEC Preview"),
+// or the whole title when the week is only named after it.
+const podLinkLabel = ep => {
+  const head = ep.title.split(/[:!?|]/)[0].trim();
+  return /\bweek\s*\d+/i.test(head) ? head : ep.title.trim();
+};
 
 // Week Info Hub: every episode with that week's number anywhere in its title
 // ("Week 8 SEC Preview: ...", "SEC Panic Meter & Week 8 Preview"), chapters
@@ -982,25 +983,24 @@ async function fillWeekPodLinks(box, week) {
   }
 }
 
-async function fillPodLinks(body, teamA, teamB, kickoffDate) {
+async function fillPodLinks(body, teamA, teamB, kickoffDate, week) {
   const box = body.querySelector(".pod-links");
   const kickoff = new Date(kickoffDate);
   if (!box || isNaN(kickoff.getTime())) return;
   try {
     const teams = [seriesName(teamA), seriesName(teamB)].filter(Boolean);
     const weekBefore = kickoff.getTime() - 9 * 86400000;
-    // One link per show: its newest episode before kickoff that has a
-    // chapter on this game.
-    const latest = [];
+    // Every episode about this game's week, posted before kickoff, that has
+    // a chapter on this game, oldest first.
+    const found = [];
     (await loadEpisodes())
       .filter(ep => { const t = new Date(ep.published).getTime(); return t >= weekBefore && t <= kickoff.getTime(); })
       .sort((x, y) => new Date(x.published) - new Date(y.published))
       .forEach(ep => {
-        const match = podShowFor(ep.title);
-        const ch = match && (ep.chapters || []).find(c => chapterNamesGame(c.label, teams));
-        if (ch) latest[match.index] = { label: podLinkLabel(ep), ep, ch };
+        const ch = podShowFor(ep.title, week) && (ep.chapters || []).find(c => chapterNamesGame(c.label, teams));
+        if (ch) found.push({ label: podLinkLabel(ep), ep, ch });
       });
-    const links = latest.filter(Boolean).map(({ label, ep, ch }) =>
+    const links = found.map(({ label, ep, ch }) =>
       `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(ep.id)}&t=${ch.seconds}s" target="_blank" rel="noopener noreferrer"><span>${label}</span><span class="pod-time">${YT_ICON}${clockText(ch.seconds)}</span></a>`);
     if (!links.length) return;
     box.innerHTML = `<div class="pod-label">🎙️ On the Pod</div>${links.join("")}`;
