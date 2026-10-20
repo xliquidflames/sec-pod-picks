@@ -2831,3 +2831,80 @@ a.btn-submit.bk-cta {
   background: rgba(251, 191, 36, 0.12);
   box-shadow: inset 3px 0 var(--accent-gold);
 }
+
+/* Game details: national stat ranks, side by side. */
+.stat-ranks {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.8rem;
+  border: 1.5px solid var(--accent-gold);
+  border-radius: 8px;
+  background: var(--bg-card-alt);
+}
+
+.stat-rank-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  color: var(--accent-gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-rank-head img {
+  width: 1.9rem;
+  height: 1.9rem;
+  object-fit: contain;
+}
+
+.stat-rank-row {
+  display: grid;
+  grid-template-columns: 1.2rem 3.1rem minmax(0, 1fr) 3.1rem 1.2rem;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0;
+}
+
+.stat-rank-label {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-rank {
+  padding: 0.12rem 0;
+  border-radius: 5px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.stat-rank.good {
+  background: #16a34a;
+}
+
+.stat-rank.ok {
+  background: #4d8f74;
+}
+
+.stat-rank.bad {
+  background: #dc2626;
+}
+
+.stat-rank.none {
+  background: var(--border-color);
+}
+
+.football-icon {
+  display: block;
+  width: 1.15rem;
+  height: 1.15rem;
+}
