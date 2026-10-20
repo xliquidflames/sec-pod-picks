@@ -961,8 +961,9 @@ const YT_ICON = `<svg class="yt-icon" viewBox="0 0 28 20" aria-hidden="true"><re
 // The link text: the episode title up to the colon ("Week 7 SEC Preview").
 const podLinkLabel = ep => ep.title.split(/[:!?|]/)[0].trim();
 
-// Week Info Hub: every episode whose title starts with that week's number
-// ("Week 8 SEC Preview: ..."), chapters or not.
+// Week Info Hub: every episode with that week's number anywhere in its title
+// ("Week 8 SEC Preview: ...", "SEC Panic Meter & Week 8 Preview"), chapters
+// or not.
 async function fillWeekPodLinks(box, week) {
   if (!box) return;
   box.dataset.week = week;
@@ -970,7 +971,7 @@ async function fillWeekPodLinks(box, week) {
   box.innerHTML = "";
   try {
     const episodes = (await loadEpisodes())
-      .filter(ep => Number((ep.title.match(/^\s*week\s*(\d+)/i) || [])[1]) === Number(week))
+      .filter(ep => [...ep.title.matchAll(/\bweek\s*(\d+)/gi)].some(m => Number(m[1]) === Number(week)))
       .sort((x, y) => new Date(x.published) - new Date(y.published));
     if (String(box.dataset.week) !== String(week) || !episodes.length) return;
     box.innerHTML = `<div class="pod-label">🎙️ On the Pod</div>` + episodes.map(ep =>
