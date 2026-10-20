@@ -2859,6 +2859,23 @@ a.btn-submit.bk-cta {
   object-fit: contain;
 }
 
+.stat-rank-head span {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-rank-head small {
+  color: var(--text-main);
+  font-weight: 600;
+  text-transform: none;
+}
+
+.stat-rank-row + .stat-rank-head {
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border-color);
+}
+
 .stat-rank-row {
   display: grid;
   grid-template-columns: 1.2rem 3.1rem minmax(0, 1fr) 3.1rem 1.2rem;
