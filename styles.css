@@ -2841,39 +2841,45 @@ a.btn-submit.bk-cta {
   background: var(--bg-card-alt);
 }
 
-.stat-rank-head {
+/* Each half's header: logo with Offense or Defense under it, centered over
+   that side's football and rank. */
+.stat-rank-row.stat-rank-head {
+  align-items: end;
+  margin-bottom: 0.2rem;
+}
+
+.stat-side {
+  grid-column: span 2;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.4rem;
+  gap: 0.15rem;
   color: var(--accent-gold);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.stat-rank-head img {
-  width: 1.9rem;
-  height: 1.9rem;
+.stat-side img {
+  width: 2rem;
+  height: 2rem;
   object-fit: contain;
 }
 
-.stat-rank-head span {
-  flex: 1;
-  text-align: center;
-}
-
-.stat-rank-head small {
-  color: var(--text-main);
-  font-weight: 600;
-  text-transform: none;
-}
-
 .stat-rank-row + .stat-rank-head {
-  margin-top: 0.7rem;
+  margin-top: 0.6rem;
   padding-top: 0.6rem;
   border-top: 1px solid var(--border-color);
+}
+
+/* Game details: the schedules get the same gold box as the other sections. */
+.sched-box {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.8rem;
+  border: 1.5px solid var(--accent-gold);
+  border-radius: 8px;
+  background: var(--bg-card-alt);
 }
 
 .stat-rank-row {
@@ -2924,4 +2930,36 @@ a.btn-submit.bk-cta {
   display: block;
   width: 1.15rem;
   height: 1.15rem;
+}
+
+/* A little tighter inside the box so "Unranked Nationally" fits. */
+.sched-box .sched-pair {
+  gap: 0.6rem;
+}
+
+.sched-box .sched-col-head {
+  gap: 0.4rem;
+}
+
+.sched-box .sched-col-head img {
+  width: 2rem;
+  height: 2rem;
+}
+
+.sched-box .sched-col-lines {
+  font-size: 0.72rem;
+}
+
+/* Makepicks shows details inside a narrower card. */
+.page-makepicks .sched-box {
+  padding: 0.6rem 0.5rem;
+}
+
+.page-makepicks .sched-box .sched-col-head img {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.page-makepicks .sched-box .sched-col-lines {
+  font-size: 0.68rem;
 }
