@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en" class="page-index page-hoops">
+<head>
+  <link rel="icon" type="image/png" href="logo.png" data-site-attr="href:{logo}" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-site-text="{name} Hoops Pick'em">That SEC Podcast Hoops Pick'em</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js?v=23"></script>
+  <script src="common.js?v=23"></script>
+  <script src="hoops.js?v=1"></script>
+  <link rel="stylesheet" href="styles.css?v=23" />
+  <style>
+    /* This week's games, two to a row, under a divider for each day. */
+    .hoops-games {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0.5rem;
+    }
+    .hoops-games.collapsed {
+      display: none;
+    }
+    .hoops-day {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 0.4rem 0 0.1rem;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent-gold);
+    }
+    .hoops-game {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      padding: 0.55rem 0.3rem 0.4rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-card-alt);
+      text-align: center;
+    }
+    .hoops-game.live-game-row {
+      border-color: var(--accent-gold);
+    }
+    .hoops-empty {
+      grid-column: 1 / -1;
+      padding: 1.5rem 0;
+      text-align: center;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container" id="pageTop">
+
+    <header>
+      <div class="logo-container">
+        <img src="logo.png" alt="That SEC Podcast" class="main-logo" data-site-attr="src:{logo}; alt:{name}" />
+      </div>
+      <div class="main-title-badge">2026-27 Hoops Pick'em</div>
+    </header>
+
+    <div class="card season-standings-card">
+      <div class="section-title-bar">
+        <h2 class="section-title">Season Standings</h2>
+      </div>
+
+      <div id="top5Section">
+        <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;" data-site-text="Top 3 {many}">
+          Top 3 Cousins
+        </span>
+        <div id="top5CousinsList">
+          <div class="top3-pending">Pending Week 1 Results</div>
+        </div>
+
+        <button type="button" class="tiebreakers-toggle" onclick="toggleTieBreakers()">
+          <span>Logic</span>
+          <span id="tiebreakerArrow">&#9662;</span>
+        </button>
+        <div id="tiebreakersInfo" class="tiebreakers-box">
+          <div><strong>How the Podium Works:</strong></div>
+          <div style="margin-top: 0.3rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+            <span data-site-text="{many}">Cousins</span> are ranked purely by their individual correct and incorrect picks added up for the season. The <span data-site-text="{manyLower}">cousins</span> with the most correct picks are first, fewest losses breaking that. Anyone sharing the exact same record shares the spot, shown as a tie. You can tap the row to open it and see every name. Ties aren't something this tries to break, especially early in a season.
+          </div>
+
+          <div style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+            <strong style="color: var(--text-main);">Why doesn't everyone's win total match the number of games played?</strong> They haven't played every week. We don't force you to have played every week to have a record at all but we can't have someone riding a single undefeated week to the end of the season. For example, someone who only picked one week and is 40-0 at the end of the season has 100% accuracy. But someone who is 450-60 has more correct picks. So we are keeping it purely about the total correct picks, not accuracy.
+          </div>
+
+          <div id="tiebreakerDecisionLog" class="tiebreaker-decision-log" style="display: none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <div class="week-selector-bar">
+      <button type="button" class="btn-step" onclick="changeWeekOffset(-1)">&larr; Prev</button>
+      <select id="mainWeekSelect" class="week-dropdown" onchange="switchWeek(parseInt(this.value, 10))">
+        <!-- One option per week, with its dates, from hoops.js. -->
+      </select>
+      <button type="button" class="btn-step" onclick="changeWeekOffset(1)">Next &rarr;</button>
+    </div>
+
+    <a href="hoopsmakepicks.html" class="btn-cta" id="ctaBtn">
+      <span>Submit Week 1 Picks &rarr;</span>
+    </a>
+
+    <div id="weekContent">
+      <div class="card elevated-card">
+        <div class="host-header-toggle" onclick="toggleHostGrid()">
+          <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
+          <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
+        </div>
+        <div class="hub-action-row" style="margin-top: 0.6rem;">
+          <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
+          <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
+        </div>
+        <div class="hoops-games" id="hostGridWrapper" style="margin-top: 0.6rem;">
+          <div class="hoops-empty">Loading games...</div>
+        </div>
+      </div>
+
+      <div class="card elevated-card">
+        <div class="section-title-bar">
+          <h2 class="section-title" id="weekCousinsTitle">The Cousins' Week 1 Picks</h2>
+          <span class="entry-pill" id="entryPill">0 Entries</span>
+        </div>
+
+        <div class="pulse-grid">
+          <div class="pulse-card">
+            <div class="pulse-label">Chalk Meter</div>
+            <div class="pulse-stat" id="statChalkMeter">--</div>
+            <div class="pulse-desc" id="statChalkMeterDesc">Picked the Favorite</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-label">Toss-Up Game</div>
+            <div class="pulse-stat" id="statTossUp">--</div>
+            <div class="pulse-desc" id="statTossUpDesc">Closest Split</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-label">Pick Consensus</div>
+            <div class="pulse-stat" id="statLock">--</div>
+            <div class="pulse-desc" id="statLockDesc">Highest Slate Agreement</div>
+          </div>
+        </div>
+
+        <div class="pulse-grid" id="lockShowcaseRow">
+          <div class="pulse-card">
+            <div class="pulse-label">Consensus Lock</div>
+            <div class="pulse-stat" id="statPeoplesLock">--</div>
+            <div class="pulse-desc" id="statPeoplesLockDesc">Most Locked Team</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-label">Lock Accuracy</div>
+            <div class="pulse-stat" id="statLockAccuracy">--</div>
+            <div class="pulse-desc" id="statLockAccuracyDesc" data-site-text="{one} Locks Hit">Cousin Locks Hit</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-label">Boldest Lock</div>
+            <div class="pulse-stat" id="statLockBattle">--</div>
+            <div class="pulse-desc" id="statLockBattleDesc">Longest Odds</div>
+          </div>
+        </div>
+
+        <p id="leaderboardSortDesc" style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.8rem; line-height: 1.4;">
+          Ranked by correct picks then sorted by LOTW hits, then alphabetical. Click any row to expand selections.
+        </p>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <div style="display: flex; gap: 0.4rem;" id="cousinViewControls">
+            <button type="button" class="btn-ctrl" onclick="toggleAllCards(true)">Expand All</button>
+            <button type="button" class="btn-ctrl" onclick="toggleAllCards(false)">Collapse All</button>
+            <button type="button" class="btn-ctrl" onclick="togglePicksView()">Per Team</button>
+          </div>
+          <div style="display: none; gap: 0.4rem;" id="teamViewControls">
+            <button type="button" class="btn-ctrl" onclick="toggleAllPerTeamCards(true)">Expand All</button>
+            <button type="button" class="btn-ctrl" onclick="toggleAllPerTeamCards(false)">Collapse All</button>
+            <button type="button" class="btn-ctrl" onclick="togglePicksView()" data-site-text="Per {one}">Per Cousin</button>
+          </div>
+          <a href="#pageBottom" class="btn-ctrl">&darr; To Bottom</a>
+        </div>
+
+        <div id="cousinSearchWrapper" style="margin-bottom: 0.75rem;">
+          <div class="search-row">
+            <input type="text" id="cousinSearchInput" class="cousin-search-input" placeholder="Find a name" oninput="filterCousinCards()" />
+            <button type="button" class="btn-ctrl" id="jumpToMeBtn" style="display: none;" onclick="jumpToMe()">Jump to me</button>
+          </div>
+          <div id="jumpNote" class="jump-note" style="display: none;"></div>
+        </div>
+
+        <div id="cousinsList">
+          <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">Loading community picks...</div>
+        </div>
+
+        <div id="perTeamList" style="display: none;"></div>
+      </div>
+    </div>
+
+    <div id="infoOverlay" class="team-sched-overlay" onclick="if (event.target === this) closeInfoModal()">
+      <div class="team-sched-modal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+        <div class="team-sched-header">
+          <div class="team-sched-title" id="infoTitle"></div>
+          <button type="button" class="team-sched-close" onclick="closeInfoModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="team-sched-body" id="infoBody"></div>
+      </div>
+    </div>
+
+    <div id="teamSchedOverlay" class="team-sched-overlay" onclick="if (event.target === this) closeTeamSchedule()">
+      <div class="team-sched-modal" role="dialog" aria-modal="true" aria-labelledby="teamSchedTitle">
+        <div class="team-sched-header">
+          <img id="teamSchedLogo" src="" alt="" style="display:none;" />
+          <div class="team-sched-title" id="teamSchedTitle"></div>
+          <button type="button" class="team-sched-close" onclick="closeTeamSchedule()" aria-label="Close">&times;</button>
+        </div>
+        <div class="team-sched-body" id="teamSchedBody"></div>
+      </div>
+    </div>
+
+    <a href="#pageTop" class="btn-float-top">&uarr; Top</a>
+    <a href="index.html" class="btn-float-sport">CFB</a>
+
+    <footer class="site-footer" id="pageBottom">
+      <div class="footer-container">
+        <p class="disclaimer">
+          Data is sourced directly from ESPN. Any discrepancies, delays, or stat corrections reflect upstream data from ESPN and will update automatically once ESPN publishes their official updates.
+        </p>
+
+        <div class="footer-links">
+          <a href="https://www.thatsecpodcast.com" target="_blank" rel="noopener noreferrer" data-site-attr="href:{website}" data-site-text="{websiteLabel}">thatsecpodcast.com</a>
+          <span class="divider">|</span>
+          <a href="https://discord.gg/XsPnGkxFSM" target="_blank" rel="noopener noreferrer" data-site-attr="href:{discord}">Join Our Discord</a>
+        </div>
+
+        <p class="contact-note" data-site-html="{contact}">
+          Issues, comments, or suggestions? Reach out to <strong>Liquid</strong> on Discord.
+        </p>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    // Betting lines use abbreviations ("ALA -7.5"), so this page also knows those.
+    addSecAliases({
+      alabama: ["ALA"],
+      auburn: ["AUB"],
+      florida: ["FLA"],
+      georgia: ["UGA"],
+      kentucky: ["UK", "KY"],
+      olemiss: ["MISS"],
+      mississippistate: ["MSST"],
+      missouri: ["MIZ"],
+      oklahoma: ["OU"],
+      southcarolina: ["SC"],
+      tennessee: ["TENN"],
+      texas: ["TEX"],
+      texasam: ["TA&M", "TAM"],
+      vanderbilt: ["VAN"]
+    });
+
+    // One dropdown option per week, with its Monday-Sunday dates.
+    (function buildWeekOptions() {
+      const md = d => d.toLocaleDateString([], { month: "numeric", day: "numeric" });
+      document.getElementById("mainWeekSelect").innerHTML = WEEK_NUMS.map(w => {
+        const { start, end } = weekRange(w);
+        return `<option value="${w}">Week ${w} · ${md(start)}–${md(end)}</option>`;
+      }).join("");
+    })();
+
+    // Team schedules highlight the week being shown.
+    scheduleOptions.currentWeek = () => activeWeek;
+
+    // A team logo, with the name as a fallback if the image fails to load.
+    // attrs (data-team-*) make it open that team's schedule when tapped.
+    function teamLogoHtml(name, logo, isSec, attrs = "") {
+      const fallbackClass = `matchup-team-fallback ${isSec ? "matchup-sec-team" : "matchup-other-team"}`;
+      return logo
+        ? `<img src="${logo}" alt="${name}" title="${name}" class="matchup-team-logo" ${attrs} onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="${fallbackClass}" ${attrs} style="display:none;">${name}</span>`
+        : `<span class="${fallbackClass}" ${attrs}>${name}</span>`;
+    }
+
+    // "Details" link that opens the game details popup.
+    function detailsLink(g) {
+      if (!g.eventId) return "";
+      const title = `${shortenPickDisplay(g.awayName)} @ ${shortenPickDisplay(g.homeName)}`.replace(/'/g, "\\'");
+      return `<button type="button" class="details-link" onclick="openGameDetails('${g.eventId}', '${title}')">Details</button>`;
+    }
+
+    const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const hasRealKickoff = g => g.kickoff && g.kickoff.getFullYear() < 9999;
+    const localDateKey = d => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+    // "TUESDAY 11/3" when game idx is the first of its calendar day, else null.
+    function dayDividerLabel(games, idx) {
+      const g = games[idx];
+      if (!hasRealKickoff(g)) return null;
+      const prev = games[idx - 1];
+      if (prev && hasRealKickoff(prev) && localDateKey(prev.kickoff) === localDateKey(g.kickoff)) return null;
+      return `${DAY_NAMES[g.kickoff.getDay()]} ${g.kickoff.toLocaleDateString([], { month: "numeric", day: "numeric" })}`;
+    }
+
+    function toggleHostGrid() {
+      const wrapper = document.getElementById("hostGridWrapper");
+      const arrow = document.getElementById("hostGridArrow");
+      if (!wrapper) return;
+      const isCollapsed = wrapper.classList.toggle("collapsed");
+      if (arrow) arrow.innerHTML = isCollapsed ? "&#9656;" : "&#9662;";
+    }
+
+    async function fetchEspnSchedule(week) {
+      try {
+        const { data } = await fetchEspnRaw(week);
+        if (!data || !data.events || data.events.length === 0) return [];
+
+        const games = data.events.map(ev => {
+          const comp = ev.competitions[0];
+          const home = comp.competitors.find(c => c.homeAway === "home");
+          const away = comp.competitors.find(c => c.homeAway === "away");
+          const homeName = cleanTeamName(home.team.shortDisplayName || home.team.name);
+          const awayName = cleanTeamName(away.team.shortDisplayName || away.team.name);
+          const homeLogo = teamLogoFrom(home.team);
+          const awayLogo = teamLogoFrom(away.team);
+          const awayIsSec = isSecTeam(awayName);
+          const homeIsSec = isSecTeam(homeName);
+
+          // teamA is always the SEC team (home if both are). Matchup keys,
+          // grading and host predicted scores use this order; the screen
+          // always shows the real "Away @ Home".
+          const teamAIsHome = isSecTeam(homeName);
+          const teamA = teamAIsHome ? homeName : awayName;
+          const teamB = teamAIsHome ? awayName : homeName;
+
+          const isFinal = comp.status && comp.status.type && comp.status.type.completed;
+          const isLive = (comp.status && comp.status.type && comp.status.type.state) === "in";
+
+          // Real final score in teamA/teamB order, for the "Perfect" badge.
+          let finalScoreA = null, finalScoreB = null;
+          if (isFinal) {
+            finalScoreA = parseInt((teamAIsHome ? home : away).score, 10);
+            finalScoreB = parseInt((teamAIsHome ? away : home).score, 10);
+          }
+
+          let winner = null;
+          if (isFinal) {
+            const winnerComp = comp.competitors.find(c => c.winner === true);
+            if (winnerComp) winner = cleanTeamName(winnerComp.team.shortDisplayName || winnerComp.team.name);
+          }
+
+          // Live or final score in away/home order, for the Per Team view.
+          let awayScore = null, homeScore = null;
+          if (isFinal || isLive) {
+            const aScore = parseInt(away.score, 10);
+            const hScore = parseInt(home.score, 10);
+            if (!isNaN(aScore)) awayScore = aScore;
+            if (!isNaN(hScore)) homeScore = hScore;
+          }
+
+          // AP rank (ESPN sends 99 when unranked) sits on the logo's corner,
+          // after the logo's text fallback so the fallback still works.
+          const rankSpan = r => (r >= 1 && r <= 25) ? `<span class="matchup-rank">#${r}</span>` : "";
+          const logoCell = (c, name, logo, isSec) =>
+            `<span class="matchup-logo-wrap">${teamLogoHtml(name, logo, isSec)}${rankSpan(c.curatedRank && c.curatedRank.current)}</span>`;
+          const matchupLabel = `<span class="matchup-logo-row">${logoCell(away, awayName, awayLogo, awayIsSec)}<span class="matchup-at-symbol">@</span>${logoCell(home, homeName, homeLogo, homeIsSec)}</span>`;
+
+          // One short line under the logos: kickoff time before the game,
+          // otherwise each team's score under its logo with the status between.
+          let detail = "TBD";
+          if (isFinal || isLive) {
+            const st = comp.status || {};
+            const status = isFinal
+              ? ((st.period || 0) > 2 ? "F/OT" : "Final")
+              : (/half/i.test((st.type && st.type.detail) || "") ? "Half" : ((st.period || 0) > 2 ? "OT" : `${st.period || 1}H`));
+            const scoreSpan = c => `<span class="matchup-score ${c.winner === true ? "won" : ""}">${c.score !== undefined ? c.score : ""}</span>`;
+            detail = `<span class="matchup-score-row">${scoreSpan(away)}<span class="matchup-status">${status}</span>${scoreSpan(home)}</span>`;
+          } else if (comp.date) {
+            // The date is on the day divider row, so just the time and TV:
+            // "7PM on SECN", "8:30PM on ESPN2".
+            const time = new Date(comp.date).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+              .replace(":00", "").replace(/\s+/g, "");
+            const tv = shortNetwork(comp);
+            detail = tv ? `${time} on ${tv}` : time;
+          }
+
+          let kickoff = new Date(8640000000000000);
+          if (comp.date) {
+            const kd = new Date(comp.date);
+            if (!isNaN(kd.getTime())) kickoff = kd;
+          }
+
+          const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "";
+          return {
+            matchupKey: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : buildMatchupKey(teamA, teamB),
+            teamA,
+            teamB,
+            matchupLabel,
+            rawOdds,
+            detail,
+            eventId: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : null,
+            winner,
+            isLive,
+            isFinal,
+            kickoff,
+            finalScoreA,
+            finalScoreB,
+            awayName,
+            homeName,
+            awayLogo,
+            homeLogo,
+            awayIsSec,
+            homeIsSec,
+            awayScore,
+            homeScore
+          };
+        });
+
+        return storeWeek(week, games);
+      } catch (e) {
+        console.error("ESPN schedule error:", e);
+        return [];
+      }
+    }
+
+    // The favorite named in the betting line ("ALA -7.5") and its spread, or null.
+    function lineFavorite(game) {
+      const rawOdds = game.rawOdds || "";
+      if (!rawOdds || rawOdds.toLowerCase().includes("even") || rawOdds.toLowerCase().includes("pk")) return null;
+      const match = rawOdds.match(/([A-Za-z&\s]+)\s+([+-]?\d+(?:\.\d+)?)/);
+      if (!match) return null;
+      const favNorm = normalizeTeam(match[1].trim());
+      const spread = parseFloat(match[2]);
+      for (const team of [game.teamA, game.teamB]) {
+        const norm = normalizeTeam(team);
+        if (norm === favNorm || favNorm.includes(norm) || norm.includes(favNorm)) return { team, spread };
+      }
+      return null;
+    }
+
+    // Season records for the podium.
+    function computeSeasonTotals() {
+      const cousinTotals = {};
+      let anyDecidedGames = false;
+
+      allWeekRows.forEach(row => {
+        if (row.is_host) return;
+        const score = gradePicks(row.picks, row.week_number);
+        if (score.correct > 0 || score.incorrect > 0) anyDecidedGames = true;
+        if (!cousinTotals[row.user_name]) cousinTotals[row.user_name] = { user_name: row.user_name, correct: 0, incorrect: 0 };
+        cousinTotals[row.user_name].correct += score.correct;
+        cousinTotals[row.user_name].incorrect += score.incorrect;
+      });
+
+      renderPodium(Object.values(cousinTotals), anyDecidedGames, { namesOpen: true, noun: SITE.players.many });
+    }
+
+    async function switchWeek(weekNum) {
+      activeWeek = weekNum;
+
+      const dropdown = document.getElementById("mainWeekSelect");
+      if (dropdown) dropdown.value = weekNum;
+
+      document.getElementById("weekHostTitle").textContent = `Week ${weekNum} Info Hub`;
+      document.getElementById("weekCousinsTitle").textContent = `The ${possessive(SITE.players.many)} Week ${weekNum} Picks`;
+
+      updateSubmitButton(weekNum, "hoopsmakepicks.html");
+
+      await renderActiveWeek();
+    }
+
+    // ---- Path to first ----
+    // A game where you and the leader picked the same team can't change the
+    // gap. Only games where your picks differ ("swing games") move it, by
+    // one each, so winning all of them is the best case.
+    //
+    // Season standing follows the podium: most correct, then fewest losses.
+    // Records are recomputed here because computeSeasonTotals() runs after
+    // this render.
+    function computePathsToFirst(games) {
+      const result = {};
+
+      const season = {};
+      allWeekRows.forEach(row => {
+        if (row.is_host) return;
+        const s = gradePicks(row.picks, row.week_number);
+        if (!season[row.user_name]) season[row.user_name] = { name: row.user_name, correct: 0, incorrect: 0 };
+        season[row.user_name].correct += s.correct;
+        season[row.user_name].incorrect += s.incorrect;
+      });
+
+      const everyone = Object.values(season);
+      if (!everyone.some(p => p.correct > 0 || p.incorrect > 0)) return result;
+
+      const better = (a, b) => a.correct !== b.correct ? a.correct > b.correct : a.incorrect < b.incorrect;
+      let top = everyone[0];
+      everyone.forEach(p => { if (better(p, top)) top = p; });
+      const leaders = everyone.filter(p => p.correct === top.correct && p.incorrect === top.incorrect);
+      const leaderNames = new Set(leaders.map(l => l.name));
+
+      // Best record outside the leader group, for "up by".
+      let second = null;
+      everyone.filter(p => !leaderNames.has(p.name)).forEach(p => { if (!second || better(p, second)) second = p; });
+
+      const openGames = games.filter(g => !winnerOf(activeWeek, g));
+      const weekPicksFor = (name) => {
+        const row = allWeekRows.find(r => !r.is_host && r.week_number === activeWeek && r.user_name === name);
+        return row ? parseUserPicks(row.picks) : null;
+      };
+
+      // Outcomes of winning every swing game, worst to best.
+      const OUTCOME_RANK = { short: 0, evenWins: 1, tie: 2, pass: 3 };
+
+      everyone.forEach(p => {
+        if (leaderNames.has(p.name)) {
+          if (leaders.length > 1) {
+            result[p.name] = { isLeader: true, chip: "Tied 1st", line: `Tied for first with ${leaders.length - 1} other${leaders.length === 2 ? "" : "s"}.` };
+          } else if (!second) {
+            result[p.name] = { isLeader: true, chip: "1st", line: "In first." };
+          } else {
+            const lead = p.correct - second.correct;
+            result[p.name] = { isLeader: true, chip: "1st", line: lead > 0 ? `In first, up by ${lead}.` : "In first on fewer losses." };
+          }
+          return;
+        }
+
+        // Measured against whichever leader is hardest to pass.
+        const myPicks = weekPicksFor(p.name);
+        let worst = null;
+
+        leaders.forEach(L => {
+          const theirPicks = weekPicksFor(L.name);
+          const swingGames = [];
+          let theyTakeLoss = 0;
+
+          if (myPicks) {
+            openGames.forEach(g => {
+              const mine = getMatchedUserPick(myPicks, g);
+              if (!mine) return;
+              const theirs = theirPicks ? getMatchedUserPick(theirPicks, g) : null;
+              if (theirs && normalizeTeam(theirs) === normalizeTeam(mine)) return;
+              swingGames.push(g);
+              if (theirs) theyTakeLoss++;
+            });
+          }
+
+          const winsBack = L.correct - p.correct;
+          const s = swingGames.length;
+          const lossDiff = p.incorrect - (L.incorrect + theyTakeLoss);
+          let outcome;
+          if (s > winsBack) outcome = "pass";
+          else if (s < winsBack) outcome = "short";
+          else if (lossDiff < 0) outcome = "pass";
+          else if (lossDiff === 0) outcome = "tie";
+          else outcome = "evenWins";
+
+          if (!worst || OUTCOME_RANK[outcome] < OUTCOME_RANK[worst.outcome] ||
+              (outcome === worst.outcome && s < worst.swingGames.length)) {
+            worst = { leader: L, swingGames, winsBack, outcome, leaderPicked: !!theirPicks };
+          }
+        });
+
+        const { leader, swingGames, winsBack, outcome, leaderPicked } = worst;
+        const who = leaders.length === 1 ? leader.name
+          : leaders.length === 2 ? `${leaders[0].name} and ${leaders[1].name}`
+          : "first";
+        const s = swingGames.length;
+        const gamesWord = n => `${n} swing game${n === 1 ? "" : "s"}`;
+        const winAll = s === 1 ? "it" : s === 2 ? "both" : `all ${s}`;
+        const head = winsBack > 0 ? `${winsBack} back of ${who}` : `Even on wins with ${who}`;
+
+        let line;
+        if (!myPicks || openGames.length === 0) {
+          line = winsBack > 0 ? `${head}.` : `${head}, behind on losses.`;
+        } else if (!leaderPicked && leaders.length === 1) {
+          line = `${head}. ${leader.name} hasn't picked this week yet.`;
+        } else if (s === 0) {
+          line = `${head}. No swing games left this week. Your open picks all match.`;
+        } else if (outcome === "pass") {
+          line = `${head} · ${gamesWord(s)} left. Win ${winAll} and you take first.`;
+        } else if (outcome === "tie") {
+          line = `${head} · ${gamesWord(s)} left. Win ${winAll} and you tie for first.`;
+        } else if (outcome === "evenWins") {
+          line = `${head} · ${gamesWord(s)} left. Win ${winAll} and you pull even on wins, but ${leaders.length === 1 ? leader.name : "first"} still has fewer losses.`;
+        } else {
+          line = `${head} · only ${gamesWord(s)} left this week. Best case: ${winsBack - s} back.`;
+        }
+
+        result[p.name] = {
+          isLeader: false,
+          chip: winsBack > 0 ? `${winsBack} back` : "Even on wins",
+          line,
+          swingKeys: new Set(swingGames.map(g => g.matchupKey))
+        };
+      });
+
+      return result;
+    }
+
+    // Week Info Hub: this week's games, two to a row, under a divider for
+    // each new day.
+    function renderGamesGrid(games) {
+      const grid = document.getElementById("hostGridWrapper");
+      if (games.length === 0) {
+        grid.innerHTML = `<div class="hoops-empty">No games scheduled for Week ${activeWeek} yet.</div>`;
+        return;
+      }
+      const liveMap = liveGames[activeWeek] || {};
+      grid.innerHTML = games.map((g, idx) => {
+        const divider = dayDividerLabel(games, idx);
+        const live = liveMap[g.matchupKey] || liveMap[g.id];
+        return `
+          ${divider ? `<div class="hoops-day">${divider}</div>` : ""}
+          <div class="hoops-game matchup-cell ${live ? "live-game-row" : ""}">
+            ${g.matchupLabel}
+            ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ""}
+            ${detailsLink(g)}
+          </div>`;
+      }).join("");
+    }
+
+    // Each cousin's season so far: record by week, Lock of the Week record,
+    // and the teams they've done best and worst picking (3+ decided picks).
+    function computeSeasonBreakdowns() {
+      const out = {};
+      allWeekRows.forEach(row => {
+        if (row.is_host) return;
+        const b = out[row.user_name] || (out[row.user_name] = { weeks: [], lockC: 0, lockI: 0, teams: {} });
+        const score = gradePicks(row.picks, row.week_number);
+        if (score.correct + score.incorrect > 0) b.weeks.push({ week: row.week_number, c: score.correct, i: score.incorrect });
+        b.lockC += score.lockCorrect;
+        b.lockI += score.lockIncorrect;
+
+        const picks = parseUserPicks(row.picks);
+        (weekSchedules[row.week_number] || []).forEach(g => {
+          const winner = winnerOf(row.week_number, g);
+          const pick = getMatchedUserPick(picks, g);
+          if (!winner || !pick) return;
+          const key = normalizeTeam(pick);
+          const t = b.teams[key] || (b.teams[key] = { name: pick, w: 0, l: 0 });
+          if (key === normalizeTeam(winner)) t.w++;
+          else t.l++;
+        });
+      });
+
+      Object.values(out).forEach(b => {
+        b.weeks.sort((x, y) => x.week - y.week);
+        const pct = t => t.w / (t.w + t.l);
+        const eligible = Object.values(b.teams).filter(t => t.w + t.l >= 3);
+        b.best = eligible.slice().sort((x, y) => (pct(y) - pct(x)) || (y.w - x.w))[0] || null;
+        const worst = eligible.slice().sort((x, y) => (pct(x) - pct(y)) || (y.l - x.l))[0] || null;
+        b.worst = worst && worst !== b.best && worst.l > 0 ? worst : null;
+      });
+      return out;
+    }
+
+    function seasonBoxHtml(b) {
+      if (!b || b.weeks.length === 0) return "";
+      const facts = [];
+      if (b.lockC + b.lockI > 0) facts.push(`Locks: ${b.lockC}-${b.lockI}`);
+      if (b.best) facts.push(`Best pick: ${shortenPickDisplay(b.best.name)} ${b.best.w}-${b.best.l}`);
+      if (b.worst) facts.push(`Toughest: ${shortenPickDisplay(b.worst.name)} ${b.worst.w}-${b.worst.l}`);
+      return `
+        <div class="season-box">
+          <span class="path-line-label">Season So Far</span>
+          <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">W${w.week} ${w.c}-${w.i}</span>`).join("")}</div>
+          ${facts.length ? `<div>${facts.join(" · ")}</div>` : ""}
+        </div>`;
+    }
+
+    // Name saved on this device when picks were last submitted.
+    function savedUserName() {
+      try { return localStorage.getItem("secPickEmUserName") || ""; } catch (e) { return ""; }
+    }
+
+    // Opens and scrolls to the saved name's row for the week being shown.
+    function jumpToMe() {
+      const name = savedUserName();
+      const note = document.getElementById("jumpNote");
+      const squash = s => s.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+      document.getElementById("cousinSearchInput").value = "";
+      filterCousinCards();
+
+      const card = [...document.querySelectorAll("#cousinsList .cousin-item")]
+        .find(el => squash(el.dataset.name || "") === squash(name));
+      if (!card) {
+        note.textContent = `No Week ${activeWeek} picks from ${name} yet.`;
+        note.style.display = "block";
+        return;
+      }
+      note.style.display = "none";
+      document.querySelectorAll("#cousinsList .cousin-item.me").forEach(el => el.classList.remove("me"));
+      card.classList.add("me");
+      card.querySelector(".cousin-picks-body").classList.add("open");
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
+      const jumpBtn = document.getElementById("jumpToMeBtn");
+      if (jumpBtn) jumpBtn.style.display = savedUserName() ? "" : "none";
+      const jumpNote = document.getElementById("jumpNote");
+      if (jumpNote) jumpNote.style.display = "none";
+
+      // Correct picks, then Lock of the Week hits, then name.
+      // Everyone on the same number of wins shares a rank, with no gaps.
+      cousinRows.forEach(c => c.score = gradePicks(c.picks, activeWeek));
+      cousinRows.sort((a, b) => {
+        if (b.score.correct !== a.score.correct) return b.score.correct - a.score.correct;
+        if (isLockActiveThisWeek && (b.score.lockCorrect !== a.score.lockCorrect)) return b.score.lockCorrect - a.score.lockCorrect;
+        return a.user_name.localeCompare(b.user_name);
+      });
+
+      assignWeeklyRanks(cousinRows);
+
+      const listContainer = document.getElementById("cousinsList");
+      listContainer.innerHTML = cousinRows.length === 0
+        ? `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No picks submitted for Week ${activeWeek} yet.</div>`
+        : "";
+
+      const paths = computePathsToFirst(games);
+      const seasons = computeSeasonBreakdowns();
+
+      cousinRows.forEach(c => {
+        const item = document.createElement("div");
+        item.className = "cousin-item";
+        item.dataset.name = c.user_name;
+        const picks = parseUserPicks(c.picks);
+        const hitLotw = isLockActiveThisWeek && (c.score.lockCorrect > 0);
+        const path = paths[c.user_name];
+        const swingKeys = (path && path.swingKeys) || new Set();
+
+        item.innerHTML = `
+          <div class="cousin-header" onclick="this.nextElementSibling.classList.toggle('open')">
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+              <span class="rank-badge ${c.rankClass}">#${c.rank}</span>
+              <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
+              ${hitLotw ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
+              <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">${c.score.correct}-${c.score.incorrect}</span>
+              ${path ? `<span class="path-chip ${path.isLeader ? 'leader' : ''}">${path.chip}</span>` : ''}
+            </div>
+            <span style="color: var(--accent-gold); font-weight: bold;">+</span>
+          </div>
+          <div class="cousin-picks-body">
+            ${path ? `<div class="path-line ${path.isLeader ? 'leader' : ''}"><span class="path-line-label">Path to First</span>${path.line}</div>` : ''}
+            ${seasonBoxHtml(seasons[c.user_name])}
+            ${games.map(g => {
+              const uPick = getMatchedUserPick(picks, g) || "No Pick";
+              const isCousinLock = isLockActiveThisWeek && isLockMatch(picks, g);
+              return `
+                <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
+                  <span class="pick-line-matchup">${g.matchupLabel}</span>
+                  <span class="${getPickClass(uPick, g, activeWeek)}">
+                    ${swingKeys.has(g.matchupKey) ? '<span class="swing-badge">SWING</span>' : ''}
+                    ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
+                    ${shortenPickDisplay(uPick)}
+                  </span>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+        listContainer.appendChild(item);
+      });
+    }
+
+    // The stat cards above the cousins' picks.
+    function renderWeekStats(games, cousinRows, isLockActiveThisWeek) {
+      if (cousinRows.length === 0 || games.length === 0) {
+        setText("statChalkMeter", "--");
+        setText("statChalkMeterDesc", "Picked the Favorite");
+        setText("statTossUp", "--");
+        setText("statTossUpDesc", "Closest Split");
+        setText("statLock", "--");
+        setText("statLockDesc", "100% Consensus");
+        return;
+      }
+
+      const lockCounts = {};
+      let totalLocksPlaced = 0, locksWon = 0, locksLost = 0, locksPending = 0;
+      let chalkTotal = 0, chalkPicks = 0;
+
+      cousinRows.forEach(c => {
+        const picks = parseUserPicks(c.picks);
+        games.forEach(g => {
+          const pick = getMatchedUserPick(picks, g);
+          if (!pick) return;
+
+          // Chalk Meter: share of picks that went with the betting favorite.
+          const fav = lineFavorite(g);
+          if (fav) {
+            chalkTotal++;
+            if (normalizeTeam(pick) === normalizeTeam(fav.team)) chalkPicks++;
+          }
+
+          if (isLockActiveThisWeek && isLockMatch(picks, g)) {
+            totalLocksPlaced++;
+            lockCounts[pick] = (lockCounts[pick] || 0) + 1;
+            const winner = winnerOf(activeWeek, g);
+            if (!winner) locksPending++;
+            else if (normalizeTeam(pick) === normalizeTeam(winner)) locksWon++;
+            else locksLost++;
+          }
+        });
+      });
+
+      if (chalkTotal > 0) {
+        const chalkPct = Math.round((chalkPicks / chalkTotal) * 100);
+        setText("statChalkMeter", `${chalkPct}%`);
+        setText("statChalkMeterDesc", `${100 - chalkPct}% Picked Upsets`);
+      } else {
+        setText("statChalkMeter", "--");
+        setText("statChalkMeterDesc", "No Lines Available");
+      }
+
+      // Votes per team; the most-picked team is the Consensus card.
+      let topConsensusTeam = "--", maxConsensusVotes = 0;
+      const teamVotes = {};
+      games.forEach(g => {
+        [g.teamA, g.teamB].forEach(team => {
+          const count = cousinRows.filter(c => {
+            const userPick = getMatchedUserPick(parseUserPicks(c.picks), g);
+            return userPick && normalizeTeam(userPick) === normalizeTeam(team);
+          }).length;
+          teamVotes[team] = count;
+          if (count > maxConsensusVotes) {
+            maxConsensusVotes = count;
+            topConsensusTeam = team;
+          }
+        });
+      });
+      setText("statLock", topConsensusTeam);
+      setText("statLockDesc", `${Math.min(Math.round((maxConsensusVotes / cousinRows.length) * 100) || 0, 100)}% Consensus`);
+
+      // Toss-Up: the game the cousins are most evenly split on.
+      let tossUpGame = null, tossUpDiff = Infinity, tossUpCountA = 0, tossUpCountB = 0;
+      games.forEach(g => {
+        const countA = teamVotes[g.teamA] || 0;
+        const countB = teamVotes[g.teamB] || 0;
+        if (countA + countB === 0) return;
+        const diff = Math.abs(countA - countB);
+        if (diff < tossUpDiff) {
+          tossUpDiff = diff;
+          tossUpGame = g;
+          tossUpCountA = countA;
+          tossUpCountB = countB;
+        }
+      });
+      if (tossUpGame) {
+        const pctA = Math.round((tossUpCountA / (tossUpCountA + tossUpCountB)) * 100);
+        setText("statTossUp", `${pctA}-${100 - pctA}`);
+        setText("statTossUpDesc", `${shortenPickDisplay(tossUpGame.teamA)} vs ${shortenPickDisplay(tossUpGame.teamB)}`);
+      } else {
+        setText("statTossUp", "--");
+        setText("statTossUpDesc", "Closest Split");
+      }
+
+      const lockRow = document.getElementById("lockShowcaseRow");
+      if (!isLockActiveThisWeek) {
+        if (lockRow) lockRow.style.display = "none";
+        return;
+      }
+      if (lockRow) lockRow.style.display = "grid";
+
+      let topLockedTeam = "--", maxLocks = 0;
+      Object.entries(lockCounts).forEach(([team, count]) => {
+        if (count > maxLocks) {
+          maxLocks = count;
+          topLockedTeam = team;
+        }
+      });
+      setText("statPeoplesLock", topLockedTeam);
+      setText("statPeoplesLockDesc", totalLocksPlaced > 0 ? `${maxLocks} Locks (${Math.round((maxLocks / totalLocksPlaced) * 100)}%)` : "No Locks Placed");
+
+      const decidedLocks = locksWon + locksLost;
+      if (decidedLocks > 0) {
+        setText("statLockAccuracy", `${Math.round((locksWon / decidedLocks) * 100)}%`);
+        setText("statLockAccuracyDesc", `${locksWon}-${locksLost}, ${locksPending} pending`);
+      } else {
+        setText("statLockAccuracy", totalLocksPlaced > 0 ? `${totalLocksPlaced} Locked` : "--");
+        setText("statLockAccuracyDesc", totalLocksPlaced > 0 ? "Awaiting Results" : "No Locks Placed");
+      }
+
+      // Boldest Lock: the SEC underdog locked with the most points against it.
+      let boldestTeam = null, boldestSpread = 0;
+      Object.keys(lockCounts).forEach(team => {
+        if (!isSecTeam(team)) return;
+        const game = games.find(g => normalizeTeam(g.teamA) === normalizeTeam(team) || normalizeTeam(g.teamB) === normalizeTeam(team));
+        const fav = game && lineFavorite(game);
+        if (!fav) return;
+        // Positive means the team is getting that many points.
+        const spread = normalizeTeam(team) === normalizeTeam(fav.team) ? fav.spread : Math.abs(fav.spread);
+        if (spread > 0 && spread > boldestSpread) {
+          boldestSpread = spread;
+          boldestTeam = team;
+        }
+      });
+
+      if (boldestTeam) {
+        setText("statLockBattle", `${shortenPickDisplay(boldestTeam)} (+${boldestSpread})`);
+        setText("statLockBattleDesc", `${lockCounts[boldestTeam]} lock${lockCounts[boldestTeam] === 1 ? '' : 's'}`);
+      } else {
+        setText("statLockBattle", "--");
+        setText("statLockBattleDesc", totalLocksPlaced > 0 ? "No Underdog Locks" : "No Locks Placed");
+      }
+    }
+
+    async function renderActiveWeek() {
+      if (!weekSchedules[activeWeek] || weekSchedules[activeWeek].length === 0) {
+        await fetchEspnSchedule(activeWeek);
+      }
+
+      const games = weekSchedules[activeWeek] || [];
+      const rows = allWeekRows.filter(r => r.week_number === activeWeek);
+      const cousinRows = rows.filter(r => r.is_host !== true);
+      const isLockActiveThisWeek = isLockWeek(activeWeek);
+
+      setText("entryPill", `${cousinRows.length} Entries`);
+      renderGamesGrid(games);
+      renderCousinList(games, cousinRows, isLockActiveThisWeek);
+      renderPerTeamView(games, cousinRows);
+      renderWeekStats(games, cousinRows, isLockActiveThisWeek);
+      computeSeasonTotals();
+    }
+
+    function toggleTierExpand(gridId) {
+      const grid = document.getElementById(gridId);
+      if (!grid) return;
+      const isOpen = grid.classList.toggle("open");
+      const arrow = grid.parentElement.querySelector(".tier-toggle-arrow");
+      if (arrow) arrow.innerHTML = isOpen ? "&minus;" : "+";
+    }
+
+    // Ignores case, spaces and a leading "@", like the name check on makepicks.html.
+    function filterCousinCards() {
+      const squash = s => s.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+      const query = squash(document.getElementById("cousinSearchInput").value);
+      document.querySelectorAll("#cousinsList .cousin-item").forEach(card => {
+        const name = (card.dataset.name || "").toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+        card.style.display = (!query || name.includes(query)) ? "" : "none";
+      });
+    }
+
+    // ---- Per Team view: the same picks grouped by game and team ----
+    function buildPerTeamSideHtml(logoHtml, teamName, pickerCount, score, isFinal, isWinner) {
+      let scoreHtml = "";
+      if (score !== null && score !== undefined) {
+        scoreHtml = isFinal
+          ? `<span class="per-team-score ${isWinner ? 'per-team-result-win' : 'per-team-result-loss'}">${score} ${isWinner ? '&#10003;' : '&#10007;'}</span>`
+          : `<span class="per-team-score">${score}</span>`;
+      }
+
+      return `
+        <span class="per-team-header-side">
+          <span class="per-team-header-namerow">
+            ${logoHtml}
+            <span class="per-team-header-name">${teamName}</span>
+          </span>
+          ${scoreHtml}
+          <span class="per-team-header-count">Picked ${pickerCount} time${pickerCount === 1 ? '' : 's'}</span>
+        </span>
+      `;
+    }
+
+    // One element per name so the CSS columns can balance them.
+    function buildPerTeamNamesHtml(names) {
+      if (names.length === 0) return '<span style="color: var(--text-muted);">Nobody</span>';
+      return names.map(n => `<div class="per-team-name-item">${n}</div>`).join('');
+    }
+
+    function renderPerTeamView(games, cousinRows) {
+      const container = document.getElementById("perTeamList");
+      if (!container) return;
+
+      if (games.length === 0) {
+        container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No games scheduled for Week ${activeWeek} yet.</div>`;
+        return;
+      }
+
+      container.innerHTML = games.map(g => {
+        const awayPickers = [];
+        const homePickers = [];
+        const awayNorm = normalizeTeam(g.awayName);
+        const homeNorm = normalizeTeam(g.homeName);
+
+        cousinRows.forEach(c => {
+          const pick = getMatchedUserPick(parseUserPicks(c.picks), g);
+          if (!pick) return;
+          const pickNorm = normalizeTeam(pick);
+          if (pickNorm === awayNorm) awayPickers.push(c.user_name);
+          else if (pickNorm === homeNorm) homePickers.push(c.user_name);
+        });
+
+        awayPickers.sort((a, b) => a.localeCompare(b));
+        homePickers.sort((a, b) => a.localeCompare(b));
+
+        const hasScores = g.isFinal && g.awayScore !== null && g.homeScore !== null;
+        const awaySideHtml = buildPerTeamSideHtml(teamLogoHtml(g.awayName, g.awayLogo, g.awayIsSec), shortenPickDisplay(g.awayName), awayPickers.length, g.awayScore, g.isFinal, hasScores && g.awayScore > g.homeScore);
+        const homeSideHtml = buildPerTeamSideHtml(teamLogoHtml(g.homeName, g.homeLogo, g.homeIsSec), shortenPickDisplay(g.homeName), homePickers.length, g.homeScore, g.isFinal, hasScores && g.homeScore > g.awayScore);
+
+        return `
+          <div class="per-team-game">
+            <div class="per-team-header" onclick="this.nextElementSibling.classList.toggle('open')">
+              <div class="per-team-header-matchup">
+                ${awaySideHtml}
+                <span class="per-team-header-at">AT</span>
+                ${homeSideHtml}
+              </div>
+              <span class="per-team-header-expand-icon">+</span>
+            </div>
+            <div class="per-team-body">
+              <div class="per-team-columns">
+                <div class="per-team-col">
+                  <div class="per-team-names">${buildPerTeamNamesHtml(awayPickers)}</div>
+                </div>
+                <div class="per-team-col">
+                  <div class="per-team-names">${buildPerTeamNamesHtml(homePickers)}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function toggleAllPerTeamCards(expand) {
+      document.querySelectorAll(".per-team-body").forEach(b => b.classList.toggle("open", expand));
+    }
+
+    let picksViewMode = "cousin";
+    function togglePicksView() {
+      picksViewMode = picksViewMode === "cousin" ? "team" : "cousin";
+      const team = picksViewMode === "team";
+      document.getElementById("cousinsList").style.display = team ? "none" : "block";
+      document.getElementById("perTeamList").style.display = team ? "block" : "none";
+      document.getElementById("cousinViewControls").style.display = team ? "none" : "flex";
+      document.getElementById("teamViewControls").style.display = team ? "flex" : "none";
+      const searchWrapper = document.getElementById("cousinSearchWrapper");
+      if (searchWrapper) searchWrapper.style.display = team ? "none" : "block";
+    }
+
+    // A week runs Monday through Sunday, so the next week takes over at
+    // midnight Monday after the last game.
+    startLeaderboard(lastTip => nextDayStart(lastTip, 1));
+  </script>
+</body>
+</html>
+
