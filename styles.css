@@ -2083,7 +2083,7 @@ input[type="password"].form-field {
 
 .lock-countdown {
   position: sticky;
-  top: 0;
+  top: 2.9rem;
   z-index: 50;
   text-align: center;
   font-size: 0.82rem;
@@ -3055,4 +3055,36 @@ a.btn-submit.bk-cta {
 .sched-pick-team img,
 .team-sched-header img {
   filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.25));
+}
+
+/* The site menu pinned to the top of every page. */
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  gap: 0.35rem;
+  margin: -1.5rem -1rem 1rem;
+  padding: 0.45rem 1rem;
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.site-nav a {
+  flex: 1;
+  padding: 0.45rem 0.3rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.site-nav a.active {
+  border-color: var(--accent-gold);
+  background: var(--accent-gold);
+  color: var(--bg-main);
 }
