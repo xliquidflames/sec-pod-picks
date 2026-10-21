@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" class="page-bracket">
+<head>
+  <link rel="icon" type="image/png" href="logo.png" data-site-attr="href:{logo}" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-site-text="Bracket Challenge - {name}">Bracket Challenge - That SEC Podcast</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js?v=7"></script>
+  <script src="common.js?v=7"></script>
+  <script src="hoopsMMBracket.js?v=7"></script>
+  <link rel="stylesheet" href="styles.css?v=7" />
+</head>
+<body>
+
+  <div class="container" id="pageTop">
+    <header>
+      <div class="logo-container">
+        <img src="logo.png" alt="That SEC Podcast" class="main-logo" data-site-attr="src:{logo}; alt:{name}" />
+      </div>
+      <div class="main-title-badge" id="bracketHeadline">Bracket Challenge</div>
+    </header>
+
+    <div class="card">
+      <div class="section-title-bar">
+        <h2 class="section-title">Standings</h2>
+        <span class="bk-count" id="entryCount"></span>
+      </div>
+      <div class="bk-state" id="stageLine">Loading the tournament...</div>
+      <a href="hoopsMMPicks.html" class="btn-submit bk-cta" id="fillOutBtn" style="display: none;">Fill Out Your Bracket &rarr;</a>
+      <div id="standingsList"></div>
+    </div>
+
+    <div class="card" id="realBracketCard" style="display: none;">
+      <div class="section-title-bar">
+        <h2 class="section-title">Tournament Results</h2>
+      </div>
+      <div id="realTabsWrap"></div>
+    </div>
+
+    <footer class="site-footer" id="pageBottom">
+      <div class="footer-container">
+        <p class="disclaimer">
+          Data is sourced directly from ESPN. Any discrepancies, delays, or stat corrections reflect upstream data from ESPN and will update automatically once ESPN publishes their official updates.
+        </p>
+        <div class="footer-links">
+          <a href="index.html">Weekly Pick'em</a>
+          <span class="divider">|</span>
+          <a href="https://discord.gg/XsPnGkxFSM" target="_blank" rel="noopener noreferrer" data-site-attr="href:{discord}">Join Our Discord</a>
+        </div>
+        <p class="contact-note" data-site-html="{contact}">
+          Issues, comments, or suggestions? Reach out to <strong>Liquid</strong> on Discord.
+        </p>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const season = SITE.bracketSeason;
+    let T = null;
+
+    function entryRowHtml(e, i) {
+      const champ = e.picks.CH;
+      const champStatus = pickStatus(T, "CH", champ);
+      const rounds = [1, 2, 3, 4, 5, 6].map(r => {
+        const total = 64 >> r;
+        return `<span class="bk-round-chip" title="${ROUND_NAMES[r]}"><b>${ROUND_SHORT[r]}</b> ${e.score.perRound[r]}/${total}</span>`;
+      }).join("");
+      return `
+        <div class="cousin-item bk-entry">
+          <div class="cousin-header" data-entry="${i}">
+            <div class="bk-entry-main">
+              <span class="rank-badge ${["", "rank-gold", "rank-silver", "rank-bronze"][e.rank] || ""}">${e.tied ? "T" : "#"}${e.rank}</span>
+              <span class="bk-entry-name">${e.user_name}</span>
+            </div>
+            <div class="bk-entry-score">
+              <span class="bk-points">${e.score.points}</span>
+              <span class="bk-max">max ${e.score.max}</span>
+            </div>
+          </div>
+          <div class="cousin-picks-body" id="entryBody${i}">
+            <div class="bk-entry-summary">
+              <div class="bk-champ">Champion pick ${teamChip(T, champ, { status: champStatus })}</div>
+              <div class="bk-round-chips">${rounds}</div>
+              <div class="bk-tiebreak">Tiebreaker: ${e.tiebreaker ?? "-"}${T.finalTotal !== null ? ` (actual ${T.finalTotal})` : ""}</div>
+            </div>
+            <div class="bk-entry-tabs" id="entryTabsWrap${i}"></div>
+          </div>
+        </div>`;
+    }
+
+    // Points, then (once the title game is over) closest tiebreaker.
+    // Entries still level share a rank.
+    function rankEntries(entries) {
+      const tieGap = e => T.finalTotal === null || e.tiebreaker === null ? 0 : Math.abs(e.tiebreaker - T.finalTotal);
+      entries.sort((a, b) => (b.score.points - a.score.points) || (tieGap(a) - tieGap(b)) || (b.score.max - a.score.max) || a.user_name.localeCompare(b.user_name));
+      entries.forEach((e, i) => {
+        const prev = entries[i - 1];
+        e.rank = prev && prev.score.points === e.score.points && tieGap(prev) === tieGap(e) ? prev.rank : i + 1;
+      });
+      entries.forEach(e => { e.tied = entries.some(o => o !== e && o.rank === e.rank); });
+    }
+
+    async function init() {
+      document.getElementById("bracketHeadline").textContent = `${season} Bracket Challenge`;
+      const stage = document.getElementById("stageLine");
+      const list = document.getElementById("standingsList");
+
+      let rows = [];
+      try {
+        const [tournament, { data, error }] = await Promise.all([
+          loadTournament(season),
+          supabaseClient.from(BRACKET_TABLE).select("*").eq("season", season)
+        ]);
+        T = tournament;
+        if (error) throw error;
+        rows = data || [];
+      } catch (err) {
+        console.error("Bracket load error:", err);
+        stage.textContent = "Couldn't load the bracket right now. Please try again in a bit.";
+        return;
+      }
+
+      document.getElementById("entryCount").textContent = `${rows.length} ${rows.length === 1 ? "Bracket" : "Brackets"}`;
+      stage.textContent = tournamentStage(T);
+
+      if (!T.ready) return;
+
+      // Before tip-off, show who's in but keep everyone's picks hidden.
+      if (!isLocked(T)) {
+        const lock = T.lockTime.toLocaleString([], { weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
+        stage.innerHTML = `Brackets are open until <strong>${lock}</strong>. Picks stay hidden until then.`;
+        document.getElementById("fillOutBtn").style.display = "";
+        list.innerHTML = rows.length
+          ? `<div class="bk-names">${rows.map(r => `<span class="bk-name-chip">${r.user_name}</span>`).join("")}</div>`
+          : `<div class="bk-state">No brackets yet. Be the first!</div>`;
+        return;
+      }
+
+      const entries = rows.map(r => ({
+        user_name: r.user_name,
+        picks: typeof r.picks === "string" ? JSON.parse(r.picks) : (r.picks || {}),
+        tiebreaker: r.tiebreaker ?? null
+      }));
+      entries.forEach(e => { e.score = scoreBracket(T, e.picks); });
+      rankEntries(entries);
+
+      list.innerHTML = entries.length ? entries.map(entryRowHtml).join("") : `<div class="bk-state">No brackets were submitted.</div>`;
+
+      // Each entry's bracket is drawn the first time it's opened.
+      list.addEventListener("click", ev => {
+        const header = ev.target.closest(".cousin-header[data-entry]");
+        if (!header) return;
+        const i = header.dataset.entry;
+        const body = document.getElementById(`entryBody${i}`);
+        body.classList.toggle("open");
+        const wrap = document.getElementById(`entryTabsWrap${i}`);
+        if (body.classList.contains("open") && !wrap.dataset.ready) {
+          wrap.dataset.ready = "1";
+          wrap.innerHTML = bracketTabsHtml(T, `e${i}`);
+          wireBracketTabs(`e${i}`, (container, tab) => renderEntryTab(T, entries[i].picks, container, tab));
+        }
+      });
+
+      // The real bracket so far.
+      document.getElementById("realBracketCard").style.display = "";
+      document.getElementById("realTabsWrap").innerHTML = bracketTabsHtml(T, "real");
+      wireBracketTabs("real", (container, tab) => renderEntryTab(T, T.results, container, tab, true));
+    }
+
+    init();
+  </script>
+</body>
+</html>
