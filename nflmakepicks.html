@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Make Picks - NFL Pick'em</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=5"></script>
-  <script src="common.js?v=5"></script>
-  <script src="nfl.js?v=5"></script>
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <script src="config.js?v=36"></script>
+  <script src="common.js?v=36"></script>
+  <script src="nfl.js?v=6"></script>
+  <link rel="stylesheet" href="styles.css?v=36" />
 </head>
 <body>
 
@@ -95,6 +95,8 @@
               matchupKey: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : buildMatchupKey(awayName, homeName),
               teamA: awayName,
               teamB: homeName,
+              logoA: nflLogoHtml(away.team, "btn-pick-logo"),
+              logoB: nflLogoHtml(home.team, "btn-pick-logo"),
               kickoff,
               detail: `${time} | ${odds} | ${venue}`,
               playedDetail: `Played: ${time} | ${venue}`,
@@ -150,6 +152,7 @@
             <div class="game-header-row">
               <span class="game-title">Game ${g.id}</span>
             </div>
+            <div class="final-logo-row">${g.logoA}<span class="pick-grid-at">@</span>${g.logoB}</div>
             <div class="game-final-message">Game has been played. ${resultText} Picking this game is locked.</div>
             ${g.playedDetail ? `<span class="game-detail">${g.playedDetail}</span>` : ""}
           `;
@@ -161,9 +164,9 @@
               <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">Lock Of\nThe Week</button>
             </div>
             <div class="pick-grid">
-              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${g.teamA}</button>
+              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${g.logoA}<span class="btn-pick-name">${g.teamA}</span></button>
               <span class="pick-grid-at">@</span>
-              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${g.teamB}</button>
+              <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${g.logoB}<span class="btn-pick-name">${g.teamB}</span></button>
             </div>
             ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
           `;
