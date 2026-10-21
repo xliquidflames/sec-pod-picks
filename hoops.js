@@ -4,7 +4,9 @@
 
 // A pick'em week runs Monday through Sunday, starting with the season's
 // opening Monday. Week 19 ends the Sunday of the SEC Tournament final.
-// ESPN calls the 2026-27 season "2027".
+// ESPN calls the 2026-27 season "2027". Requests ask for the regular season
+// (seasontype=2) explicitly; otherwise, during ESPN's preseason, team
+// schedules come back empty.
 const HOOPS_SEASON = 2027;
 const HOOPS_FIRST_MONDAY = new Date(2026, 10, 2); // Mon Nov 2, 2026
 const TOTAL_WEEKS = 19;
@@ -28,7 +30,7 @@ const ymd = d => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}
 // Every game with an SEC team (group 23) that week, conference or not.
 const scoreboardUrl = week => {
   const { start, end } = weekRange(week);
-  return `${ESPN_HOOPS}/scoreboard?groups=23&dates=${ymd(start)}-${ymd(end)}&limit=300`;
+  return `${ESPN_HOOPS}/scoreboard?groups=23&seasontype=2&dates=${ymd(start)}-${ymd(end)}&limit=300`;
 };
 
 // ESPN's scoreboard can refuse weeks it hasn't opened yet, even though each
@@ -42,7 +44,7 @@ let secSchedulesPromise = null;
 function loadSecSchedules() {
   if (!secSchedulesPromise) {
     secSchedulesPromise = Promise.all(SEC_TEAM_IDS.map(id =>
-      fetch(`${ESPN_HOOPS}/teams/${id}/schedule?season=${HOOPS_SEASON}`)
+      fetch(`${ESPN_HOOPS}/teams/${id}/schedule?season=${HOOPS_SEASON}&seasontype=2`)
         .then(res => res.ok ? res.json().then(data => ({ data, date: res.headers.get("date") })) : null)
         .catch(() => null)
     )).then(results => {
@@ -435,7 +437,7 @@ async function renderTeamSchedule(body, teamId, onRecord, autoScroll, opts = {})
   body.innerHTML = `<div class="team-sched-note">Loading schedule...</div>`;
   try {
     if (!teamScheduleCache[teamId]) {
-      const res = await fetch(`${ESPN_HOOPS}/teams/${teamId}/schedule?season=${HOOPS_SEASON}`);
+      const res = await fetch(`${ESPN_HOOPS}/teams/${teamId}/schedule?season=${HOOPS_SEASON}&seasontype=2`);
       if (!res.ok) throw new Error("bad response");
       teamScheduleCache[teamId] = await res.json();
     }
