@@ -6,7 +6,7 @@ A free pick'em website for a college football podcast and its listeners:
 - **NFL** (`nflindex.html`, `nflmakepicks.html`): the same weekly picks for the NFL, listeners only.
 - **SEC Hoops** (`hoopsindex.html`, `hoopsmakepicks.html`): the same for SEC men's basketball, with Monday–Sunday weeks.
 - **Host picks** (`hostpicks.html`): where the hosts enter their own picks and predicted scores, behind a PIN.
-- **March Madness** (`BBBracket.html`, `BBPicks.html`): a bracket challenge.
+- **March Madness** (`hoopsMMBracket.html` for standings, `hoopsMMPicks.html` for filling out a bracket, both using `hoopsMMBracket.js`): a bracket challenge.
 - **Admin** (`admin.html`): a PIN-protected page for checking entries.
 
 It runs entirely on free services: GitHub Pages hosts the pages, Supabase stores the picks, and the game data comes from ESPN's public feeds. There's no server to run and nothing to install. All setup happens in a web browser, and you can do it from a phone.
@@ -125,12 +125,12 @@ The menu at the top of every page lists **NFL**, **SEC Football** and **SEC Hoop
 ```js
 const SITE_SECTIONS = [
   { label: "NFL", href: "nflindex.html", match: p => /^nfl/i.test(p) },
-  { label: "SEC Football", href: "index.html", main: true, match: p => !/^(nfl|hoops|bb)/i.test(p) },
+  { label: "SEC Football", href: "index.html", main: true, match: p => !/^(nfl|hoops)/i.test(p) },
   { label: "SEC Hoops", href: "hoopsindex.html", match: p => /^hoops/i.test(p) }
 ];
 ```
 
-With only one section left, the menu still shows as a single button. To remove it entirely, delete the `addSiteMenu` lines below the list. You can also delete the unused pages, such as `nflindex.html`, `nflmakepicks.html` and `nfl.js` for NFL, or `hoopsindex.html`, `hoopsmakepicks.html` and `hoops.js` for basketball.
+With only one section left, the menu still shows as a single button. To remove it entirely, delete the `addSiteMenu` lines below the list. You can also delete the unused pages, such as `nflindex.html`, `nflmakepicks.html` and `nfl.js` for NFL, or `hoopsindex.html`, `hoopsmakepicks.html` and `hoops.js` for basketball (plus `hoopsMMBracket.html`, `hoopsMMPicks.html` and `hoopsMMBracket.js` if you don't want the March Madness bracket either).
 
 ### No host picks
 
