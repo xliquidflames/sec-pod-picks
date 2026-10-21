@@ -3048,6 +3048,7 @@ a.btn-submit.bk-cta {
    State) stand out from the dark background. */
 .matchup-team-logo,
 .btn-pick-logo,
+.nfl-logo,
 .info-team img,
 .top25-team img,
 .series-counts img,
@@ -3102,4 +3103,30 @@ a.btn-submit.bk-cta {
   border-color: var(--accent-gold);
   background: var(--accent-gold);
   color: var(--bg-main);
+}
+
+/* NFL pages: a small logo before each team name. */
+.nfl-matchup {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.nfl-logo {
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.pick-line .nfl-logo {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.nfl-vs {
+  margin: 0 0.15rem;
+  color: var(--text-muted);
+  font-weight: 600;
 }
