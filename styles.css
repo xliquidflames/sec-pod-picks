@@ -3042,3 +3042,17 @@ a.btn-submit.bk-cta {
 .stat-ranks .stat-rank.bad {
   background: #e23b3b;
 }
+
+/* A faint white glow around team logos so dark ones (LSU, A&M, OU, Miss
+   State) stand out from the dark background. */
+.matchup-team-logo,
+.btn-pick-logo,
+.info-team img,
+.top25-team img,
+.series-counts img,
+.stat-side img,
+.sched-col-head img,
+.sched-pick-team img,
+.team-sched-header img {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.25));
+}
