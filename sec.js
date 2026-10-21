@@ -750,11 +750,13 @@ async function loadSeries(name1, name2, finished) {
   return seriesCache[key];
 }
 
-// Start loading series history and the episode list in the background, so
-// the details popup usually has them ready by the time someone taps it.
+// Start loading series history, the episode list and the stat rankings in
+// the background, so the details popup usually has them ready by the time
+// someone taps it.
 function preloadDetails(eventIds) {
   setTimeout(() => {
     loadEpisodes().catch(() => {});
+    loadTeamStats().catch(() => {});
     (eventIds || []).forEach(id => {
       const ev = id && findScoreboardEvent(String(id));
       const comp = ev && ev.competitions && ev.competitions[0];
