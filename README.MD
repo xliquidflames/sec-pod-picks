@@ -29,7 +29,7 @@ None of these needs a credit card. If Google Cloud offers a paid trial, skip it,
 
 ## 1. Copy the site
 
-1. Sign in to GitHub and **fork** this repository, or create a new repository and upload all the files.
+1. Sign in to GitHub and **fork** this repository, from the account that will own the new site. GitHub won't fork a repository into the account that already owns it. A fork stays linked to the original, so later fixes made there show up as a **Sync fork** button in yours. If you'd rather have an unlinked copy, the original's owner can turn on **Settings → Template repository**, and then anyone can make a copy with **Use this template**.
 2. In your repository, go to **Settings → Pages**. Under "Build and deployment", choose **Deploy from a branch**, branch **main**, folder **/ (root)**, then **Save**.
 3. After a minute or two the site is live at `https://<your-username>.github.io/<repository-name>/`.
 
@@ -116,7 +116,32 @@ Text on the pages that shows the show's name or players' nickname is filled in f
 
 ---
 
-## 5. Each new season
+## 5. Optional changes
+
+### Fewer sections
+
+The menu at the top of every page lists **NFL**, **SEC Football** and **SEC Hoops**. To offer only some of them, edit `SITE_SECTIONS` near the top of `common.js` and delete the lines for the sections you don't want:
+
+```js
+const SITE_SECTIONS = [
+  { label: "NFL", href: "nflindex.html", match: p => /^nfl/i.test(p) },
+  { label: "SEC Football", href: "index.html", main: true, match: p => !/^(nfl|hoops|bb)/i.test(p) },
+  { label: "SEC Hoops", href: "hoopsindex.html", match: p => /^hoops/i.test(p) }
+];
+```
+
+With only one section left, the menu still shows as a single button. To remove it entirely, delete the `addSiteMenu` lines below the list. You can also delete the unused pages, such as `nflindex.html`, `nflmakepicks.html` and `nfl.js` for NFL, or `hoopsindex.html`, `hoopsmakepicks.html` and `hoops.js` for basketball.
+
+### No host picks
+
+If the show's hosts don't make picks, set `hosts: []` in `config.js`. The host columns and season cards disappear, and the main page shows only the listeners' consensus beside each game. Then:
+
+- In `index.html`, delete the small **Hosts** label above the season cards (search for `Hosts`), and the third paragraph in the **Logic** box, the one about the card "next to" the last host.
+- Delete `hostpicks.html`, since nothing links to it.
+
+---
+
+## 6. Each new season
 
 | File | What to change |
 |---|---|
