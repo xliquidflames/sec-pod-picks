@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NFL Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=5"></script>
-  <script src="common.js?v=5"></script>
-  <script src="nfl.js?v=5"></script>
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <script src="config.js?v=36"></script>
+  <script src="common.js?v=36"></script>
+  <script src="nfl.js?v=6"></script>
+  <link rel="stylesheet" href="styles.css?v=36" />
 </head>
 <body>
 
@@ -216,6 +216,8 @@
               matchupKey: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : buildMatchupKey(awayName, homeName),
               teamA: awayName,
               teamB: homeName,
+              logoA: nflLogoHtml(away.team),
+              logoB: nflLogoHtml(home.team),
               kickoff,
               rawOdds,
               detail: (isFinal || isLive) ? `${time} | ${venue}` : `${time} | ${rawOdds || "Line: TBD"} | ${venue}`,
@@ -325,7 +327,7 @@
           ${divider ? `<div class="day-divider" style="color: ${divider.color};">${divider.label} ${divider.dateStr}</div>` : ''}
           <div class="schedule-row ${isLive ? 'live-row' : ''}">
             <div>
-              <div class="schedule-matchup">${g.teamA} vs ${g.teamB}</div>
+              <div class="schedule-matchup nfl-matchup">${g.logoA}${g.teamA} <span class="nfl-vs">vs</span> ${g.logoB}${g.teamB}</div>
               ${g.detail ? `<span class="schedule-detail">${g.detail}</span>` : ''}
             </div>
             ${winner ? `<div class="schedule-winner">${winner}</div>` : ''}
@@ -497,7 +499,7 @@
               const isCousinLock = isLockMatch(picks, g);
               return `
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
-                  <span style="color: var(--text-muted);">${g.teamA} vs ${g.teamB}</span>
+                  <span class="nfl-matchup" style="color: var(--text-muted);">${g.logoA}${g.teamA} <span class="nfl-vs">vs</span> ${g.logoB}${g.teamB}</span>
                   <span class="${getPickClass(uPick, g, activeWeek)}">
                     ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
                     ${uPick}
