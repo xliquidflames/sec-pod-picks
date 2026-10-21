@@ -1061,27 +1061,29 @@ async function fillStatRanks(body, teamA, teamB) {
       const share = rank / (counts[key] || 134);
       return share <= 1 / 3 ? "good" : share <= 2 / 3 ? "ok" : "bad";
     };
-    const pill = (rank, key) => rank ? `<span class="stat-rank ${tier(rank, key)}">#${rank}</span>` : `<span class="stat-rank none">-</span>`;
+    const pill = (rank, key, end) => `<span class="stat-rank ${end} ${rank ? tier(rank, key) : "none"}">${rank ? `#${rank}` : "-"}</span>`;
     const logo = t => { const l = teamLogoFrom(t); return l ? `<img src="${l}" alt="" onerror="this.style.display='none'">` : ""; };
     const rows = STAT_ROWS
       .filter(([key]) => a[key] || b[key])
       .map(([key, label]) => {
         const ra = a[key], rb = b[key];
         const ballA = ra && (!rb || ra < rb), ballB = rb && (!ra || rb < ra);
-        return `<div class="stat-rank-row">
+        // Offense rows are light, defense rows dark, like the show's graphic.
+        const side = /Offense$/.test(key) ? "off" : "def";
+        return `<div class="stat-rank-row ${side}">
           <span class="stat-ball">${ballA ? FOOTBALL_ICON : ""}</span>
-          ${pill(ra, key)}
+          ${pill(ra, key, "left")}
           <span class="stat-rank-label">${label}</span>
-          ${pill(rb, key)}
+          ${pill(rb, key, "right")}
           <span class="stat-ball">${ballB ? FOOTBALL_ICON : ""}</span>
         </div>`;
       }).join("");
     if (!rows) return;
     box.innerHTML = `
       <div class="stat-rank-row stat-rank-head">
-        <span class="stat-side">${logo(teamA)}</span>
+        <span class="stat-side">${logo(teamA)}<span>Away</span></span>
         <span class="stat-rank-title">Stat Rankings</span>
-        <span class="stat-side">${logo(teamB)}</span>
+        <span class="stat-side">${logo(teamB)}<span>Home</span></span>
       </div>
       ${rows}`;
     box.style.display = "";
