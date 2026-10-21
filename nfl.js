@@ -60,3 +60,9 @@ function normalizeTeam(str) {
 function buildMatchupKey(teamA, teamB) {
   return `${normalizeTeam(teamA)}_vs_${normalizeTeam(teamB)}`;
 }
+
+// A team's logo from the scoreboard, as a small image (or nothing).
+function nflLogoHtml(team, cls = "nfl-logo") {
+  const url = team && (team.logo || (team.logos && team.logos[0] && team.logos[0].href));
+  return url ? `<img src="${url}" alt="" class="${cls}" onerror="this.style.display='none'">` : "";
+}
