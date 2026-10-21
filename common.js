@@ -16,6 +16,30 @@ if (SITE.analytics) {
   document.head.appendChild(counter);
 }
 
+// ---- Site menu: SEC Football, NFL and SEC Hoops ----
+// A bar pinned to the top of every page, with the current section lit up.
+// Each section's picks pages count as that section.
+const SITE_SECTIONS = [
+  { label: "SEC Football", href: "index.html", match: p => !/^(nfl|hoops|bb)/i.test(p) },
+  { label: "NFL", href: "nflindex.html", match: p => /^nfl/i.test(p) },
+  { label: "SEC Hoops", href: "hoopsindex.html", match: p => /^hoops/i.test(p) }
+];
+
+function addSiteMenu() {
+  const container = document.querySelector(".container");
+  if (!container || document.querySelector(".site-nav")) return;
+  const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  const nav = document.createElement("nav");
+  nav.className = "site-nav";
+  nav.setAttribute("aria-label", "Sections");
+  nav.innerHTML = SITE_SECTIONS.map(s =>
+    `<a href="${s.href}" class="${s.match(page) ? "active" : ""}"${s.match(page) ? ' aria-current="page"' : ""}>${s.label}</a>`).join("");
+  container.prepend(nav);
+}
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", addSiteMenu);
+else addSiteMenu();
+
 const hostKey = name => name.toLowerCase();
 const possessive = word => word.endsWith("s") ? `${word}'` : `${word}'s`;
 
