@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-site-text="Host Portal - {name}">Host Portal - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=5"></script>
-  <script src="common.js?v=5"></script>
-  <script src="sec.js?v=5"></script>
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <script src="config.js?v=38"></script>
+  <script src="common.js?v=38"></script>
+  <script src="sec.js?v=38"></script>
+  <link rel="stylesheet" href="styles.css?v=38" />
 </head>
 <body>
 
@@ -71,6 +71,33 @@
     let hostPicks = {};
     let hostScores = {};
     let currentLockMatchupKey = null;
+    let restoring = false;  // true while filling in saved data, so it isn't counted as a new change
+    let unsaved = false;
+
+    // Every tap and score is kept on this phone until it's saved, so going
+    // back or closing the tab doesn't lose it.
+    function draftKey() {
+      return `hostDraft:${document.getElementById("hostSelect").value}:${document.getElementById("weekSelect").value}`;
+    }
+    function saveDraft() {
+      if (restoring) return;
+      unsaved = true;
+      const picks = {};
+      Object.keys(hostPicks).forEach(k => { if (!NON_PICK_KEYS.includes(k)) picks[k] = hostPicks[k]; });
+      try {
+        localStorage.setItem(draftKey(), JSON.stringify({ picks, scores: hostScores, lock: currentLockMatchupKey }));
+      } catch (_) {}
+    }
+    function clearDraft() {
+      unsaved = false;
+      try { localStorage.removeItem(draftKey()); } catch (_) {}
+    }
+    function loadDraft() {
+      try { return JSON.parse(localStorage.getItem(draftKey()) || "null"); } catch (_) { return null; }
+    }
+    window.addEventListener("beforeunload", e => {
+      if (unsaved) { e.preventDefault(); e.returnValue = ""; }
+    });
 
     async function fetchEspnSchedule(week) {
       try {
@@ -186,6 +213,7 @@
     function selectTeam(matchupKey, teamName) {
       hostPicks[matchupKey] = teamName;
       markPick(matchupKey, btnA => btnA.dataset.team === teamName);
+      saveDraft();
     }
 
     // Typing both scores picks the team with the higher one.
@@ -200,11 +228,13 @@
         if (numA > numB) selectTeam(matchupKey, teamA);
         else if (numB > numA) selectTeam(matchupKey, teamB);
       }
+      saveDraft();
     }
 
     function toggleLock(matchupKey) {
       currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
       refreshLockVisuals();
+      saveDraft();
     }
 
     function refreshLockVisuals() {
@@ -215,6 +245,7 @@
       hostPicks = {};
       hostScores = {};
       currentLockMatchupKey = null;
+      unsaved = false;
       document.getElementById("statusAlert").textContent = "";
     }
 
@@ -237,6 +268,7 @@
       const hostName = document.getElementById("hostSelect").value;
       const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
 
+      restoring = true;
       try {
         const { data, error } = await supabaseClient
           .from(PICKS_TABLE)
@@ -287,7 +319,34 @@
         }
       } catch (e) {
         console.error("Error fetching host data:", e);
+      } finally {
+        restoring = false;
+        restoreDraft();
       }
+    }
+
+    // Puts back anything entered on this phone but not saved yet.
+    function restoreDraft() {
+      const draft = loadDraft();
+      if (!draft) return;
+      restoring = true;
+      currentSchedule.forEach(g => {
+        const team = draft.picks && draft.picks[g.matchupKey];
+        if (team) selectTeam(g.matchupKey, team);
+        const sc = draft.scores && draft.scores[g.matchupKey];
+        if (sc) {
+          hostScores[g.matchupKey] = { ...hostScores[g.matchupKey], ...sc };
+          const inpA = document.getElementById(`score_${g.matchupKey}_A`);
+          const inpB = document.getElementById(`score_${g.matchupKey}_B`);
+          if (inpA && sc.teamA !== undefined) inpA.value = sc.teamA;
+          if (inpB && sc.teamB !== undefined) inpB.value = sc.teamB;
+        }
+      });
+      currentLockMatchupKey = draft.lock || null;
+      refreshLockVisuals();
+      restoring = false;
+      unsaved = true;
+      setStatus("var(--accent-gold)", "Restored entries that weren't saved yet. Tap Save to keep them.");
     }
 
     // Saving again for the same host and week overwrites the earlier entry.
@@ -297,11 +356,6 @@
       const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
 
       if (pinInput.toUpperCase() !== SITE.hostPin.toUpperCase()) return setStatus("var(--danger)", "Invalid Host Security PIN.");
-
-      const pickedKeys = Object.keys(hostPicks).filter(k => !NON_PICK_KEYS.includes(k));
-      if (pickedKeys.length < currentSchedule.length) {
-        return setStatus("var(--danger)", `Please make picks for all ${currentSchedule.length} games.`);
-      }
 
       currentSchedule.forEach(g => {
         const inpA = document.getElementById(`score_${g.matchupKey}_A`);
@@ -331,7 +385,9 @@
           : await supabaseClient.from(PICKS_TABLE).insert({ user_name: hostName, week_number: weekNum, ...row });
         if (error) throw error;
 
-        setStatus("var(--success)", `Week ${weekNum} picks, scores & Lock saved for ${hostName}!`);
+        clearDraft();
+        const picked = currentSchedule.filter(g => hostPicks[g.matchupKey]).length;
+        setStatus("var(--success)", `Saved ${picked} of ${currentSchedule.length} picks for ${hostName}, Week ${weekNum}.`);
       } catch (err) {
         setStatus("var(--danger)", `Error: ${err.message}`);
       }
