@@ -8,7 +8,7 @@
   <script src="config.js?v=36"></script>
   <script src="common.js?v=36"></script>
   <script src="nfl.js?v=6"></script>
-  <link rel="stylesheet" href="styles.css?v=36" />
+  <link rel="stylesheet" href="styles.css?v=37" />
 </head>
 <body>
 
@@ -327,7 +327,7 @@
           ${divider ? `<div class="day-divider" style="color: ${divider.color};">${divider.label} ${divider.dateStr}</div>` : ''}
           <div class="schedule-row ${isLive ? 'live-row' : ''}">
             <div>
-              <div class="schedule-matchup nfl-matchup">${g.logoA}${g.teamA} <span class="nfl-vs">vs</span> ${g.logoB}${g.teamB}</div>
+              <div class="schedule-matchup nfl-matchup">${g.logoA}${g.teamA} <span class="nfl-vs">@</span> ${g.logoB}${g.teamB}</div>
               ${g.detail ? `<span class="schedule-detail">${g.detail}</span>` : ''}
             </div>
             ${winner ? `<div class="schedule-winner">${winner}</div>` : ''}
@@ -499,7 +499,7 @@
               const isCousinLock = isLockMatch(picks, g);
               return `
                 <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
-                  <span class="nfl-matchup" style="color: var(--text-muted);">${g.logoA}${g.teamA} <span class="nfl-vs">vs</span> ${g.logoB}${g.teamB}</span>
+                  <span class="nfl-matchup" style="color: var(--text-muted);">${g.logoA}${g.teamA} <span class="nfl-vs">@</span> ${g.logoB}${g.teamB}</span>
                   <span class="${getPickClass(uPick, g, activeWeek)}">
                     ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
                     ${uPick}
