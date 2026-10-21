@@ -2867,6 +2867,16 @@ a.btn-submit.bk-cta {
   object-fit: contain;
 }
 
+.stat-rank-title {
+  align-self: center;
+  text-align: center;
+  color: var(--accent-gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .stat-rank-row + .stat-rank-head {
   margin-top: 0.6rem;
   padding-top: 0.6rem;
