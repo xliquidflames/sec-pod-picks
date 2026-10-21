@@ -1015,7 +1015,17 @@ async function fillPodLinks(body, teamA, teamB, kickoffDate, week) {
 // season totals (one call, saved for 12 hours). Names are CFBD's school
 // names, the same as the series history uses.
 
-// Each row puts one team's offense against the other's defense.
+// Each row compares the same stat for both teams (the way the show's
+// graphic does it, and what the Discord vote picked).
+const STAT_ROWS = [
+  ["scoringOffense", "Scoring Offense"], ["scoringDefense", "Scoring Defense"],
+  ["passingOffense", "Passing Offense"], ["passingDefense", "Passing Defense"],
+  ["rushingOffense", "Rushing Offense"], ["rushingDefense", "Rushing Defense"],
+  ["thirdDownOffense", "3rd Down Offense"], ["thirdDownDefense", "3rd Down Defense"]
+];
+
+// For the offense-vs-defense version (fillStatRanksMatchups, not used now):
+// each row puts one team's offense against the other's defense.
 const STAT_MATCHUPS = [
   ["scoringOffense", "scoringDefense", "Scoring"],
   ["passingOffense", "passingDefense", "Passing"],
@@ -1040,10 +1050,54 @@ function loadTeamStats() {
   return teamStatsPromise;
 }
 
-// Two halves, one for each team's possessions: its offense on the left,
-// the other team's defense on the right, and a football by whichever side
-// ranks better in that matchup.
+// One row per stat: the away team's rank on the left, the home team's on
+// the right, and a football by the better one.
 async function fillStatRanks(body, teamA, teamB) {
+  const box = body.querySelector(".stat-ranks");
+  const nameA = seriesName(teamA), nameB = seriesName(teamB);
+  if (!box || !nameA || !nameB) return;
+  try {
+    const { ranks, counts } = await loadTeamStats();
+    const a = ranks[nameA] || {}, b = ranks[nameB] || {};
+    // Top third green, middle third pale green, bottom third red.
+    const tier = (rank, key) => {
+      const share = rank / (counts[key] || 134);
+      return share <= 1 / 3 ? "good" : share <= 2 / 3 ? "ok" : "bad";
+    };
+    const pill = (rank, key) => rank ? `<span class="stat-rank ${tier(rank, key)}">#${rank}</span>` : `<span class="stat-rank none">-</span>`;
+    const logo = t => { const l = teamLogoFrom(t); return l ? `<img src="${l}" alt="" onerror="this.style.display='none'">` : ""; };
+    const rows = STAT_ROWS
+      .filter(([key]) => a[key] || b[key])
+      .map(([key, label]) => {
+        const ra = a[key], rb = b[key];
+        const ballA = ra && (!rb || ra < rb), ballB = rb && (!ra || rb < ra);
+        return `<div class="stat-rank-row">
+          <span class="stat-ball">${ballA ? FOOTBALL_ICON : ""}</span>
+          ${pill(ra, key)}
+          <span class="stat-rank-label">${label}</span>
+          ${pill(rb, key)}
+          <span class="stat-ball">${ballB ? FOOTBALL_ICON : ""}</span>
+        </div>`;
+      }).join("");
+    if (!rows) return;
+    box.innerHTML = `
+      <div class="stat-rank-row stat-rank-head">
+        <span class="stat-side">${logo(teamA)}</span>
+        <span class="stat-rank-title">Stat Rankings</span>
+        <span class="stat-side">${logo(teamB)}</span>
+      </div>
+      ${rows}`;
+    box.style.display = "";
+  } catch (err) {
+    console.error("Team stats error:", err);
+  }
+}
+
+// The offense-vs-defense version, kept in case it's wanted again. Not used:
+// to switch, call this instead of fillStatRanks in renderGameDetails.
+// Two halves, one for each team's possessions, the away team always on the
+// left; a football by whichever side ranks better in that matchup.
+async function fillStatRanksMatchups(body, teamA, teamB) {
   const box = body.querySelector(".stat-ranks");
   const nameA = seriesName(teamA), nameB = seriesName(teamB);
   if (!box || !nameA || !nameB) return;
