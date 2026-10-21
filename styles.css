@@ -3114,15 +3114,27 @@ a.btn-submit.bk-cta {
 }
 
 .nfl-logo {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 2.3rem;
+  height: 2.3rem;
   object-fit: contain;
   flex-shrink: 0;
 }
 
 .pick-line .nfl-logo {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+/* NFL schedule: no host columns, so each game is centered in its row. */
+#scheduleList .schedule-row {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem;
+}
+
+#scheduleList .nfl-matchup {
+  justify-content: center;
 }
 
 .nfl-vs {
