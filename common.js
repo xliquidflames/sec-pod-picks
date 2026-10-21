@@ -22,7 +22,7 @@ if (SITE.analytics) {
 // SEC Football is the main site, so it sits in the middle and a bit bigger.
 const SITE_SECTIONS = [
   { label: "NFL", href: "nflindex.html", match: p => /^nfl/i.test(p) },
-  { label: "SEC Football", href: "index.html", main: true, match: p => !/^(nfl|hoops|bb)/i.test(p) },
+  { label: "SEC Football", href: "index.html", main: true, match: p => !/^(nfl|hoops)/i.test(p) },
   { label: "SEC Hoops", href: "hoopsindex.html", match: p => /^hoops/i.test(p) }
 ];
 
