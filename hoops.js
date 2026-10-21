@@ -31,6 +31,77 @@ const scoreboardUrl = week => {
   return `${ESPN_HOOPS}/scoreboard?groups=23&dates=${ymd(start)}-${ymd(end)}&limit=300`;
 };
 
+// ESPN's scoreboard can refuse weeks it hasn't opened yet, even though each
+// team's schedule already lists the games. So a week whose scoreboard fails
+// or comes back empty is built from the 16 SEC teams' schedules instead
+// (fetched once, same team ids as football). This replaces common.js's
+// fetchEspnRaw on the hoops pages.
+const SEC_TEAM_IDS = ["333", "8", "2", "57", "61", "96", "99", "145", "344", "142", "201", "2579", "2633", "251", "245", "238"];
+let secSchedulesPromise = null;
+
+function loadSecSchedules() {
+  if (!secSchedulesPromise) {
+    secSchedulesPromise = Promise.all(SEC_TEAM_IDS.map(id =>
+      fetch(`${ESPN_HOOPS}/teams/${id}/schedule?season=${HOOPS_SEASON}`)
+        .then(res => res.ok ? res.json().then(data => ({ data, date: res.headers.get("date") })) : null)
+        .catch(() => null)
+    )).then(results => {
+      const byId = {};
+      let date = null;
+      results.forEach(r => {
+        if (!r) return;
+        if (r.date && !date) date = r.date;
+        (r.data.events || []).forEach(ev => { if (ev && ev.id) byId[ev.id] = ev; });
+      });
+      return { events: Object.values(byId), currentTime: date ? new Date(date) : new Date() };
+    });
+  }
+  return secSchedulesPromise;
+}
+
+// Schedule events give scores as { value, displayValue }; the pages expect
+// the scoreboard's plain "72".
+function scheduleEventAsScoreboard(ev) {
+  const comp = (ev.competitions || [])[0] || {};
+  return {
+    ...ev,
+    competitions: [{
+      ...comp,
+      competitors: (comp.competitors || []).map(c => ({
+        ...c,
+        score: c.score && typeof c.score === "object" ? String(c.score.displayValue ?? c.score.value ?? "") : c.score
+      }))
+    }]
+  };
+}
+
+async function fetchEspnRaw(week) {
+  if (espnRawCache[week]) return espnRawCache[week];
+  try {
+    const res = await fetch(scoreboardUrl(week));
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.events && data.events.length) {
+        const header = res.headers.get("date");
+        return (espnRawCache[week] = { data, currentTime: header ? new Date(header) : new Date() });
+      }
+    }
+  } catch (err) {
+    console.error(`ESPN scoreboard failed for week ${week}:`, err);
+  }
+  try {
+    const { events, currentTime } = await loadSecSchedules();
+    const { start, end } = weekRange(week);
+    const inWeek = events
+      .filter(ev => { const d = new Date(ev.date); return d >= start && d <= end; })
+      .map(scheduleEventAsScoreboard);
+    return (espnRawCache[week] = { data: { events: inWeek }, currentTime });
+  } catch (err) {
+    console.error(`ESPN schedules failed for week ${week}:`, err);
+    return { data: null, currentTime: new Date() };
+  }
+}
+
 // The week a date falls in, or null outside the season.
 function weekOfDate(d) {
   for (const w of WEEK_NUMS) {
