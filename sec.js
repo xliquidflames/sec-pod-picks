@@ -670,7 +670,7 @@ async function renderGameDetails(body, eventId) {
       col.querySelector(".sched-place").textContent = place || "";
     }, false, { compact: true, eventId });
   });
-  fillSeries(body, away.team, home.team, playedSeason(comp));
+  fillSeries(body, away.team, home.team, finishedKickoff(comp));
   fillPodLinks(body, away.team, home.team, comp.date || ev.date, (ev.week && ev.week.number) || (s && s.header && s.header.week) || null);
   fillStatRanks(body, away.team, home.team);
 }
@@ -735,12 +735,12 @@ function gameInfoHtml(s, ev, sbComp, comp) {
 const seriesCache = {};
 const seriesName = t => (t && (t.location || t.shortDisplayName || t.displayName)) || "";
 
-// played: the season of a finished game between them, so the function knows
-// to fetch fresh history if its saved copy doesn't have that game yet.
-async function loadSeries(name1, name2, played) {
+// finished: kickoff time of a game between them that's over, so the function
+// knows to fetch fresh history once if its saved copy is older than that game.
+async function loadSeries(name1, name2, finished) {
   const key = [name1, name2].sort().join("|");
   if (!seriesCache[key]) {
-    seriesCache[key] = supabaseClient.functions.invoke("series", { body: { team1: name1, team2: name2, played: played || 0 } })
+    seriesCache[key] = supabaseClient.functions.invoke("series", { body: { team1: name1, team2: name2, finished: finished || "" } })
       .then(({ data, error }) => {
         if (error || !data || !Array.isArray(data.games)) throw error || new Error("no series data");
         return data;
@@ -759,7 +759,7 @@ function preloadDetails(eventIds) {
       const ev = id && findScoreboardEvent(String(id));
       const comp = ev && ev.competitions && ev.competitions[0];
       const teams = ((comp && comp.competitors) || []).map(c => seriesName(c.team));
-      if (teams.length === 2 && teams.every(Boolean)) loadSeries(teams[0], teams[1], playedSeason(comp)).catch(() => {});
+      if (teams.length === 2 && teams.every(Boolean)) loadSeries(teams[0], teams[1], finishedKickoff(comp)).catch(() => {});
     });
   }, 500);
 }
@@ -855,18 +855,15 @@ function barColors(teamA, teamB) {
   return [a, b];
 }
 
-// The season a finished game counts toward (January bowls belong to the
-// season before), or 0 if the game hasn't been played.
-function playedSeason(comp) {
+// A finished game's kickoff time, or "" if it hasn't been played.
+function finishedKickoff(comp) {
   const state = comp && comp.status && comp.status.type && comp.status.type.state;
-  const d = new Date(comp && comp.date);
-  if (state !== "post" || isNaN(d.getTime())) return 0;
-  return d.getMonth() < 6 ? d.getFullYear() - 1 : d.getFullYear();
+  return state === "post" && comp.date ? comp.date : "";
 }
 
 const SERIES_WAIT = 10000;
 
-async function fillSeries(body, teamA, teamB, played) {
+async function fillSeries(body, teamA, teamB, finished) {
   const box = body.querySelector(".series-box");
   if (!box) return;
   const nameA = seriesName(teamA), nameB = seriesName(teamB);
@@ -877,7 +874,7 @@ async function fillSeries(body, teamA, teamB, played) {
     if (lines && !box.querySelector(".series-bar")) lines.innerHTML = `<div class="series-line">Series history unavailable right now.</div>`;
   }, SERIES_WAIT);
   try {
-    const sum = seriesSummary(await loadSeries(nameA, nameB, played), nameA, nameB);
+    const sum = seriesSummary(await loadSeries(nameA, nameB, finished), nameA, nameB);
     clearTimeout(slow);
     const lines = box.querySelector(".series-lines");
     if (!sum) { lines.innerHTML = `<div class="series-line">First meeting</div>`; return; }
