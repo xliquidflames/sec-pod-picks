@@ -2973,3 +2973,72 @@ a.btn-submit.bk-cta {
 .page-makepicks .sched-box .sched-col-lines {
   font-size: 0.68rem;
 }
+
+/* Stat Rankings rows styled after the show's graphic: a light band with
+   blue text for offense, a dark band with orange text for defense, and
+   arrow-ended rank tags pointing outward. */
+.stat-ranks .stat-rank-row:not(.stat-rank-head) {
+  gap: 0;
+  padding: 0.12rem 0;
+}
+
+.stat-ranks .stat-ball {
+  display: flex;
+  justify-content: center;
+}
+
+.stat-rank-row.off .stat-rank-label,
+.stat-rank-row.def .stat-rank-label {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.28rem 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+}
+
+.stat-rank-row.off .stat-rank-label {
+  background: #f4f6f8;
+  color: #1e7fd8;
+}
+
+.stat-rank-row.def .stat-rank-label {
+  background: #3b3f46;
+  color: #f7931e;
+}
+
+.stat-ranks .stat-rank {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  font-size: 0.86rem;
+  font-weight: 900;
+  font-style: italic;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
+}
+
+.stat-ranks .stat-rank.left {
+  clip-path: polygon(14% 0, 100% 0, 100% 100%, 14% 100%, 0 50%);
+  padding-left: 0.3rem;
+}
+
+.stat-ranks .stat-rank.right {
+  clip-path: polygon(0 0, 86% 0, 100% 50%, 86% 100%, 0 100%);
+  padding-right: 0.3rem;
+}
+
+.stat-ranks .stat-rank.good {
+  background: #1f9d55;
+}
+
+.stat-ranks .stat-rank.ok {
+  background: #4fae86;
+}
+
+.stat-ranks .stat-rank.bad {
+  background: #e23b3b;
+}
