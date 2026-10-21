@@ -86,10 +86,27 @@ function shortenPickDisplay(pick) {
   return pick;
 }
 
+// ESPN draws a version of each logo for dark backgrounds (lighter colors or
+// a white outline). Use it when ESPN lists one, or when the plain logo is at
+// ESPN's usual /500/ address, where the dark one sits at /500-dark/.
 function teamLogoFrom(t) {
   if (!t) return "";
-  return t.logo || (t.logos && t.logos[0] && t.logos[0].href) || "";
+  const logos = t.logos || [];
+  const dark = logos.find(l => l && l.href && (l.rel || []).includes("dark"));
+  if (dark) return dark.href;
+  const plain = t.logo || (logos[0] && logos[0].href) || "";
+  return plain.replace(/\/teamlogos\/ncaa\/500\//, "/teamlogos/ncaa/500-dark/");
 }
+
+// If a dark logo doesn't exist, swap back to the plain one before the
+// image's own error handler hides it.
+document.addEventListener("error", e => {
+  const img = e.target;
+  if (img && img.tagName === "IMG" && img.src.includes("/500-dark/")) {
+    e.stopPropagation();
+    img.src = img.src.replace("/500-dark/", "/500/");
+  }
+}, true);
 
 // ---- Top 25, SEC Standings and team schedule popups ----
 // Read straight from ESPN; on bad or missing data the popup says so.
