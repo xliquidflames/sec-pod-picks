@@ -267,6 +267,32 @@ function getPickClass(userPick, game, week) {
   return normalizeTeam(userPick) === normalizeTeam(winner) ? "pick-correct" : "pick-incorrect";
 }
 
+// A listener's pick on a game that kicked off more than 15 minutes before
+// they submitted doesn't count. The page won't offer those games, but this
+// catches entries sent around it. The database stamps each entry's time.
+const LATE_PICK_GRACE_MS = 15 * 60 * 1000;
+
+function dropLatePicks(row) {
+  if (row.is_host || !row.created_at) return;
+  const at = new Date(row.created_at).getTime();
+  if (isNaN(at)) return;
+  const picks = { ...parseUserPicks(row.picks) };
+  let changed = false;
+  (weekSchedules[row.week_number] || []).forEach(game => {
+    const kick = game.kickoff instanceof Date ? game.kickoff.getTime() : NaN;
+    if (isNaN(kick) || game.kickoff.getFullYear() >= 9999 || at - kick <= LATE_PICK_GRACE_MS) return;
+    if (isLockMatch(picks, game)) { delete picks.lock_matchup_key; delete picks.lock_game_id; changed = true; }
+    let pick;
+    while ((pick = getMatchedUserPick(picks, game))) {
+      const key = Object.keys(picks).find(k => !NON_PICK_KEYS.includes(k) && picks[k] === pick);
+      if (!key) break;
+      delete picks[key];
+      changed = true;
+    }
+  });
+  if (changed) row.picks = picks;
+}
+
 // Every row, keeping only each person's first entry for a week.
 async function loadAllSeasonData() {
   try {
@@ -289,6 +315,7 @@ async function loadAllSeasonData() {
       new Set(allWeekRows.map(r => r.week_number).concat([1, activeWeek]))
     ).filter(w => w >= 1 && w <= TOTAL_WEEKS);
     await Promise.all(uniqueWeeks.map(fetchEspnSchedule));
+    allWeekRows.forEach(dropLatePicks);
 
     computeSeasonTotals();
     await switchWeek(activeWeek);
