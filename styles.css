@@ -2588,11 +2588,9 @@ a.btn-submit.bk-cta {
 
 /* Series History box in game details. */
 .series-box {
-  margin: 0.75rem 0 0;
-  padding: 0.65rem 0.8rem;
-  border: 1.5px solid var(--accent-gold);
-  border-radius: 8px;
-  background: var(--bg-card-alt);
+  margin: 0;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .series-heading {
@@ -2684,11 +2682,9 @@ a.btn-submit.bk-cta {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  margin: 0.75rem 0 0;
-  padding: 0.65rem 0.8rem;
-  border: 1.5px solid var(--accent-gold);
-  border-radius: 8px;
-  background: var(--bg-card-alt);
+  margin: 0;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border-color);
   font-size: 0.82rem;
 }
 
@@ -2835,11 +2831,9 @@ a.btn-submit.bk-cta {
 
 /* Game details: national stat ranks, side by side. */
 .stat-ranks {
-  margin: 0.75rem 0 0;
-  padding: 0.65rem 0.8rem;
-  border: 1.5px solid var(--accent-gold);
-  border-radius: 8px;
-  background: var(--bg-card-alt);
+  margin: 0;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 /* Each half's header: logo with Offense or Defense under it, centered over
@@ -2884,13 +2878,11 @@ a.btn-submit.bk-cta {
   border-top: 1px solid var(--border-color);
 }
 
-/* Game details: the schedules get the same gold box as the other sections. */
+/* Game details: the schedules, set off by a faint line like the other sections. */
 .sched-box {
-  margin: 0.75rem 0 0;
-  padding: 0.65rem 0.8rem;
-  border: 1.5px solid var(--accent-gold);
-  border-radius: 8px;
-  background: var(--bg-card-alt);
+  margin: 0;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .stat-rank-row {
@@ -2963,7 +2955,7 @@ a.btn-submit.bk-cta {
 
 /* Makepicks shows details inside a narrower card. */
 .page-makepicks .sched-box {
-  padding: 0.6rem 0.5rem;
+  padding: 0.6rem 0;
 }
 
 .page-makepicks .sched-box .sched-col-head img {
