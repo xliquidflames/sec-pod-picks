@@ -22,9 +22,6 @@ const SITE = {
   // What the show calls its listeners who play.
   players: { one: "Cousin", many: "Cousins" },
 
-  // PIN the hosts type on the host page to save their picks.
-  hostPin: "SEC2026",
-
   // The show's Supabase project (Project Settings > API).
   supabase: {
     url: "https://kxkctllysuxertyjjppd.supabase.co",
