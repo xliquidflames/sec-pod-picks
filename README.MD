@@ -38,7 +38,7 @@ None of these needs a credit card. If Google Cloud offers a paid trial, skip it,
 ## 2. Set up the database (Supabase)
 
 1. Create a free Supabase account and a **New project**. Pick any name and region, and save the database password somewhere safe.
-2. Open **SQL Editor → New query**, paste in all of [`supabase/setup.sql`](supabase/setup.sql), and tap **Run**. This creates every table the site uses, with the right permissions. Run it once only, because running it a second time errors on the parts that already exist.
+2. Open **SQL Editor → New query** and paste in all of [`supabase/setup.sql`](supabase/setup.sql). Near the bottom, change `NEW-PIN-HERE` to the PIN the hosts will type on the host page, then tap **Run**. This creates every table the site uses, with the right permissions. The PIN is kept in the database, not in the site's files, so visitors can't see it. To change it later, run `update public.host_pin set pin = 'NEW-PIN';`. Run it once only, because running it a second time errors on the parts that already exist.
 3. Go to **Project Settings → API Keys** (or **Data API**) and copy two things:
    - the **Project URL** (`https://xxxx.supabase.co`)
    - the **publishable key** (`sb_publishable_…`), sometimes labeled the *anon* key
@@ -98,7 +98,6 @@ Nearly everything specific to a show lives in **`config.js`**. Open it on GitHub
 | `website`, `discord`, `contact` | Footer links and the "reach out to…" line. `contact` can include simple HTML. |
 | `hosts` | The hosts' names, in display order. Their picks are saved under these exact names, so don't rename anyone mid-season. |
 | `players` | What the show calls its listeners, singular and plural, e.g. `{ one: "Cousin", many: "Cousins" }`. |
-| `hostPin` | The PIN hosts type on the host page. |
 | `supabase` | The Project URL and publishable key from step 2. |
 | `youtubeChannelId` | The show's YouTube channel ID (starts with `UC`), or `""` to turn off episode links. |
 | `podEpisodes` | Words that mark a preview or picks episode in its YouTube title. A game's details link to episodes whose title names that week ("Week 8") and one of these words, and that have a chapter naming the game. |
@@ -149,7 +148,8 @@ If the show's hosts don't make picks, set `hosts: []` in `config.js`. The host c
 | `index.html` | The week options in the week dropdown (one `<option>` per week). |
 | `nfl.js` | The season year and `TOTAL_WEEKS`. |
 | `hoops.js` | `HOOPS_SEASON` (ESPN names a season by the year it ends, so 2026–27 is `2027`), `HOOPS_FIRST_MONDAY` and `TOTAL_WEEKS`. |
-| `config.js` | `headline`, `hostPin` and the bracket settings. |
+| `config.js` | `headline` and the bracket settings. |
+| Supabase | A new host PIN, if you want one: `update public.host_pin set pin = 'NEW-PIN';` in the SQL Editor. |
 
 Last season's picks stay in the database. Clear the picks tables in Supabase (Table Editor) if you want a fresh start.
 
@@ -172,7 +172,7 @@ The football and basketball pages are built around the SEC: ESPN's SEC group num
 
 ## Good to know
 
-- **The PINs aren't real security.** They're checked in the visitor's browser, and anyone who reads the page's code can find them. They keep honest people out of the host and admin pages, nothing more. Don't reuse a PIN you use anywhere else.
-- **The database rules are deliberately simple.** Anyone can read picks and submit one entry per name per week. Only host rows can be changed after submitting.
+- **The host PIN is checked by the database**, and a wrong guess waits 2 seconds. Use something longer than a few digits all the same. The **admin PIN is not real security**: it's in `admin.html` for anyone who reads the page's code. The admin page only reads, so that's all it protects.
+- **What the database allows.** Anyone can read picks and submit one entry per name per week. Nobody can change or delete an entry from the website, and host picks can only be saved with the PIN. Each entry is stamped with the database's own time when it arrives, and the leaderboard ignores any pick on a game that kicked off more than 15 minutes before that, even one sent around the page.
 - **Free-tier limits:** Supabase allows 500,000 function calls a month, YouTube 10,000 units a day, and CFBD 1,000 calls a month. Normal use stays far below all three, because the functions save their results.
 - **ESPN's feeds are public and unofficial.** They need no key and have no stated limits, but ESPN can change them without notice. If games suddenly stop showing, that's the first thing to check.
