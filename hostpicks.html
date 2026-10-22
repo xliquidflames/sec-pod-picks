@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-site-text="Host Portal - {name}">Host Portal - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=38"></script>
-  <script src="common.js?v=38"></script>
-  <script src="sec.js?v=38"></script>
-  <link rel="stylesheet" href="styles.css?v=38" />
+  <script src="config.js?v=40"></script>
+  <script src="common.js?v=40"></script>
+  <script src="sec.js?v=40"></script>
+  <link rel="stylesheet" href="styles.css?v=40" />
 </head>
 <body>
 
@@ -355,7 +355,7 @@
       const hostName = document.getElementById("hostSelect").value;
       const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
 
-      if (pinInput.toUpperCase() !== SITE.hostPin.toUpperCase()) return setStatus("var(--danger)", "Invalid Host Security PIN.");
+      if (!pinInput) return setStatus("var(--danger)", "Enter the Host Security PIN.");
 
       currentSchedule.forEach(g => {
         const inpA = document.getElementById(`score_${g.matchupKey}_A`);
@@ -370,20 +370,15 @@
 
       setStatus("var(--text-muted)", "Saving...");
 
+      // The database checks the PIN and saves; the PIN isn't in the site's files.
       try {
-        const { data: existing, error: checkError } = await supabaseClient
-          .from(PICKS_TABLE)
-          .select("id")
-          .eq("week_number", weekNum)
-          .eq("user_name", hostName)
-          .maybeSingle();
-        if (checkError) throw checkError;
-
-        const row = { is_host: true, picks: hostPicks, created_at: new Date().toISOString() };
-        const { error } = (existing && existing.id)
-          ? await supabaseClient.from(PICKS_TABLE).update(row).eq("id", existing.id)
-          : await supabaseClient.from(PICKS_TABLE).insert({ user_name: hostName, week_number: weekNum, ...row });
-        if (error) throw error;
+        const { error } = await supabaseClient.rpc("save_host_picks", {
+          p_pin: pinInput, p_name: hostName, p_week: weekNum, p_picks: hostPicks
+        });
+        if (error) {
+          if (/pin/i.test(error.message || "")) return setStatus("var(--danger)", "Invalid Host Security PIN.");
+          throw error;
+        }
 
         clearDraft();
         const picked = currentSchedule.filter(g => hostPicks[g.matchupKey]).length;
