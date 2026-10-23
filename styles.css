@@ -3177,3 +3177,16 @@ a.btn-submit.bk-cta {
   display: block;
   margin: 0.5rem auto 0;
 }
+
+/* Season stats popup for a host or the Cousins. */
+.host-season-card .details-link {
+  margin-top: 0.25rem;
+}
+
+.entrant-record {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--accent-gold);
+  text-align: center;
+  margin: 0.2rem 0 0.6rem;
+}
