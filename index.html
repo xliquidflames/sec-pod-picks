@@ -9,7 +9,7 @@
   <script src="config.js?v=40"></script>
   <script src="common.js?v=40"></script>
   <script src="sec.js?v=35"></script>
-  <link rel="stylesheet" href="styles.css?v=41" />
+  <link rel="stylesheet" href="styles.css?v=42" />
 </head>
 <body>
 
@@ -266,13 +266,14 @@
     // A season card and a grid column for each host in config.js, then the
     // players' consensus.
     (function buildHostColumns() {
-      const card = (label, id) => `
+      const card = (label, id, key) => `
         <div class="host-season-card">
           <div class="host-season-name">${label}</div>
           <div class="host-season-record" id="${id}">0-0</div>
+          <button type="button" class="details-link" onclick="openEntrantStats(${key})">Stats</button>
         </div>`;
       document.getElementById("hostSeasonStrip").innerHTML =
-        SITE.hosts.map((h, i) => card(h, `seasonHost${i}`)).join("") + card(SITE.players.many, "seasonPlayers");
+        SITE.hosts.map((h, i) => card(h, `seasonHost${i}`, i)).join("") + card(SITE.players.many, "seasonPlayers", -1);
 
       const headRow = document.querySelector(".host-grid-table thead tr");
       headRow.insertAdjacentHTML("beforeend",
@@ -474,18 +475,22 @@
     // The cousins' most-picked team for a game, as a share of everyone who
     // submitted this week. On a tie, the first team counted wins.
     function computeMajorityPick(cousinRows, game) {
+      // Counted by team, so "Texas A&M" and "TAMU" are one pick. Older
+      // entries can be saved as text, so they're parsed first.
       const tally = {};
       cousinRows.forEach(c => {
-        const pick = getMatchedUserPick(c.picks, game);
-        if (pick) tally[pick] = (tally[pick] || 0) + 1;
+        const pick = getMatchedUserPick(parseUserPicks(c.picks), game);
+        if (!pick) return;
+        const t = tally[normalizeTeam(pick)] || (tally[normalizeTeam(pick)] = { team: pick, count: 0 });
+        t.count++;
       });
 
-      const entries = Object.entries(tally);
+      const entries = Object.values(tally);
       if (entries.length === 0 || cousinRows.length === 0) return null;
 
-      entries.sort((a, b) => b[1] - a[1]);
-      const [topTeam, topCount] = entries[0];
-      return { team: topTeam, percentage: Math.round((topCount / cousinRows.length) * 100) };
+      entries.sort((a, b) => b.count - a.count);
+      const top = entries[0];
+      return { team: top.team, percentage: Math.round((top.count / cousinRows.length) * 100) };
     }
 
     // This week's record for the Cousins column: each decided game's
@@ -633,8 +638,6 @@
     // Records are recomputed here because computeSeasonTotals() runs after
     // this render.
     function computePathsToFirst(games) {
-      const result = {};
-
       const season = {};
       allWeekRows.forEach(row => {
         if (row.is_host) return;
@@ -643,8 +646,21 @@
         season[row.user_name].correct += s.correct;
         season[row.user_name].incorrect += s.incorrect;
       });
+      const weekPicksFor = (name) => {
+        const row = allWeekRows.find(r => !r.is_host && r.week_number === activeWeek && r.user_name === name);
+        return row ? parseUserPicks(row.picks) : null;
+      };
+      return pathsAmong(Object.values(season), weekPicksFor, games, () => YOU);
+    }
 
-      const everyone = Object.values(season);
+    // Wording for "you" on a listener's own card, or a name in a host's stats.
+    const YOU = { subj: "you", take: "take", tie: "tie", pull: "pull", poss: "Your" };
+    const voiceOf = name => ({ subj: name, take: "takes", tie: "ties", pull: "pulls", poss: "Their" });
+
+    // everyone: [{ name, correct, incorrect }] for the season. picksFor(name)
+    // gives that entrant's picks for the week being shown, or null.
+    function pathsAmong(everyone, picksFor, games, voice) {
+      const result = {};
       if (!everyone.some(p => p.correct > 0 || p.incorrect > 0)) return result;
 
       const better = (a, b) => a.correct !== b.correct ? a.correct > b.correct : a.incorrect < b.incorrect;
@@ -658,10 +674,6 @@
       everyone.filter(p => !leaderNames.has(p.name)).forEach(p => { if (!second || better(p, second)) second = p; });
 
       const openGames = games.filter(g => !winnerOf(activeWeek, g));
-      const weekPicksFor = (name) => {
-        const row = allWeekRows.find(r => !r.is_host && r.week_number === activeWeek && r.user_name === name);
-        return row ? parseUserPicks(row.picks) : null;
-      };
 
       // Outcomes of winning every swing game, worst to best.
       const OUTCOME_RANK = { short: 0, evenWins: 1, tie: 2, pass: 3 };
@@ -680,11 +692,12 @@
         }
 
         // Measured against whichever leader is hardest to pass.
-        const myPicks = weekPicksFor(p.name);
+        const myPicks = picksFor(p.name);
+        const v = voice(p.name);
         let worst = null;
 
         leaders.forEach(L => {
-          const theirPicks = weekPicksFor(L.name);
+          const theirPicks = picksFor(L.name);
           const swingGames = [];
           let theyTakeLoss = 0;
 
@@ -730,13 +743,13 @@
         } else if (!leaderPicked && leaders.length === 1) {
           line = `${head}. ${leader.name} hasn't picked this week yet.`;
         } else if (s === 0) {
-          line = `${head}. No swing games left this week. Your open picks all match.`;
+          line = `${head}. No swing games left this week. ${v.poss} open picks all match.`;
         } else if (outcome === "pass") {
-          line = `${head} · ${gamesWord(s)} left. Win ${winAll} and you take first.`;
+          line = `${head} · ${gamesWord(s)} left. Win ${winAll} and ${v.subj} ${v.take} first.`;
         } else if (outcome === "tie") {
-          line = `${head} · ${gamesWord(s)} left. Win ${winAll} and you tie for first.`;
+          line = `${head} · ${gamesWord(s)} left. Win ${winAll} and ${v.subj} ${v.tie} for first.`;
         } else if (outcome === "evenWins") {
-          line = `${head} · ${gamesWord(s)} left. Win ${winAll} and you pull even on wins, but ${leaders.length === 1 ? leader.name : "first"} still has fewer losses.`;
+          line = `${head} · ${gamesWord(s)} left. Win ${winAll} and ${v.subj} ${v.pull} even on wins, but ${leaders.length === 1 ? leader.name : "first"} still has fewer losses.`;
         } else {
           line = `${head} · only ${gamesWord(s)} left this week. Best case: ${winsBack - s} back.`;
         }
@@ -846,10 +859,18 @@
     // Each cousin's season so far: record by week, Lock of the Week record,
     // and the teams they've done best and worst picking (3+ decided picks).
     function computeSeasonBreakdowns() {
-      const out = {};
+      const byName = {};
       allWeekRows.forEach(row => {
-        if (row.is_host) return;
-        const b = out[row.user_name] || (out[row.user_name] = { weeks: [], lockC: 0, lockI: 0, teams: {} });
+        if (!row.is_host) (byName[row.user_name] || (byName[row.user_name] = [])).push(row);
+      });
+      return Object.fromEntries(Object.entries(byName).map(([name, rows]) => [name, breakdownOf(rows)]));
+    }
+
+    // Weekly records, Lock record, and best and toughest team to pick (3+
+    // decided picks) across one entrant's rows.
+    function breakdownOf(rows) {
+      const b = { weeks: [], lockC: 0, lockI: 0, teams: {} };
+      rows.forEach(row => {
         const score = gradePicks(row.picks, row.week_number);
         if (score.correct + score.incorrect > 0) b.weeks.push({ week: row.week_number, c: score.correct, i: score.incorrect });
         b.lockC += score.lockCorrect;
@@ -867,15 +888,13 @@
         });
       });
 
-      Object.values(out).forEach(b => {
-        b.weeks.sort((x, y) => x.week - y.week);
-        const pct = t => t.w / (t.w + t.l);
-        const eligible = Object.values(b.teams).filter(t => t.w + t.l >= 3);
-        b.best = eligible.slice().sort((x, y) => (pct(y) - pct(x)) || (y.w - x.w))[0] || null;
-        const worst = eligible.slice().sort((x, y) => (pct(x) - pct(y)) || (y.l - x.l))[0] || null;
-        b.worst = worst && worst !== b.best && worst.l > 0 ? worst : null;
-      });
-      return out;
+      b.weeks.sort((x, y) => x.week - y.week);
+      const pct = t => t.w / (t.w + t.l);
+      const eligible = Object.values(b.teams).filter(t => t.w + t.l >= 3);
+      b.best = eligible.slice().sort((x, y) => (pct(y) - pct(x)) || (y.w - x.w))[0] || null;
+      const worst = eligible.slice().sort((x, y) => (pct(x) - pct(y)) || (y.l - x.l))[0] || null;
+      b.worst = worst && worst !== b.best && worst.l > 0 ? worst : null;
+      return b;
     }
 
     function seasonBoxHtml(b) {
@@ -890,6 +909,95 @@
           <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">W${w.week} ${w.c}-${w.i}</span>`).join("")}</div>
           ${facts.length ? `<div>${facts.join(" · ")}</div>` : ""}
         </div>`;
+    }
+
+    // ---- Host and Cousins stats popups ----
+    // A host's rows, or for the Cousins (index -1) their majority pick on
+    // each game, as one row a week.
+    function entrantRows(index) {
+      if (index < 0) {
+        const weeks = [...new Set(allWeekRows.filter(r => !r.is_host).map(r => r.week_number))];
+        return weeks.map(w => {
+          const rows = allWeekRows.filter(r => !r.is_host && r.week_number === w);
+          const picks = {};
+          (weekSchedules[w] || []).forEach(g => {
+            const m = computeMajorityPick(rows, g);
+            if (m) picks[g.matchupKey] = m.team;
+          });
+          return { user_name: SITE.players.many, week_number: w, picks };
+        });
+      }
+      const key = hostKey(SITE.hosts[index]);
+      return allWeekRows.filter(r => r.is_host && (r.user_name || "").toLowerCase() === key);
+    }
+
+    function openEntrantStats(index) {
+      const names = SITE.hosts.concat(SITE.players.many);
+      const indexes = SITE.hosts.map((_, i) => i).concat(-1);
+      const rowsOf = indexes.map(entrantRows);
+      const name = index < 0 ? SITE.players.many : SITE.hosts[index];
+      const rows = rowsOf[indexes.indexOf(index)];
+
+      showInfoModal(index < 0 ? `The ${possessive(SITE.players.many)} Season` : `${possessive(name)} Season`);
+      const body = document.getElementById("infoBody");
+
+      // Path to first among the hosts and the Cousins.
+      const everyone = names.map((n, k) => {
+        const rec = { name: n, correct: 0, incorrect: 0 };
+        rowsOf[k].forEach(r => { const g = gradePicks(r.picks, r.week_number); rec.correct += g.correct; rec.incorrect += g.incorrect; });
+        return rec;
+      });
+      const picksFor = n => {
+        const row = rowsOf[names.indexOf(n)].find(r => r.week_number === activeWeek);
+        return row ? parseUserPicks(row.picks) : null;
+      };
+      const path = pathsAmong(everyone, picksFor, weekSchedules[activeWeek] || [],
+        n => n === SITE.players.many ? { subj: `the ${SITE.players.many}`, take: "take", tie: "tie", pull: "pull", poss: "Their" } : voiceOf(n))[name];
+      const me = everyone[names.indexOf(name)];
+
+      const b = breakdownOf(rows);
+      const facts = [];
+      if (b.lockC + b.lockI > 0) facts.push(`Locks: ${b.lockC}-${b.lockI}`);
+      if (b.best) facts.push(`Best pick: ${shortenPickDisplay(b.best.name)} ${b.best.w}-${b.best.l}`);
+      if (b.worst) facts.push(`Toughest: ${shortenPickDisplay(b.worst.name)} ${b.worst.w}-${b.worst.l}`);
+
+      // Hosts: exact score predictions, and their record when they went
+      // against the Cousins' majority.
+      if (index >= 0) {
+        const cousins = rowsOf[rowsOf.length - 1];
+        let exact = 0, againstW = 0, againstL = 0;
+        rows.forEach(r => {
+          const picks = parseUserPicks(r.picks);
+          const scores = picks.scores || {};
+          const crowd = cousins.find(c => c.week_number === r.week_number);
+          (weekSchedules[r.week_number] || []).forEach(g => {
+            const winner = winnerOf(r.week_number, g);
+            const pick = getMatchedUserPick(picks, g);
+            if (!winner || !pick) return;
+            const sc = scores[g.matchupKey] || scores[g.id] || scores[String(g.id)];
+            if (sc && g.finalScoreA != null && g.finalScoreB != null &&
+                parseInt(sc.teamA, 10) === g.finalScoreA && parseInt(sc.teamB, 10) === g.finalScoreB) exact++;
+            const crowdPick = crowd ? getMatchedUserPick(crowd.picks, g) : null;
+            if (crowdPick && normalizeTeam(crowdPick) !== normalizeTeam(pick)) {
+              if (normalizeTeam(pick) === normalizeTeam(winner)) againstW++;
+              else againstL++;
+            }
+          });
+        });
+        facts.push(`Exact scores: ${exact}`);
+        if (againstW + againstL > 0) facts.push(`Against the ${SITE.players.many}: ${againstW}-${againstL}`);
+      }
+
+      body.innerHTML = `
+        <div class="entrant-record">${me.correct}-${me.incorrect}</div>
+        ${path ? `<div class="path-line ${path.isLeader ? "leader" : ""}"><span class="path-line-label">Path to First · Week ${activeWeek}</span>${path.line}</div>` : ""}
+        ${b.weeks.length ? `
+        <div class="season-box">
+          <span class="path-line-label">Season So Far</span>
+          <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">W${w.week} ${w.c}-${w.i}</span>`).join("")}</div>
+          ${facts.map(f => `<div>${f}</div>`).join("")}
+        </div>` : `<div class="team-sched-note">No decided games yet.</div>`}
+      `;
     }
 
     // Name saved on this device when picks were last submitted.
