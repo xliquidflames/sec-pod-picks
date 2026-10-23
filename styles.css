@@ -1792,6 +1792,26 @@ input[type="password"].form-field {
   margin: 0;
 }
 
+.hub-action-row.hub-split {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.hub-group {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.hub-group + .hub-group {
+  margin-left: auto;
+}
+
+.hub-split .btn-ctrl {
+  padding: 0.35rem 0.4rem;
+  white-space: nowrap;
+}
+
 .hub-action-row.centered {
   justify-content: center;
 }
@@ -3133,4 +3153,27 @@ a.btn-submit.bk-cta {
   margin: 0 0.15rem;
   color: var(--text-muted);
   font-weight: 600;
+}
+
+/* Game details opened in a row under the game on the main page. */
+.host-grid-table tr.details-open > td {
+  border-bottom-color: transparent;
+}
+
+.host-grid-table tr.inline-details-row > td {
+  padding: 0.5rem 0.6rem 0.75rem;
+  text-align: left;
+  background: var(--bg-card);
+  border-bottom: 2px solid var(--accent-gold);
+}
+
+.host-grid-table .inline-details th,
+.host-grid-table .inline-details td {
+  border-right: none;
+  vertical-align: middle;
+}
+
+.inline-details-close {
+  display: block;
+  margin: 0.5rem auto 0;
 }
