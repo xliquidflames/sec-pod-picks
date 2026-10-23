@@ -9,7 +9,7 @@
   <script src="config.js?v=40"></script>
   <script src="common.js?v=40"></script>
   <script src="sec.js?v=35"></script>
-  <link rel="stylesheet" href="styles.css?v=39" />
+  <link rel="stylesheet" href="styles.css?v=41" />
 </head>
 <body>
 
@@ -97,11 +97,17 @@
           <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
-        <div class="hub-action-row" style="margin-top: 0.6rem;">
-          <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
-          <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
-        </div>
         <div class="week-pod-links" id="weekPodLinks" style="display: none;"></div>
+        <div class="hub-action-row hub-split" style="margin-top: 0.6rem;">
+          <div class="hub-group">
+            <button type="button" class="btn-ctrl" onclick="toggleAllInlineDetails(true)">Expand All</button>
+            <button type="button" class="btn-ctrl" onclick="toggleAllInlineDetails(false)">Collapse All</button>
+          </div>
+          <div class="hub-group">
+            <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
+            <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
+          </div>
+        </div>
         <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.4rem;">
           <table class="host-grid-table">
             <thead>
@@ -288,11 +294,43 @@
         : `<span class="${fallbackClass}" ${attrs}>${name}</span>`;
     }
 
-    // "Details" link that opens the game details popup.
+    // "Details" opens the game details in a row right under the game.
     function detailsLink(g) {
       if (!g.eventId) return "";
-      const title = `${shortenPickDisplay(g.awayName)} @ ${shortenPickDisplay(g.homeName)}`.replace(/'/g, "\\'");
-      return `<button type="button" class="details-link" onclick="openGameDetails('${g.eventId}', '${title}')">Details</button>`;
+      return `<button type="button" class="details-link" onclick="toggleInlineDetails(this, '${g.eventId}')">Details &#9662;</button>`;
+    }
+
+    function toggleInlineDetails(btn, eventId) {
+      const tr = btn.closest("tr");
+      const open = tr.nextElementSibling;
+      if (open && open.classList.contains("inline-details-row")) {
+        open.remove();
+        tr.classList.remove("details-open");
+        btn.innerHTML = "Details &#9662;";
+        return;
+      }
+      const row = document.createElement("tr");
+      row.className = "inline-details-row";
+      row.innerHTML = `<td colspan="${SITE.hosts.length + 2}"><div class="inline-details"></div>
+        <button type="button" class="details-link inline-details-close">Hide Details &#9652;</button></td>`;
+      row.querySelector(".inline-details-close").onclick = () => {
+        toggleInlineDetails(btn, eventId);
+        tr.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      };
+      tr.after(row);
+      tr.classList.add("details-open");
+      btn.innerHTML = "Hide &#9652;";
+      renderGameDetails(row.querySelector(".inline-details"), eventId);
+    }
+
+    function toggleAllInlineDetails(open) {
+      document.querySelectorAll("#hostGridBody .details-link:not(.inline-details-close)").forEach(btn => {
+        if (btn.closest("tr").classList.contains("details-open") !== open) btn.click();
+      });
+      if (!open) {
+        const grid = document.getElementById("hostGridWrapper");
+        if (grid.getBoundingClientRect().top < 0) grid.scrollIntoView({ block: "start" });
+      }
     }
 
     const scheduleAttrs = (id, name, logo) => `data-team-id="${id}" data-team-name="${name}" data-team-logo="${logo}"`;
