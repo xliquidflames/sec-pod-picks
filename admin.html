@@ -80,11 +80,9 @@
       text-align: center;
     }
 
-    #pinGate label {
-      display: block;
-      font-size: 0.9rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
+    #gateMessage {
+      font-size: 0.95rem;
+      line-height: 1.5;
     }
 
     #pinGate input {
@@ -404,9 +402,7 @@
     <h1>Admin Panel</h1>
 
     <div id="pinGate">
-      <label for="adminPinInput">Enter Admin PIN</label>
-      <input type="password" id="adminPinInput" inputmode="numeric" placeholder="••••" />
-      <button type="button" class="btn-unlock" onclick="checkPin()">Unlock</button>
+      <div id="gateMessage">Checking your sign-in...</div>
       <div id="pinError"></div>
     </div>
 
@@ -446,34 +442,28 @@
   </div>
 
   <script>
-    // ⚠️ Change this before deploying — this is a placeholder, and since
-    // this whole site runs without any real backend or login system, this
-    // PIN is just a client-side string comparison, same as the Host
-    // Security PIN elsewhere on the site. It stops casual browsing, not a
-    // determined look at the page source. Keep it different from the host
-    // PIN (fewer people know it, so less chance it leaks), and don't reuse
-    // it anywhere that matters.
-    const ADMIN_PIN = "0654";
-
-    function checkPin() {
-      const entered = document.getElementById("adminPinInput").value.trim();
-      const errorEl = document.getElementById("pinError");
-      if (entered === ADMIN_PIN) {
-        document.getElementById("pinGate").style.display = "none";
-        document.getElementById("adminContent").style.display = "block";
-        loadEverything();
-      } else {
-        errorEl.textContent = "Incorrect PIN.";
-      }
-    }
-
-    document.getElementById("adminPinInput").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") checkPin();
-    });
-
     const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Only accounts listed as site admins in the database get in. Everyone
+    // else is sent to sign in, or told this account can't open the page.
+    (async () => {
+      const gate = document.getElementById("gateMessage");
+      const { data } = await supabaseClient.auth.getSession();
+      if (!data || !data.session) {
+        location.replace("signin.html?next=admin.html");
+        return;
+      }
+      const { data: isAdmin } = await supabaseClient.rpc("is_site_admin");
+      if (!isAdmin) {
+        gate.innerHTML = `This account can't open the admin page. <button type="button" class="btn-unlock" style="margin-top: 1rem;" onclick="supabaseClient.auth.signOut().then(() => location.href = 'index.html')">Sign Out</button>`;
+        return;
+      }
+      document.getElementById("pinGate").style.display = "none";
+      document.getElementById("adminContent").style.display = "block";
+      loadEverything();
+    })();
 
     let seasonData = { sec: null, nfl: null };
     let activeSport = "sec";
