@@ -7,7 +7,7 @@
   <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=44"></script>
+  <script src="common.js?v=45"></script>
   <script src="sec.js?v=35"></script>
   <link rel="stylesheet" href="styles.css?v=46" />
 </head>
@@ -897,7 +897,7 @@
       return b;
     }
 
-    function seasonBoxHtml(b) {
+    function seasonBoxHtml(b, name) {
       if (!b || b.weeks.length === 0) return "";
       const facts = [];
       if (b.lockC + b.lockI > 0) facts.push(`Locks: ${b.lockC}-${b.lockI}`);
@@ -907,6 +907,7 @@
         <div class="season-box">
           <span class="path-line-label">Season So Far</span>
           <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">W${w.week} ${w.c}-${w.i}</span>`).join("")}</div>
+          ${championWeeksHtml(name)}
           ${facts.length ? `<div>${facts.join(" · ")}</div>` : ""}
         </div>`;
     }
@@ -1074,7 +1075,7 @@
           </div>
           <div class="cousin-picks-body">
             ${path ? `<div class="path-line ${path.isLeader ? 'leader' : ''}"><span class="path-line-label">Path to First</span>${path.line}</div>` : ''}
-            ${seasonBoxHtml(seasons[c.user_name])}
+            ${seasonBoxHtml(seasons[c.user_name], c.user_name)}
             ${games.map(g => {
               const uPick = getMatchedUserPick(picks, g) || "No Pick";
               const isCousinLock = isLockActiveThisWeek && isLockMatch(picks, g);

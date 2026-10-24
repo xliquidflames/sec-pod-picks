@@ -161,6 +161,12 @@ function championChipsHtml(name) {
   return weeks.map(w => `<span class="champ-chip" title="Week ${w} champion">&#127942; W${w}</span>`).join("");
 }
 
+// Every week won, spelled out, for the Season So Far box on a card.
+function championWeeksHtml(name) {
+  const weeks = weeklyChampions[(name || "").toLowerCase()] || [];
+  return weeks.length ? `<div>&#127942; Champion weeks: ${weeks.map(w => `W${w}`).join(", ")}</div>` : "";
+}
+
 // Logo and titles after a player's name on a card or in the standings.
 const playerBadgesHtml = name => favoriteLogoHtml(playerFavorites[(name || "").toLowerCase()]) + championChipsHtml(name);
 
