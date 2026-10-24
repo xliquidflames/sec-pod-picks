@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-site-text="Privacy - {name} Pick'em">Privacy - That SEC Podcast Pick'em</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js?v=41"></script>
+  <script src="common.js?v=41"></script>
+  <link rel="stylesheet" href="styles.css?v=43" />
+</head>
+<body>
+
+  <div class="container narrow">
+    <header>
+      <a href="index.html" class="back-link">&larr; Back to Leaderboard</a>
+      <h1>PRIVACY</h1>
+      <p class="sub-header" data-site-text="{name} Pick'em">That SEC Podcast Pick'em</p>
+    </header>
+
+    <div class="card privacy-text">
+      <p>This pick'em is a free fan project run by a volunteer. It collects only what it needs to run the game, and never sells or shares it.</p>
+
+      <h2>What's collected</h2>
+      <ul>
+        <li><strong>Your sign-in account.</strong> When you sign in with Google, Discord, GitHub or an email address, the site receives your email address and an account ID from that service. It never sees your password for those services.</li>
+        <li><strong>Your display name</strong>, which you choose, and <strong>your picks</strong> with the time you submitted them.</li>
+        <li><strong>Visit counts</strong> through GoatCounter, which counts page views without cookies or tracking you across sites.</li>
+      </ul>
+
+      <h2>How it's used</h2>
+      <p>Your email and account ID are used only to sign you in and keep your picks under your name. Your display name and picks are shown publicly on the leaderboards; your email is never shown.</p>
+
+      <h2>Where it's kept</h2>
+      <p>Accounts and picks are stored with Supabase, the site's database service. Emails for confirming an account or resetting a password are sent through Resend.</p>
+
+      <h2>Removing your data</h2>
+      <p class="privacy-contact">To delete your account, your name or your picks, message us on Discord and it will be removed.</p>
+    </div>
+  </div>
+
+  <script>
+    const help = document.querySelector(".privacy-contact");
+    if (SITE.discord) {
+      help.innerHTML = `To delete your account, your name or your picks, <a href="${SITE.discord}" target="_blank" rel="noopener">message ${SITE.accountHelp || "us"} on Discord</a> and it will be removed.`;
+    }
+  </script>
+</body>
+</html>

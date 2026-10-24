@@ -3190,3 +3190,103 @@ a.btn-submit.bk-cta {
   text-align: center;
   margin: 0.2rem 0 0.6rem;
 }
+
+/* ---- Sign-in page ---- */
+.signin-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.signin-card .form-field,
+.signin-card input[type="password"].form-field {
+  margin-bottom: 0.6rem;
+}
+
+.btn-provider {
+  width: 100%;
+  background: var(--bg-card-alt);
+  color: var(--text-main);
+  border: 2px solid var(--accent-gold);
+  border-radius: 10px;
+  padding: 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  margin-bottom: 0.6rem;
+}
+
+.signin-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.6rem 0 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.signin-divider::before,
+.signin-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--border-color);
+}
+
+.signin-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.signin-buttons .btn-submit {
+  margin-top: 0.2rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.signin-buttons .btn-provider {
+  margin-bottom: 0;
+}
+
+.signin-forgot {
+  display: block;
+  margin: 0.8rem auto 0;
+}
+
+/* The name on a picks page comes from the account. */
+.form-field[readonly] {
+  opacity: 0.75;
+  cursor: default;
+}
+
+.signin-label {
+  display: block;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.signin-note {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-main);
+  margin: 0.3rem 0 0.4rem;
+}
+
+.signin-note strong {
+  color: var(--accent-gold);
+}
+
+.signin-help {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.signin-help a,
+.name-reminder a {
+  color: var(--accent-gold);
+}
