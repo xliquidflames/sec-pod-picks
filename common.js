@@ -36,6 +36,25 @@ function addSiteMenu() {
   nav.innerHTML = SITE_SECTIONS.map(s =>
     `<a href="${s.href}" class="${s.main ? "main" : ""} ${s.match(page) ? "active" : ""}"${s.match(page) ? ' aria-current="page"' : ""}>${s.label}</a>`).join("");
   container.prepend(nav);
+  addAccountBar(nav);
+}
+
+// Under the menu: who's signed in, with Sign out, or a Sign in link. The
+// sign-in page has its own, so it's left off there.
+function addAccountBar(nav) {
+  if (/^signin/i.test(location.pathname.split("/").pop() || "")) return;
+  const bar = document.createElement("div");
+  bar.className = "account-bar";
+  nav.after(bar);
+  currentAccount().then(account => {
+    if (account && account.name) {
+      bar.innerHTML = `Signed in as <strong>${account.name}</strong> · <button type="button" class="account-link" onclick="signOut(thisPage())">Sign out</button>`;
+    } else if (account) {
+      bar.innerHTML = `<button type="button" class="account-link" onclick="location.href = signInUrl()">Choose your name</button>`;
+    } else {
+      bar.innerHTML = `<button type="button" class="account-link" onclick="location.href = signInUrl()">Sign in</button>`;
+    }
+  });
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", addSiteMenu);
