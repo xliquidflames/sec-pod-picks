@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-site-text="Host Portal - {name}">Host Portal - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=40"></script>
-  <script src="common.js?v=40"></script>
+  <script src="config.js?v=41"></script>
+  <script src="common.js?v=41"></script>
   <script src="sec.js?v=40"></script>
-  <link rel="stylesheet" href="styles.css?v=40" />
+  <link rel="stylesheet" href="styles.css?v=43" />
 </head>
 <body>
 
@@ -49,16 +49,13 @@
         </div>
       </div>
 
-      <div class="control-group">
-        <label for="hostPin">Host Security PIN:</label>
-        <input type="password" class="form-field" id="hostPin" placeholder="Enter Host PIN" />
-      </div>
+      <div class="name-reminder" id="hostAccount" style="margin-bottom: 1rem;">Checking your sign-in...</div>
 
       <div id="gamesContainer">
         <div style="text-align: center; color: var(--text-muted); padding: 2rem 0;">Loading schedule...</div>
       </div>
 
-      <button type="button" class="btn-submit" onclick="saveHostSelections()">Save Host Picks</button>
+      <button type="button" class="btn-submit" id="saveHostBtn" onclick="saveHostSelections()">Save Host Picks</button>
       <div id="statusAlert" class="status-alert"></div>
     </div>
   </div>
@@ -351,11 +348,8 @@
 
     // Saving again for the same host and week overwrites the earlier entry.
     async function saveHostSelections() {
-      const pinInput = document.getElementById("hostPin").value.trim();
       const hostName = document.getElementById("hostSelect").value;
       const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
-
-      if (!pinInput) return setStatus("var(--danger)", "Enter the Host Security PIN.");
 
       currentSchedule.forEach(g => {
         const inpA = document.getElementById(`score_${g.matchupKey}_A`);
@@ -370,15 +364,12 @@
 
       setStatus("var(--text-muted)", "Saving...");
 
-      // The database checks the PIN and saves; the PIN isn't in the site's files.
+      // The database checks that this account may save host picks.
       try {
         const { error } = await supabaseClient.rpc("save_host_picks", {
-          p_pin: pinInput, p_name: hostName, p_week: weekNum, p_picks: hostPicks
+          p_name: hostName, p_week: weekNum, p_picks: hostPicks
         });
-        if (error) {
-          if (/pin/i.test(error.message || "")) return setStatus("var(--danger)", "Invalid Host Security PIN.");
-          throw error;
-        }
+        if (error) throw error;
 
         clearDraft();
         const picked = currentSchedule.filter(g => hostPicks[g.matchupKey]).length;
@@ -391,6 +382,16 @@
     // Hosts move to the next week on the Monday after its last game ends
     // (a day before the public leaderboard).
     (async () => {
+      // Only accounts listed as site admins in the database can save.
+      const account = await requireAccount();
+      if (!account) return;
+      const { data: isAdmin } = await supabaseClient.rpc("is_site_admin");
+      const signOutLink = `<a href="#" onclick="signOut('hostpicks.html'); return false;">Sign out</a>`;
+      document.getElementById("hostAccount").innerHTML = isAdmin
+        ? `Saving as <strong>${account.name}</strong> · ${signOutLink}`
+        : `<strong>${account.name}</strong> can't save host picks. ${signOutLink}`;
+      document.getElementById("saveHostBtn").disabled = !isAdmin;
+
       const week = await determineActiveWeek(lastKickoff => nextDayStart(new Date(lastKickoff.getTime() + 4 * 60 * 60 * 1000), 1));
       document.getElementById("weekSelect").value = String(week);
       loadSchedule();

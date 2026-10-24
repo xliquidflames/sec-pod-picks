@@ -5,7 +5,8 @@ A free pick'em website for a college football podcast and its listeners:
 - **SEC Football** (`index.html`, `makepicks.html`): weekly straight-up picks with a Lock of the Week, the hosts' picks beside the listeners' consensus, season standings, and a details popup for every game (score, stats, series history, stat rankings, both schedules and links to where the show discusses it).
 - **NFL** (`nflindex.html`, `nflmakepicks.html`): the same weekly picks for the NFL, listeners only.
 - **SEC Hoops** (`hoopsindex.html`, `hoopsmakepicks.html`): the same for SEC men's basketball, with Monday–Sunday weeks.
-- **Host picks** (`hostpicks.html`): where the hosts enter their own picks and predicted scores, behind a PIN.
+- **Sign-in** (`signin.html`): players sign in with Google, Discord, GitHub or an email and password, and claim the name their picks go under.
+- **Host picks** (`hostpicks.html`): where the hosts' picks and predicted scores are entered, by a site admin's account.
 - **March Madness** (`hoopsMMBracket.html` for standings, `hoopsMMPicks.html` for filling out a bracket, both using `hoopsMMBracket.js`): a bracket challenge.
 - **Admin** (`admin.html`): a PIN-protected page for checking entries.
 
@@ -20,7 +21,9 @@ It runs entirely on free services: GitHub Pages hosts the pages, Supabase stores
 | [GitHub](https://github.com) | Hosts the website for free (GitHub Pages) | Yes |
 | [Supabase](https://supabase.com) | Database for everyone's picks, plus three small server functions | Yes |
 | [CollegeFootballData.com](https://collegefootballdata.com) | Free API key for series history and stat rankings | Optional |
-| [Google Cloud](https://console.cloud.google.com) | Free YouTube API key for "On the Pod" episode links | Optional |
+| [Google Cloud](https://console.cloud.google.com) | "Continue with Google" sign-in, and a free YouTube API key for "On the Pod" links | Optional |
+| [Discord developer portal](https://discord.com/developers/applications) | "Continue with Discord" sign-in | Optional |
+| [Resend](https://resend.com) | Sends sign-up and password-reset emails, from a domain you own | Needed for email-and-password sign-in |
 | [GoatCounter](https://www.goatcounter.com) | Free visitor counts | Optional |
 
 None of these needs a credit card. If Google Cloud offers a paid trial, skip it, because the YouTube API key works without one.
@@ -38,7 +41,7 @@ None of these needs a credit card. If Google Cloud offers a paid trial, skip it,
 ## 2. Set up the database (Supabase)
 
 1. Create a free Supabase account and a **New project**. Pick any name and region, and save the database password somewhere safe.
-2. Open **SQL Editor → New query** and paste in all of [`supabase/setup.sql`](supabase/setup.sql). Near the bottom, change `NEW-PIN-HERE` to the PIN the hosts will type on the host page, then tap **Run**. This creates every table the site uses, with the right permissions. The PIN is kept in the database, not in the site's files, so visitors can't see it. To change it later, run `update public.host_pin set pin = 'NEW-PIN';`. Run it once only, because running it a second time errors on the parts that already exist.
+2. Open **SQL Editor → New query** and paste in all of [`supabase/setup.sql`](supabase/setup.sql). Near the bottom, put your own email and name in place of `xliquidflames@gmail.com` and `Liquid`: that makes you the site admin, who saves the hosts' picks, and holds that name for you. Then tap **Run**. This creates every table the site uses, with the right permissions. Run it once only, because running it a second time errors on the parts that already exist.
 3. Go to **Project Settings → API Keys** (or **Data API**) and copy two things:
    - the **Project URL** (`https://xxxx.supabase.co`)
    - the **publishable key** (`sb_publishable_…`), sometimes labeled the *anon* key
@@ -47,7 +50,26 @@ None of these needs a credit card. If Google Cloud offers a paid trial, skip it,
 
 ---
 
-## 3. Set up the server functions (optional extras)
+## 3. Set up sign-in
+
+Players must sign in to submit picks. Each way of signing in is a small free app you register, whose keys go into Supabase. Offer as many as you like; Google and Discord cover most people.
+
+Every provider asks for the same **callback URL**: `https://<your-project>.supabase.co/auth/v1/callback` (your Project URL from step 2, plus `/auth/v1/callback`).
+
+- **Google:** in Google Cloud, open **Google Auth Platform** (or **APIs & Services → OAuth consent screen**). Fill in the app name and your email, choose **External**, then under **Clients** create an **OAuth client** of type **Web application**. Add your site's address (`https://<your-username>.github.io`) under **Authorized JavaScript origins** and the callback URL under **Authorized redirect URIs**. Copy the client ID and secret. Under **Audience**, tap **Publish app**, or only test users can sign in.
+- **Discord:** in the developer portal, **New Application**, then **OAuth2**. Add the callback URL under **Redirects** and save. Copy the **Client ID**, and **Reset Secret** to get the secret.
+- **GitHub:** **Settings → Developer settings → OAuth Apps → New OAuth App**. Homepage URL is your site; **Authorization callback URL** is the callback URL. Copy the client ID, then **Generate a new client secret**.
+- **Email and password:** Supabase's built-in email barely sends anything, so it needs your own sender. Create a free Resend account, add a domain you own (a subdomain like `mail.yourdomain.com` is best), and add the DNS records Resend shows wherever your domain is managed. Once Resend says the domain is verified, create an API key.
+
+Then, in Supabase:
+
+1. **Authentication → Sign In / Providers:** turn on **Google**, **Discord** and **GitHub**, pasting each one's client ID and secret. Under **Email**, keep **Confirm email** on and set the minimum password length to 8.
+2. **Authentication → URL Configuration:** set **Site URL** to your site's address, and add `https://<your-username>.github.io/<repository-name>/**` under **Redirect URLs**.
+3. **Authentication → Emails → SMTP Settings** (for email and password): turn on custom SMTP. Host `smtp.resend.com`, port `465`, username `resend`, password your Resend API key, and a sender address on your Resend domain, like `picks@mail.yourdomain.com`.
+
+The first time someone signs in, they choose the name everyone sees. Typing a name that already has picks keeps that history. Names can't be changed from the site; to fix one, edit the `profiles` table in Supabase's Table Editor.
+
+## 4. Set up the server functions (optional extras)
 
 Three small Supabase Edge Functions power the extras in the game details popup. The site works without them, and the boxes they fill just don't appear.
 
@@ -86,7 +108,7 @@ For each of the three:
 
 ---
 
-## 4. Make it yours (`config.js`)
+## 5. Make it yours (`config.js`)
 
 Nearly everything specific to a show lives in **`config.js`**. Open it on GitHub, tap the pencil to edit, and change:
 
@@ -96,6 +118,7 @@ Nearly everything specific to a show lives in **`config.js`**. Open it on GitHub
 | `logo` | The logo file. Replace `logo.png` (and `favicon.ico`) with your own, keeping the names, or point this at a new file. |
 | `headline` | The line under the logo on the main page. |
 | `website`, `discord`, `contact` | Footer links and the "reach out to…" line. `contact` can include simple HTML. |
+| `accountHelp` | Who players message on Discord when they can't sign in or someone has their name. |
 | `hosts` | The hosts' names, in display order. Their picks are saved under these exact names, so don't rename anyone mid-season. |
 | `players` | What the show calls its listeners, singular and plural, e.g. `{ one: "Cousin", many: "Cousins" }`. |
 | `supabase` | The Project URL and publishable key from step 2. |
@@ -115,7 +138,7 @@ Text on the pages that shows the show's name or players' nickname is filled in f
 
 ---
 
-## 5. Optional changes
+## 6. Optional changes
 
 ### Fewer sections
 
@@ -140,7 +163,7 @@ If the show's hosts don't make picks, set `hosts: []` in `config.js`. The host c
 
 ---
 
-## 6. Each new season
+## 7. Each new season
 
 | File | What to change |
 |---|---|
@@ -149,7 +172,6 @@ If the show's hosts don't make picks, set `hosts: []` in `config.js`. The host c
 | `nfl.js` | The season year and `TOTAL_WEEKS`. |
 | `hoops.js` | `HOOPS_SEASON` (ESPN names a season by the year it ends, so 2026–27 is `2027`), `HOOPS_FIRST_MONDAY` and `TOTAL_WEEKS`. |
 | `config.js` | `headline` and the bracket settings. |
-| Supabase | A new host PIN, if you want one: `update public.host_pin set pin = 'NEW-PIN';` in the SQL Editor. |
 
 Last season's picks stay in the database. Clear the picks tables in Supabase (Table Editor) if you want a fresh start.
 
@@ -172,7 +194,8 @@ The football and basketball pages are built around the SEC: ESPN's SEC group num
 
 ## Good to know
 
-- **The host PIN is checked by the database**, and a wrong guess waits 2 seconds. Use something longer than a few digits all the same. The **admin PIN is not real security**: it's in `admin.html` for anyone who reads the page's code. The admin page only reads, so that's all it protects.
-- **What the database allows.** Anyone can read picks and submit one entry per name per week. Nobody can change or delete an entry from the website, and host picks can only be saved with the PIN. Each entry is stamped with the database's own time when it arrives, and the leaderboard ignores any pick on a game that kicked off more than 15 minutes before that, even one sent around the page.
-- **Free-tier limits:** Supabase allows 500,000 function calls a month, YouTube 10,000 units a day, and CFBD 1,000 calls a month. Normal use stays far below all three, because the functions save their results.
+- **What the database allows.** Anyone can read picks. Submitting takes a signed-in account, under the name it claimed, one entry per name per week. Nobody can change or delete an entry from the website. Host picks can only be saved by an account whose confirmed email is in the `site_admins` table; add a row there to add an admin. Each entry is stamped with the database's own time when it arrives, and the leaderboard ignores any pick on a game that kicked off more than 15 minutes before that, even one sent around the page.
+- **The admin PIN is not real security**: it's in `admin.html` for anyone who reads the page's code. The admin page only reads, so that's all it protects.
+- **March Madness brackets don't use sign-in yet.** Anyone can still submit a bracket under any name.
+- **Free-tier limits:** Supabase allows 50,000 active users a month and 500,000 function calls a month, Resend 3,000 emails a month, YouTube 10,000 units a day, and CFBD 1,000 calls a month. Normal use stays far below all of them; the functions save their results to keep calls down.
 - **ESPN's feeds are public and unofficial.** They need no key and have no stated limits, but ESPN can change them without notice. If games suddenly stop showing, that's the first thing to check.

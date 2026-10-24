@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Make Picks - NFL Pick'em</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=36"></script>
-  <script src="common.js?v=36"></script>
+  <script src="config.js?v=41"></script>
+  <script src="common.js?v=41"></script>
   <script src="nfl.js?v=6"></script>
-  <link rel="stylesheet" href="styles.css?v=37" />
+  <link rel="stylesheet" href="styles.css?v=43" />
 </head>
 <body>
 
@@ -27,14 +27,12 @@
 
     <div class="card">
       <div class="user-input-group">
-        <label for="userNameInput">Your Handle / Name:</label>
+        <label for="userNameInput">Your Name:</label>
         <div class="name-input-wrapper">
           <input type="text" class="form-field" id="userNameInput" placeholder="e.g., @CousinDan or GridironGuy99" data-site-attr="placeholder:e.g., @{one}Dan or GridironGuy99" autocomplete="off" required />
           <div id="nameSuggestions" class="name-suggestions"></div>
         </div>
-        <div class="name-reminder">
-          ⚠️ Type it <strong>exactly</strong> the same every week — same spelling, capitalization, and @ symbol (if you use one). "GridironGuy" and "@GridironGuy" count as two different people, and your season total won't add up if you switch back and forth.
-        </div>
+        <div class="name-reminder">Checking your sign-in...</div>
       </div>
 
       <div id="gamesList">
@@ -124,8 +122,10 @@
       document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
       document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
 
-      loadKnownNames(supabaseClient.from(PICKS_TABLE).select("user_name")).then(names => { knownNames = names; });
-      setupNameAutocomplete(() => knownNames, (name, query) => name.includes(query));
+      // Picks go in under the signed-in account's name.
+      const account = await requireAccount();
+      if (!account) return;
+      showAccountName(account);
 
       currentSchedule = await fetchEspnSchedule(targetWeek);
       renderForm();

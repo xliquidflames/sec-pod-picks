@@ -15,6 +15,10 @@ const SITE = {
   discord: "https://discord.gg/XsPnGkxFSM",
   contact: "Issues, comments, or suggestions? Reach out to <strong>Liquid</strong> on Discord.",
 
+  // Who players message on Discord when they can't sign in or someone has
+  // their name. Shown on the sign-in and picks pages.
+  accountHelp: "Liquid",
+
   // The hosts, in the order they appear. Each host's picks are saved
   // under this exact name, so don't rename a host mid-season.
   hosts: ["Mike", "Shane", "Steven"],

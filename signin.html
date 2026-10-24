@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" class="page-signin">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-site-text="Sign In - {name}">Sign In - That SEC Podcast</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js?v=41"></script>
+  <script src="common.js?v=41"></script>
+  <link rel="stylesheet" href="styles.css?v=43" />
+</head>
+<body>
+
+  <div class="container narrow">
+    <header>
+      <a href="index.html" class="back-link">&larr; Back to Leaderboard</a>
+      <h1 id="pageHeading">SIGN IN</h1>
+      <p class="sub-header" id="pageSubHeading">Sign in once and this device remembers you.</p>
+    </header>
+
+    <div class="card signin-card">
+      <div id="signinLoading" class="signin-note">Checking...</div>
+
+      <!-- Signed out: a provider, or email and password. -->
+      <div id="signinChoices" style="display: none;">
+        <button type="button" class="btn-provider" onclick="signInWith('google')">Continue with Google</button>
+        <button type="button" class="btn-provider" onclick="signInWith('discord')">Continue with Discord</button>
+        <button type="button" class="btn-provider" onclick="signInWith('github')">Continue with GitHub</button>
+
+        <div class="signin-divider"><span>or use email</span></div>
+
+        <input type="email" class="form-field" id="emailInput" placeholder="Email" autocomplete="email" />
+        <input type="password" class="form-field" id="passwordInput" placeholder="Password" autocomplete="current-password" />
+        <div class="signin-buttons">
+          <button type="button" class="btn-submit" onclick="signInWithEmail()">Sign In</button>
+          <button type="button" class="btn-provider" onclick="createAccount()">Create Account</button>
+        </div>
+        <button type="button" class="details-link signin-forgot" onclick="forgotPassword()">Forgot password?</button>
+      </div>
+
+      <!-- Signed in for the first time: claim a name. -->
+      <div id="signinClaim" style="display: none;">
+        <label for="userNameInput" class="signin-label">Choose your name</label>
+        <div class="name-input-wrapper">
+          <input type="text" class="form-field" id="userNameInput" placeholder="e.g., @CousinDan or VolFan99" data-site-attr="placeholder:e.g., @{one}Dan or VolFan99" autocomplete="off" maxlength="30" />
+          <div id="nameSuggestions" class="name-suggestions"></div>
+        </div>
+        <div class="signin-note">Played before? Use the same name and your season record comes with you. This is the name everyone sees, and it can't be changed later.</div>
+        <button type="button" class="btn-submit" onclick="claimName()">Claim This Name</button>
+      </div>
+
+      <!-- Signed in with a name. -->
+      <div id="signinDone" style="display: none;">
+        <div class="signin-note">Signed in as <strong id="doneName"></strong>.</div>
+        <div class="signin-buttons">
+          <a class="btn-submit" id="continueBtn" href="index.html">Continue</a>
+          <button type="button" class="btn-provider" onclick="signOut('signin.html')">Sign Out</button>
+        </div>
+      </div>
+
+      <!-- Back from a "forgot password" email. -->
+      <div id="signinReset" style="display: none;">
+        <label for="newPasswordInput" class="signin-label">Choose a new password</label>
+        <input type="password" class="form-field" id="newPasswordInput" placeholder="New password" autocomplete="new-password" />
+        <button type="button" class="btn-submit" onclick="saveNewPassword()">Save Password</button>
+      </div>
+
+      <div id="statusAlert" class="status-alert"></div>
+      <div class="signin-help" id="signinHelp"></div>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    // Only pages on this site, so a link can't send people elsewhere.
+    const next = /^[\w-]+\.html(\?[\w=&%-]*)?$/.test(params.get("next") || "") ? params.get("next") : "index.html";
+    // Where sign-in emails and providers send people back to.
+    const returnUrl = `${location.origin}${location.pathname}?next=${encodeURIComponent(next)}`;
+    let knownNames = [];
+
+    function show(id) {
+      ["signinLoading", "signinChoices", "signinClaim", "signinDone", "signinReset"].forEach(s =>
+        document.getElementById(s).style.display = s === id ? "" : "none");
+    }
+
+    async function signInWith(provider) {
+      setStatus("var(--text-muted)", "Opening sign-in...");
+      const { error } = await supabaseClient.auth.signInWithOAuth({ provider, options: { redirectTo: returnUrl } });
+      if (error) setStatus("var(--danger)", error.message);
+    }
+
+    function emailAndPassword() {
+      const email = document.getElementById("emailInput").value.trim();
+      const password = document.getElementById("passwordInput").value;
+      if (!email || !password) {
+        setStatus("var(--danger)", "Enter your email and a password.");
+        return null;
+      }
+      return { email, password };
+    }
+
+    async function signInWithEmail() {
+      const creds = emailAndPassword();
+      if (!creds) return;
+      setStatus("var(--text-muted)", "Signing in...");
+      const { error } = await supabaseClient.auth.signInWithPassword(creds);
+      if (error) {
+        const msg = /confirm/i.test(error.message) ? "Confirm your email first. The link is in your inbox."
+          : /invalid/i.test(error.message) ? "That email and password don't match." : error.message;
+        return setStatus("var(--danger)", msg);
+      }
+      await route();
+    }
+
+    async function createAccount() {
+      const creds = emailAndPassword();
+      if (!creds) return;
+      if (creds.password.length < 8) return setStatus("var(--danger)", "Passwords need at least 8 characters.");
+      setStatus("var(--text-muted)", "Creating your account...");
+      const { data, error } = await supabaseClient.auth.signUp({ ...creds, options: { emailRedirectTo: returnUrl } });
+      if (error) return setStatus("var(--danger)", error.message);
+      if (data.session) return route();
+      setStatus("var(--success)", `Almost done. Open the link we sent to ${creds.email} to finish signing up.`);
+    }
+
+    async function forgotPassword() {
+      const email = document.getElementById("emailInput").value.trim();
+      if (!email) return setStatus("var(--danger)", "Type your email above first.");
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: returnUrl });
+      if (error) return setStatus("var(--danger)", error.message);
+      setStatus("var(--success)", `If ${email} has an account, a reset link is on its way.`);
+    }
+
+    async function saveNewPassword() {
+      const password = document.getElementById("newPasswordInput").value;
+      if (password.length < 8) return setStatus("var(--danger)", "Passwords need at least 8 characters.");
+      const { error } = await supabaseClient.auth.updateUser({ password });
+      if (error) return setStatus("var(--danger)", error.message);
+      setStatus("var(--success)", "Password saved.");
+      await route();
+    }
+
+    async function claimName() {
+      const name = document.getElementById("userNameInput").value.trim();
+      if (!name) return setStatus("var(--danger)", "Type a name first.");
+      setStatus("var(--text-muted)", "Claiming...");
+      const { data, error } = await supabaseClient.rpc("claim_name", { p_name: name });
+      if (error) return setStatus("var(--danger)", error.message);
+      if (data && data !== name) {
+        setStatus("var(--success)", `You're ${data}, with your history from before.`);
+        setTimeout(route, 1500);
+        return;
+      }
+      await route();
+    }
+
+    // Shows the step this visitor is on, or sends them on once they're set.
+    async function route() {
+      const account = await currentAccount();
+      if (!account) {
+        show("signinChoices");
+        return;
+      }
+      if (!account.name) {
+        show("signinClaim");
+        setStatus("", "");
+        // Names from past entries that no account has claimed yet.
+        const [sec, nfl, hoops, claimed] = await Promise.all([
+          loadKnownNames(supabaseClient.from("picks").select("user_name").eq("is_host", false)),
+          loadKnownNames(supabaseClient.from("nfl_picks").select("user_name")),
+          loadKnownNames(supabaseClient.from("hoops_picks").select("user_name")),
+          loadKnownNames(supabaseClient.from("profiles").select("user_name:display_name"))
+        ]);
+        const taken = new Set(claimed.map(n => n.toLowerCase()));
+        knownNames = [...new Set([...sec, ...nfl, ...hoops])].filter(n => !taken.has(n.toLowerCase()));
+        return;
+      }
+      try { localStorage.setItem("secPickEmUserName", account.name); } catch (e) {}
+      document.getElementById("doneName").textContent = account.name;
+      document.getElementById("continueBtn").href = next;
+      show("signinDone");
+      if (params.has("next")) location.replace(next);
+    }
+
+    document.getElementById("signinHelp").innerHTML = accountHelpHtml();
+    setupNameAutocomplete(() => knownNames, (name, query) => name.toLowerCase().includes(query.toLowerCase()));
+
+    let recovering = /type=recovery/.test(location.hash);
+    supabaseClient.auth.onAuthStateChange(event => {
+      if (event === "PASSWORD_RECOVERY") {
+        recovering = true;
+        show("signinReset");
+      }
+    });
+
+    (async () => {
+      // Waits for a provider or email link's sign-in to finish first.
+      await supabaseClient.auth.getSession();
+      if (recovering) show("signinReset");
+      else await route();
+    })();
+  </script>
+</body>
+</html>

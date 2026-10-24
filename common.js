@@ -41,6 +41,62 @@ function addSiteMenu() {
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", addSiteMenu);
 else addSiteMenu();
 
+// ---- Accounts ----
+// Signing in keeps you signed in on this device. Each account claims one
+// name (on signin.html), and picks are saved under it.
+
+// The page to come back to after signing in.
+const thisPage = () => (location.pathname.split("/").pop() || "index.html") + location.search;
+const signInUrl = next => `signin.html?next=${encodeURIComponent(next || thisPage())}`;
+
+// { user, name } when signed in (name is null until one is claimed), or null.
+async function currentAccount() {
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    const user = data && data.session && data.session.user;
+    if (!user) return null;
+    const { data: profile } = await supabaseClient.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle();
+    return { user, name: profile ? profile.display_name : null };
+  } catch (err) {
+    console.error("Account check failed:", err);
+    return null;
+  }
+}
+
+// For pages that need an account with a name: sends everyone else to sign in.
+async function requireAccount() {
+  const account = await currentAccount();
+  if (!account || !account.name) {
+    location.replace(signInUrl());
+    return null;
+  }
+  try { localStorage.setItem("secPickEmUserName", account.name); } catch (e) {}
+  return account;
+}
+
+async function signOut(next) {
+  await supabaseClient.auth.signOut();
+  location.href = next || "index.html";
+}
+
+// Who to message about account trouble.
+const accountHelpHtml = () => SITE.discord
+  ? `Can't sign in, or someone has your name? <a href="${SITE.discord}" target="_blank" rel="noopener">DM ${SITE.accountHelp || "us"} on Discord</a>.`
+  : "";
+
+// On a picks page: the name box shows the account's name and can't be changed.
+function showAccountName(account) {
+  const input = document.getElementById("userNameInput");
+  if (input) {
+    input.value = account.name;
+    input.readOnly = true;
+  }
+  const reminder = document.querySelector(".name-reminder");
+  if (reminder) {
+    reminder.innerHTML = `Picking as <strong>${account.name}</strong> · <a href="#" onclick="signOut('${thisPage()}'); return false;">Sign out</a><br>${accountHelpHtml()}`;
+  }
+}
+
 const hostKey = name => name.toLowerCase();
 const possessive = word => word.endsWith("s") ? `${word}'` : `${word}'s`;
 
@@ -344,6 +400,12 @@ function updateSubmitButton(weekNum, page) {
     ctaBtn.style.display = "flex";
     ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
     ctaBtn.href = `${page}?week=${weekNum}`;
+    // Signed out: sign in first, then on to the picks.
+    supabaseClient.auth.getSession().then(({ data }) => {
+      if (data && data.session) return;
+      ctaBtn.innerHTML = `<span>Sign In &amp; Submit Week ${weekNum} Picks &rarr;</span>`;
+      ctaBtn.href = signInUrl(`${page}?week=${weekNum}`);
+    }).catch(() => {});
   } else {
     ctaBtn.style.display = "none";
   }
