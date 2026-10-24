@@ -152,13 +152,12 @@ function favoriteLogoHtml(favorites) {
   return `<img class="fav-logo" src="${escapeHtml(team.logo)}" alt="${escapeHtml(team.name)}" title="${escapeHtml(team.name)}" />`;
 }
 
-// "W6" chips for each week won; three or more fold into one trophy count.
+// One trophy and a count of weeks won; the weeks show on tap-and-hold
+// and in the card's Season So Far box.
 function championChipsHtml(name) {
   const weeks = weeklyChampions[(name || "").toLowerCase()] || [];
   if (!weeks.length) return "";
-  const title = `Week ${weeks.join(", ")} champion`;
-  if (weeks.length >= 3) return `<span class="champ-chip" title="${title}">&#127942;&times;${weeks.length}</span>`;
-  return weeks.map(w => `<span class="champ-chip" title="Week ${w} champion">&#127942; W${w}</span>`).join("");
+  return `<span class="champ-chip" title="Week ${weeks.join(", ")} champion">&#127942;&times;${weeks.length}</span>`;
 }
 
 // Every week won, spelled out, for the Season So Far box on a card.
