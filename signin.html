@@ -6,8 +6,8 @@
   <title data-site-text="Sign In - {name}">Sign In - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=43"></script>
-  <link rel="stylesheet" href="styles.css?v=45" />
+  <script src="common.js?v=44"></script>
+  <link rel="stylesheet" href="styles.css?v=46" />
 </head>
 <body>
 
@@ -54,6 +54,7 @@
         <div class="signin-note">Signed in as <strong id="doneName"></strong>.</div>
         <div class="signin-buttons">
           <a class="btn-submit" id="continueBtn" href="index.html">Continue</a>
+          <a class="btn-provider signin-account-link" href="account.html">Favorite Teams</a>
           <button type="button" class="btn-provider" onclick="signOut('signin.html')">Sign Out</button>
         </div>
       </div>
@@ -146,12 +147,14 @@
       setStatus("var(--text-muted)", "Claiming...");
       const { data, error } = await supabaseClient.rpc("claim_name", { p_name: name });
       if (error) return setStatus("var(--danger)", error.message);
+      // Then an optional stop to pick favorite teams, and on to where they were going.
+      const welcome = `account.html?welcome=1&next=${encodeURIComponent(next)}`;
       if (data && data !== name) {
         setStatus("var(--success)", `You're ${data}, with your history from before.`);
-        setTimeout(route, 1500);
+        setTimeout(() => location.replace(welcome), 1500);
         return;
       }
-      await route();
+      location.replace(welcome);
     }
 
     // Shows the step this visitor is on, or sends them on once they're set.

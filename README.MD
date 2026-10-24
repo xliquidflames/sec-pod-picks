@@ -6,6 +6,7 @@ A free pick'em website for a college football podcast and its listeners:
 - **NFL** (`nflindex.html`, `nflmakepicks.html`): the same weekly picks for the NFL, listeners only.
 - **SEC Hoops** (`hoopsindex.html`, `hoopsmakepicks.html`): the same for SEC men's basketball, with Monday–Sunday weeks.
 - **Sign-in** (`signin.html`): players sign in with Google, Discord, GitHub or an email and password, and claim the name their picks go under.
+- **Account** (`account.html`): a player's favorite team for each sport, shown as a logo beside their name on that sport's pages. Tapping your name at the top opens it.
 - **Host picks** (`hostpicks.html`): where the hosts' picks and predicted scores are entered, by a site admin's account.
 - **March Madness** (`hoopsMMBracket.html` for standings, `hoopsMMPicks.html` for filling out a bracket, both using `hoopsMMBracket.js`): a bracket challenge.
 - **Admin** (`admin.html`): a PIN-protected page for checking entries.
@@ -196,6 +197,7 @@ The football and basketball pages are built around the SEC: ESPN's SEC group num
 
 - **What the database allows.** Anyone can read picks. Submitting takes a signed-in account, under the name it claimed, one entry per name per week. Nobody can change or delete an entry from the website. Host picks can only be saved by an account whose confirmed email is in the `site_admins` table; add a row there to add an admin. Each entry is stamped with the database's own time when it arrives, and the leaderboard ignores any pick on a game that kicked off more than 15 minutes before that, even one sent around the page.
 - **The admin PIN is not real security**: it's in `admin.html` for anyone who reads the page's code. The admin page only reads, so that's all it protects.
+- **Weekly champions** are worked out from the picks, not stored: everyone tied for the most correct picks in a finished week gets a trophy badge for it.
 - **March Madness brackets don't use sign-in yet.** Anyone can still submit a bracket under any name.
 - **Free-tier limits:** Supabase allows 50,000 active users a month and 500,000 function calls a month, Resend 3,000 emails a month, YouTube 10,000 units a day, and CFBD 1,000 calls a month. Normal use stays far below all of them; the functions save their results to keep calls down.
 - **ESPN's feeds are public and unofficial.** They need no key and have no stated limits, but ESPN can change them without notice. If games suddenly stop showing, that's the first thing to check.

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-site-text="Your Account - {name}">Your Account - That SEC Podcast</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js?v=41"></script>
+  <script src="common.js?v=44"></script>
+  <link rel="stylesheet" href="styles.css?v=46" />
+</head>
+<body>
+
+  <div class="container narrow">
+    <header>
+      <a href="index.html" class="back-link">&larr; Back to Leaderboard</a>
+      <h1>YOUR ACCOUNT</h1>
+      <p class="sub-header" id="accountSub">Checking your sign-in...</p>
+    </header>
+
+    <div class="card">
+      <div class="section-title-bar">
+        <h2 class="section-title">Favorite Teams</h2>
+      </div>
+      <div class="signin-note">Optional. Your team's logo shows next to your name on that sport's pages. Change or clear it any time from here, by tapping your name at the top.</div>
+      <div id="favoriteSections"></div>
+      <div id="statusAlert" class="status-alert"></div>
+      <a class="btn-submit fav-continue" id="welcomeContinue" href="index.html" style="display: none;">Continue &rarr;</a>
+    </div>
+
+    <div class="card">
+      <div class="signin-buttons">
+        <button type="button" class="btn-provider" onclick="signOut('index.html')">Sign Out</button>
+      </div>
+      <div class="signin-help" id="signinHelp"></div>
+    </div>
+  </div>
+
+  <script>
+    // Each sport's teams come from ESPN's standings, grouped by conference.
+    // College football and hoops show the SEC first, the rest under
+    // "Other conferences".
+    const SPORTS = [
+      { key: "cfb", label: "College Football", secFirst: true, urls: [
+        "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80",
+        "https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?group=80"] },
+      { key: "nfl", label: "NFL", secFirst: false, urls: [
+        "https://site.api.espn.com/apis/v2/sports/football/nfl/standings",
+        "https://site.web.api.espn.com/apis/v2/sports/football/nfl/standings"] },
+      { key: "hoops", label: "College Basketball", secFirst: true, urls: [
+        "https://site.api.espn.com/apis/v2/sports/basketball/mens-college-basketball/standings",
+        "https://site.web.api.espn.com/apis/v2/sports/basketball/mens-college-basketball/standings"] }
+    ];
+
+    let favorites = {};
+    const teamLists = {};
+
+    async function fetchJson(urls) {
+      for (const url of urls) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return await res.json();
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    // Every team under a standings node, divisions and all.
+    function teamsUnder(node, out = []) {
+      ((node.standings && node.standings.entries) || []).forEach(e => e.team && out.push(e.team));
+      (node.children || []).forEach(c => teamsUnder(c, out));
+      return out;
+    }
+
+    // Saved names keep to plain characters; the database checks the same.
+    const plainName = n => (n || "").replace(/[^\p{L}\p{N} .'&()-]/gu, "").trim().slice(0, 40);
+
+    function toTeam(t, sport) {
+      const logo = (t.logos && t.logos[0] && t.logos[0].href) ||
+        (sport === "nfl" ? "" : `https://a.espncdn.com/i/teamlogos/ncaa/500/${t.id}.png`);
+      return { id: String(t.id), name: plainName(t.shortDisplayName || t.location || t.displayName), logo };
+    }
+
+    // [{ name, isSec, teams }] for a sport, SEC first when it has one.
+    async function loadTeams(sport) {
+      if (teamLists[sport.key]) return teamLists[sport.key];
+      const data = await fetchJson(sport.urls);
+      if (!data) return null;
+      const tops = data.children && data.children.length ? data.children : [data];
+      const groups = tops.map(c => ({
+        name: c.name || c.abbreviation || "Teams",
+        isSec: sport.secFirst && (c.abbreviation === "SEC" || /southeastern/i.test(c.name || "")),
+        teams: teamsUnder(c).map(t => toTeam(t, sport.key)).filter(t => t.id && /^https:\/\/a\.espncdn\.com\//.test(t.logo))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      })).filter(g => g.teams.length);
+      groups.sort((a, b) => (b.isSec - a.isSec) || a.name.localeCompare(b.name));
+      return (teamLists[sport.key] = groups);
+    }
+
+    function currentHtml(sport) {
+      const team = favorites[sport.key];
+      return team
+        ? `<img class="fav-current-logo" src="${escapeHtml(team.logo)}" alt="" /><strong>${escapeHtml(team.name)}</strong>`
+        : `<span class="fav-none">No team picked</span>`;
+    }
+
+    function renderSections() {
+      document.getElementById("favoriteSections").innerHTML = SPORTS.map(sport => `
+        <div class="fav-section" id="fav_${sport.key}">
+          <div class="fav-sport">${sport.label}</div>
+          <div class="fav-row">
+            <div class="fav-current">${currentHtml(sport)}</div>
+            <div class="fav-actions">
+              <button type="button" class="btn-ctrl" onclick="togglePicker('${sport.key}')">Change</button>
+              ${favorites[sport.key] ? `<button type="button" class="btn-ctrl" onclick="saveFavorite('${sport.key}', null)">Clear</button>` : ""}
+            </div>
+          </div>
+          <div class="fav-picker" id="picker_${sport.key}"></div>
+        </div>`).join("");
+    }
+
+    const teamButton = (sportKey, t) =>
+      `<button type="button" class="fav-team" onclick="pickTeam('${sportKey}', '${t.id}')"><img src="${escapeHtml(t.logo)}" alt="" loading="lazy" /><span>${escapeHtml(t.name)}</span></button>`;
+
+    async function togglePicker(sportKey) {
+      const picker = document.getElementById(`picker_${sportKey}`);
+      if (picker.innerHTML) { picker.innerHTML = ""; return; }
+      const sport = SPORTS.find(s => s.key === sportKey);
+      picker.innerHTML = `<div class="signin-note">Loading teams...</div>`;
+      const groups = await loadTeams(sport);
+      if (!groups || !groups.length) {
+        picker.innerHTML = `<div class="signin-note">Couldn't load the teams from ESPN. Try again in a minute.</div>`;
+        return;
+      }
+      const sec = groups.filter(g => g.isSec);
+      const rest = groups.filter(g => !g.isSec);
+      const groupHtml = g => `<div class="fav-conf">${escapeHtml(g.name)}</div><div class="fav-grid">${g.teams.map(t => teamButton(sportKey, t)).join("")}</div>`;
+      picker.innerHTML = sec.length
+        ? `${sec.map(groupHtml).join("")}
+           <button type="button" class="details-link fav-more" onclick="this.nextElementSibling.classList.toggle('open'); this.innerHTML = this.nextElementSibling.classList.contains('open') ? 'Other conferences &#9652;' : 'Other conferences &#9662;';">Other conferences &#9662;</button>
+           <div class="fav-others">${rest.map(groupHtml).join("")}</div>`
+        : groups.map(groupHtml).join("");
+    }
+
+    function pickTeam(sportKey, id) {
+      const team = (teamLists[sportKey] || []).flatMap(g => g.teams).find(t => t.id === id);
+      if (team) saveFavorite(sportKey, team);
+    }
+
+    async function saveFavorite(sportKey, team) {
+      setStatus("var(--text-muted)", "Saving...");
+      const { data, error } = await supabaseClient.rpc("set_favorite", { p_sport: sportKey, p_team: team });
+      if (error) return setStatus("var(--danger)", error.message);
+      favorites = data || {};
+      signedInAccount = signedInAccount && { ...signedInAccount, favorites };
+      renderSections();
+      renderAccountBar();
+      const label = SPORTS.find(s => s.key === sportKey).label;
+      setStatus("var(--success)", team ? `${team.name} saved for ${label}.` : `${label} team cleared.`);
+    }
+
+    // Right after claiming a name: an optional stop on the way to the picks.
+    const params = new URLSearchParams(location.search);
+    const welcomeNext = params.has("welcome") && /^[\w-]+\.html(\?[\w=&%-]*)?$/.test(params.get("next") || "") ? params.get("next") : null;
+
+    (async () => {
+      if (welcomeNext) {
+        document.querySelector("h1").textContent = "PICK YOUR TEAMS";
+        const btn = document.getElementById("welcomeContinue");
+        btn.href = welcomeNext;
+        btn.style.display = "block";
+      }
+      document.getElementById("signinHelp").innerHTML = accountHelpHtml();
+      const account = await requireAccount();
+      if (!account) return;
+      favorites = account.favorites || {};
+      document.getElementById("accountSub").innerHTML = `Signed in as <strong>${escapeHtml(account.name)}</strong>`;
+      renderSections();
+    })();
+  </script>
+</body>
+</html>

@@ -39,22 +39,35 @@ function addSiteMenu() {
   addAccountBar(nav);
 }
 
-// Inside the pinned menu, under its buttons: who's signed in, with Sign out, or a Sign in link. The
+// Inside the pinned menu, under its buttons: who's signed in (with their
+// team logo for this section and any weekly titles), or a Sign in link. The
 // sign-in page has its own, so it's left off there.
+let signedInAccount;  // undefined until checked, then the account or null
+
 function addAccountBar(nav) {
   if (/^signin/i.test(location.pathname.split("/").pop() || "")) return;
   const bar = document.createElement("div");
   bar.className = "account-bar";
+  bar.id = "accountBar";
   nav.appendChild(bar);
   currentAccount().then(account => {
-    if (account && account.name) {
-      bar.innerHTML = `Signed in as <strong>${account.name}</strong> · <button type="button" class="account-link" onclick="signOut(thisPage())">Sign out</button>`;
-    } else if (account) {
-      bar.innerHTML = `<button type="button" class="account-link" onclick="location.href = signInUrl()">Choose your name</button>`;
-    } else {
-      bar.innerHTML = `<button type="button" class="account-link" onclick="location.href = signInUrl()">Sign in</button>`;
-    }
+    signedInAccount = account;
+    renderAccountBar();
   });
+}
+
+function renderAccountBar() {
+  const bar = document.getElementById("accountBar");
+  if (!bar || signedInAccount === undefined) return;
+  const account = signedInAccount;
+  if (account && account.name) {
+    const logo = favoriteLogoHtml(account.favorites);
+    bar.innerHTML = `<a href="account.html" class="account-name" title="Your account">${logo}<strong>${escapeHtml(account.name)}</strong></a>${championChipsHtml(account.name)} · <button type="button" class="account-link" onclick="signOut(thisPage())">Sign out</button>`;
+  } else if (account) {
+    bar.innerHTML = `<button type="button" class="account-link" onclick="location.href = signInUrl()">Choose your name</button>`;
+  } else {
+    bar.innerHTML = `<button type="button" class="account-link" onclick="location.href = signInUrl()">Sign in</button>`;
+  }
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", addSiteMenu);
@@ -68,14 +81,15 @@ else addSiteMenu();
 const thisPage = () => (location.pathname.split("/").pop() || "index.html") + location.search;
 const signInUrl = next => `signin.html?next=${encodeURIComponent(next || thisPage())}`;
 
-// { user, name } when signed in (name is null until one is claimed), or null.
+// { user, name, favorites } when signed in (name is null until one is
+// claimed), or null.
 async function currentAccount() {
   try {
     const { data } = await supabaseClient.auth.getSession();
     const user = data && data.session && data.session.user;
     if (!user) return null;
-    const { data: profile } = await supabaseClient.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle();
-    return { user, name: profile ? profile.display_name : null };
+    const { data: profile } = await supabaseClient.from("profiles").select("display_name, favorites").eq("user_id", user.id).maybeSingle();
+    return { user, name: profile ? profile.display_name : null, favorites: (profile && profile.favorites) || {} };
   } catch (err) {
     console.error("Account check failed:", err);
     return null;
@@ -114,6 +128,92 @@ function showAccountName(account) {
   if (reminder) {
     reminder.innerHTML = `Picking as <strong>${account.name}</strong> · <a href="#" onclick="signOut('${thisPage()}'); return false;">Sign out</a><br>${accountHelpHtml()}`;
   }
+}
+
+// ---- Player badges: favorite team logo and weekly titles ----
+
+const escapeHtml = text => String(text ?? "").replace(/[&<>"']/g, ch =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+
+// Which sport's favorite to show: the section this page belongs to.
+const pageSport = () => {
+  const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  return /^nfl/.test(page) ? "nfl" : /^hoops/.test(page) ? "hoops" : "cfb";
+};
+
+// Filled on leaderboard pages: favorites by name, and the weeks each name won.
+let playerFavorites = {};   // lower-case name -> { cfb, nfl, hoops }
+let weeklyChampions = {};   // lower-case name -> [week numbers]
+let championsByWeek = {};   // week -> [names]
+
+function favoriteLogoHtml(favorites) {
+  const team = favorites && favorites[pageSport()];
+  if (!team || !team.logo) return "";
+  return `<img class="fav-logo" src="${escapeHtml(team.logo)}" alt="${escapeHtml(team.name)}" title="${escapeHtml(team.name)}" />`;
+}
+
+// "W6" chips for each week won; three or more fold into one trophy count.
+function championChipsHtml(name) {
+  const weeks = weeklyChampions[(name || "").toLowerCase()] || [];
+  if (!weeks.length) return "";
+  const title = `Week ${weeks.join(", ")} champion`;
+  if (weeks.length >= 3) return `<span class="champ-chip" title="${title}">&#127942;&times;${weeks.length}</span>`;
+  return weeks.map(w => `<span class="champ-chip" title="Week ${w} champion">&#127942; W${w}</span>`).join("");
+}
+
+// Logo and titles after a player's name on a card or in the standings.
+const playerBadgesHtml = name => favoriteLogoHtml(playerFavorites[(name || "").toLowerCase()]) + championChipsHtml(name);
+
+async function loadPlayerFavorites() {
+  try {
+    const { data } = await supabaseClient.from("profiles").select("display_name, favorites");
+    playerFavorites = {};
+    (data || []).forEach(p => { playerFavorites[(p.display_name || "").toLowerCase()] = p.favorites || {}; });
+  } catch (err) {
+    console.error("Favorites load failed:", err);
+  }
+}
+
+// A finished week's champions: every listener tied for the most correct
+// picks that week, the same as #1 in that week's list.
+function computeWeeklyChampions() {
+  weeklyChampions = {};
+  championsByWeek = {};
+  const weeks = new Set(allWeekRows.map(r => r.week_number));
+  weeks.forEach(w => {
+    if (w >= CURRENT_OPEN_WEEK) return;
+    const rows = allWeekRows.filter(r => !r.is_host && r.week_number === w)
+      .map(r => ({ name: r.user_name, correct: gradePicks(r.picks, w).correct }));
+    const best = Math.max(0, ...rows.map(r => r.correct));
+    if (best === 0) return;
+    championsByWeek[w] = rows.filter(r => r.correct === best).map(r => r.name).sort((a, b) => a.localeCompare(b));
+    championsByWeek[w].forEach(n => (weeklyChampions[n.toLowerCase()] ||= []).push(w));
+  });
+  Object.values(weeklyChampions).forEach(list => list.sort((a, b) => a - b));
+}
+
+// Under the weekly picks heading: that week's champions once it's over,
+// or last week's while this one is still being played.
+function renderChampionLine(weekNum) {
+  const pill = document.getElementById("entryPill");
+  const bar = pill && pill.closest(".section-title-bar");
+  if (!bar) return;
+  let line = document.getElementById("weekChampionLine");
+  if (!line) {
+    line = document.createElement("div");
+    line.id = "weekChampionLine";
+    line.className = "champion-line";
+    bar.after(line);
+  }
+  const week = championsByWeek[weekNum] ? weekNum : (weekNum === CURRENT_OPEN_WEEK && championsByWeek[weekNum - 1] ? weekNum - 1 : null);
+  if (!week) {
+    line.style.display = "none";
+    return;
+  }
+  const names = championsByWeek[week];
+  const shown = names.length > 6 ? `${names.slice(0, 6).map(escapeHtml).join(", ")} and ${names.length - 6} more` : names.map(escapeHtml).join(", ");
+  line.innerHTML = `&#127942; <strong>Week ${week} ${names.length > 1 ? "Champions" : "Champion"}:</strong> ${shown}`;
+  line.style.display = "";
 }
 
 const hostKey = name => name.toLowerCase();
@@ -389,8 +489,10 @@ async function loadAllSeasonData() {
     const uniqueWeeks = Array.from(
       new Set(allWeekRows.map(r => r.week_number).concat([1, activeWeek]))
     ).filter(w => w >= 1 && w <= TOTAL_WEEKS);
-    await Promise.all(uniqueWeeks.map(fetchEspnSchedule));
+    await Promise.all([...uniqueWeeks.map(fetchEspnSchedule), loadPlayerFavorites()]);
     allWeekRows.forEach(dropLatePicks);
+    computeWeeklyChampions();
+    renderAccountBar();
 
     computeSeasonTotals();
     await switchWeek(activeWeek);
@@ -414,6 +516,7 @@ function changeWeekOffset(delta) {
 // Show the "Submit Week N Picks" button only for the current week. Picks
 // stay open all week; games that have started lock on their own.
 function updateSubmitButton(weekNum, page) {
+  renderChampionLine(weekNum);
   const ctaBtn = document.getElementById("ctaBtn");
   if (weekNum === CURRENT_OPEN_WEEK) {
     ctaBtn.style.display = "flex";
@@ -456,7 +559,7 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
   const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
   const namesGrid = (members, gridId) => {
     const sorted = [...members].sort((a, b) => a.user_name.localeCompare(b.user_name));
-    return `<div class="tier-names-grid${namesOpen ? " open" : ""}" id="${gridId}">${sorted.map(m => `<span>${m.user_name}</span>`).join("")}</div>`;
+    return `<div class="tier-names-grid${namesOpen ? " open" : ""}" id="${gridId}">${sorted.map(m => `<span>${m.user_name}${playerBadgesHtml(m.user_name)}</span>`).join("")}</div>`;
   };
 
   top5Container.innerHTML = podiumTiers.map((tier, idx) => {
@@ -469,7 +572,7 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
         <div class="tier-header ${isTie ? 'expandable' : ''}" ${isTie ? `onclick="toggleTierExpand('${gridId}')"` : ''}>
           <div style="display: flex; align-items: center;">
             <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">${idx + 1}</span>
-            <strong>${label}</strong>
+            <strong>${label}</strong>${isTie ? "" : playerBadgesHtml(rep.user_name)}
           </div>
           <div style="display: flex; align-items: center;">
             <span style="font-weight: 800; color: var(--accent-gold);">${rep.correct}-${rep.incorrect}</span>
