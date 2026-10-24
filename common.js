@@ -39,13 +39,13 @@ function addSiteMenu() {
   addAccountBar(nav);
 }
 
-// Under the menu: who's signed in, with Sign out, or a Sign in link. The
+// Inside the pinned menu, under its buttons: who's signed in, with Sign out, or a Sign in link. The
 // sign-in page has its own, so it's left off there.
 function addAccountBar(nav) {
   if (/^signin/i.test(location.pathname.split("/").pop() || "")) return;
   const bar = document.createElement("div");
   bar.className = "account-bar";
-  nav.after(bar);
+  nav.appendChild(bar);
   currentAccount().then(account => {
     if (account && account.name) {
       bar.innerHTML = `Signed in as <strong>${account.name}</strong> · <button type="button" class="account-link" onclick="signOut(thisPage())">Sign out</button>`;

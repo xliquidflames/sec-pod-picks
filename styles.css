@@ -2104,7 +2104,7 @@ input[type="password"].form-field {
 
 .lock-countdown {
   position: sticky;
-  top: 2.9rem;
+  top: 4.1rem;
   z-index: 50;
   text-align: center;
   font-size: 0.82rem;
@@ -3316,10 +3316,17 @@ a.btn-submit.bk-cta {
   color: var(--accent-gold);
 }
 
-/* Under the menu: who's signed in. */
+/* Who's signed in, on its own line inside the pinned menu. */
+.site-nav:has(.account-bar) {
+  flex-wrap: wrap;
+  row-gap: 0.2rem;
+  padding-bottom: 0.3rem;
+}
+
 .account-bar {
-  min-height: 1.1rem;
-  margin: -0.6rem 0 0.6rem;
+  flex-basis: 100%;
+  min-height: 1rem;
+  line-height: 1rem;
   text-align: right;
   font-size: 0.75rem;
   color: var(--text-muted);
