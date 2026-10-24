@@ -386,6 +386,16 @@
     .grid-cell-empty {
       color: var(--border-color);
     }
+
+    .perfect-count {
+      font-size: 0.85rem;
+      margin-bottom: 0.7rem;
+      line-height: 1.4;
+    }
+
+    .perfect-count strong {
+      color: var(--accent-gold);
+    }
   </style>
 </head>
 <body>
@@ -958,9 +968,17 @@
             ${d.timing.map(t => `<tr><td>${t.name}</td><td class="muted-cell">${formatHours(t.avgHoursBefore)}</td><td class="muted-cell">${t.count}</td></tr>`).join("")}
           </tbody></table>`;
 
+      // Perfect attendance two ways: every week since their own first entry
+      // (the Perfect Attendance card's rule), and every week since Week 1.
+      const players = d.attendanceGrid.entries.length;
+      const everyWeek = d.attendanceGrid.weeks.length
+        ? d.attendanceGrid.entries.filter(e => e.total === d.attendanceGrid.weeks.length).length
+        : 0;
+      const perfectLine = `<div class="perfect-count"><strong>${d.attendance.perfect.length}</strong> of ${players} players have perfect attendance since they joined · <strong>${everyWeek}</strong> since Week 1</div>`;
+
       const trendHtml = d.trend.length === 0
         ? `<div class="empty-note">No submissions yet.</div>`
-        : `<table class="report-table"><thead><tr><th>Week</th><th>Submitters</th></tr></thead><tbody>
+        : `${perfectLine}<table class="report-table"><thead><tr><th>Week</th><th>Submitters</th></tr></thead><tbody>
             ${d.trend.map(t => `<tr><td>Week ${t.week}</td><td class="muted-cell">${t.count}</td></tr>`).join("")}
           </tbody></table>`;
 
