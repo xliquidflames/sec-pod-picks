@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Show Graphics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg: #0f172a; --card: #1e293b; --gold: #fbbf24; --text: #f8fafc; --muted: #94a3b8; --border: #334155; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 1rem; }
+    h1 { color: var(--gold); font-size: 1.3rem; font-weight: 900; margin-bottom: 0.8rem; }
+    .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem; }
+    select, button { font: inherit; font-weight: 700; padding: 0.55rem 0.8rem; border-radius: 8px; border: 2px solid var(--gold); background: var(--card); color: var(--text); }
+    button { background: var(--gold); color: #0f172a; cursor: pointer; }
+    #note { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.8rem; min-height: 1.2rem; }
+    canvas { width: 100%; max-width: 1920px; height: auto; display: block; border: 1px solid var(--border); background: #000; }
+    /* ?bare=1: just the graphic at full size, for a streaming app's browser layer. */
+    body.bare { padding: 0; background: #000; }
+    body.bare .panel { display: none; }
+    body.bare canvas { width: 1920px; border: none; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>Team Schedule Graphic</h1>
+    <div class="controls">
+      <select id="teamSelect" onchange="chooseTeam(this.value)"></select>
+      <button type="button" onclick="downloadPng()">Download PNG</button>
+    </div>
+    <div id="note">Loading...</div>
+  </div>
+  <canvas id="stage" width="1920" height="1080"></canvas>
+
+  <script>
+    // The 16 SEC teams: ESPN id, the abbreviation used in links, and the
+    // team's main color (home squares) and second color.
+    const TEAMS = [
+      { id: 333, abbr: "ALA", name: "Alabama", color: "#9E1B32", alt: "#FFFFFF" },
+      { id: 8, abbr: "ARK", name: "Arkansas", color: "#9D2235", alt: "#FFFFFF" },
+      { id: 2, abbr: "AUB", name: "Auburn", color: "#0C2340", alt: "#E87722" },
+      { id: 57, abbr: "FLA", name: "Florida", color: "#0021A5", alt: "#FA4616" },
+      { id: 61, abbr: "UGA", name: "Georgia", color: "#BA0C2F", alt: "#000000" },
+      { id: 96, abbr: "UK", name: "Kentucky", color: "#0033A0", alt: "#FFFFFF" },
+      { id: 99, abbr: "LSU", name: "LSU", color: "#461D7C", alt: "#FDD023" },
+      { id: 145, abbr: "MISS", name: "Ole Miss", color: "#13294B", alt: "#CE1126" },
+      { id: 344, abbr: "MSST", name: "Mississippi State", color: "#660000", alt: "#FFFFFF" },
+      { id: 142, abbr: "MIZ", name: "Missouri", color: "#000000", alt: "#F1B82D" },
+      { id: 201, abbr: "OU", name: "Oklahoma", color: "#841617", alt: "#FDF9D8" },
+      { id: 2579, abbr: "SC", name: "South Carolina", color: "#73000A", alt: "#000000" },
+      { id: 2633, abbr: "TENN", name: "Tennessee", color: "#FF8200", alt: "#FFFFFF" },
+      { id: 251, abbr: "TEX", name: "Texas", color: "#BF5700", alt: "#FFFFFF" },
+      { id: 245, abbr: "TAMU", name: "Texas A&M", color: "#500000", alt: "#FFFFFF" },
+      { id: 238, abbr: "VAN", name: "Vanderbilt", color: "#000000", alt: "#866D4B" }
+    ];
+    const SEC_IDS = new Set(TEAMS.map(t => String(t.id)));
+    const SEASON = 2026;
+    const W = 1920, H = 1080;
+    const GOLD = "#D9A520", WIN = "#22C55E", LOSS = "#FF2D2D";
+
+    const params = new URLSearchParams(location.search);
+    if (params.get("bare") === "1") document.body.classList.add("bare");
+    const canvas = document.getElementById("stage");
+    const ctx = canvas.getContext("2d");
+    let current = null;
+    let exportBlocked = false;
+
+    const setNote = text => { document.getElementById("note").textContent = text; };
+
+    // Logos come from ESPN. Asked for with CORS so the PNG can be saved; if
+    // ESPN won't allow that, they still draw, but saving is blocked.
+    const imageCache = {};
+    function loadImage(src) {
+      if (!imageCache[src]) {
+        imageCache[src] = new Promise(resolve => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => resolve(img);
+          img.onerror = () => {
+            const plain = new Image();
+            plain.onload = () => { exportBlocked = true; resolve(plain); };
+            plain.onerror = () => resolve(null);
+            plain.src = src;
+          };
+          img.src = src;
+        });
+      }
+      return imageCache[src];
+    }
+
+    const isLight = hex => {
+      const n = parseInt(hex.slice(1), 16);
+      return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 170;
+    };
+
+    // Big outlined text, like the show's graphics.
+    function outlined(text, x, y, { font, fill, stroke = "#111", width = 8, align = "center", baseline = "alphabetic", maxWidth } = {}) {
+      ctx.font = font;
+      ctx.textAlign = align;
+      ctx.textBaseline = baseline;
+      ctx.lineJoin = "round";
+      ctx.lineWidth = width;
+      ctx.strokeStyle = stroke;
+      ctx.strokeText(text, x, y, maxWidth);
+      ctx.fillStyle = fill;
+      ctx.fillText(text, x, y, maxWidth);
+    }
+
+    function drawContained(img, x, y, size) {
+      if (!img) return;
+      const scale = Math.min(size / img.width, size / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, x + (size - w) / 2, y + (size - h) / 2, w, h);
+    }
+
+    // The team's games from ESPN, with results and the records worked out.
+    async function loadSchedule(team) {
+      const urls = [
+        `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${team.id}/schedule?season=${SEASON}`,
+        `https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/${team.id}/schedule?season=${SEASON}`
+      ];
+      let data = null;
+      for (const url of urls) {
+        try { const res = await fetch(url); if (res.ok) { data = await res.json(); break; } } catch (e) {}
+      }
+      if (!data || !data.events) return null;
+
+      let w = 0, l = 0, cw = 0, cl = 0;
+      const games = data.events.map(ev => {
+        const comp = (ev.competitions || [])[0] || {};
+        const us = (comp.competitors || []).find(c => String(c.team && c.team.id) === String(team.id));
+        const them = (comp.competitors || []).find(c => c !== us);
+        if (!us || !them) return null;
+        const done = !!(comp.status && comp.status.type && comp.status.type.completed);
+        const score = c => parseInt((c.score && (c.score.displayValue ?? c.score.value)) ?? c.score, 10);
+        const ours = score(us), theirs = score(them);
+        const won = done && (us.winner === true || ours > theirs);
+        const sec = SEC_IDS.has(String(them.team.id));
+        if (done) {
+          if (won) { w++; if (sec) cw++; } else { l++; if (sec) cl++; }
+        }
+        return {
+          date: new Date(comp.date || ev.date),
+          home: us.homeAway === "home" && !comp.neutralSite,
+          logo: (them.team.logos && them.team.logos[0] && them.team.logos[0].href) || them.team.logo ||
+            `https://a.espncdn.com/i/teamlogos/ncaa/500/${them.team.id}.png`,
+          done, won,
+          score: done ? `${Math.max(ours, theirs)}-${Math.min(ours, theirs)}` : ""
+        };
+      }).filter(Boolean).sort((a, b) => a.date - b.date);
+
+      return { games, record: `${w}-${l}`, secRecord: `${cw}-${cl}` };
+    }
+
+    async function draw(team, sched) {
+      const [teamLogo, podLogo, ...oppLogos] = await Promise.all([
+        loadImage(`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`),
+        loadImage("logo.png"),
+        ...sched.games.map(g => loadImage(g.logo))
+      ]);
+      // The fonts aren't on the page until something asks for them.
+      await Promise.all(["100px Anton", "100px 'Archivo Black'"].map(f => document.fonts.load(f).catch(() => null)));
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, W, H);
+
+      // Left: overall and SEC records.
+      const left = 310;
+      outlined("RECORD", left, 180, { font: "108px 'Archivo Black'", fill: team.color === "#000000" ? team.alt : team.color, stroke: "#FFFFFF", width: 7, maxWidth: 560 });
+      outlined(sched.record, left, 560, { font: "340px Anton", fill: "#FFFFFF", stroke: "#8A8A8A", width: 10, maxWidth: 580 });
+      outlined("SEC", left, 720, { font: "120px 'Archivo Black'", fill: "#0B4EA2", stroke: "#F4C430", width: 7 });
+      outlined(sched.secRecord, left, 1020, { font: "280px Anton", fill: "#FFFFFF", stroke: "#8A8A8A", width: 10, maxWidth: 560 });
+
+      // Right panel.
+      const px = 640, pw = W - px - 30;
+      ctx.fillStyle = "#2B2B2E";
+      ctx.fillRect(px, 0, pw, H);
+
+      drawContained(teamLogo, px + 30, 20, 250);
+      const year = String(sched.games[0] ? sched.games[0].date.getFullYear() : SEASON);
+      outlined(year, px + 640, 160, { font: "170px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 6 });
+      outlined("SCHEDULE", px + 640, 240, { font: "78px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 5 });
+
+      // Legend: home squares in the team color, away squares white.
+      const ly = 268, sq = 42;
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = GOLD;
+      ctx.fillStyle = team.color; ctx.fillRect(px + 360, ly, sq, sq); ctx.strokeRect(px + 360, ly, sq, sq);
+      outlined("HOME", px + 415, ly + sq - 4, { font: "48px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 4, align: "left" });
+      ctx.fillStyle = "#FFFFFF"; ctx.fillRect(px + 620, ly, sq, sq); ctx.strokeRect(px + 620, ly, sq, sq);
+      outlined("AWAY", px + 675, ly + sq - 4, { font: "48px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 4, align: "left" });
+      drawContained(podLogo, px + pw - 150, 200, 120);
+
+      // The games, four to a row.
+      const gx = px + 25, gy = 330, gw = pw - 50, gh = H - gy - 20, gap = 14, cols = 4;
+      const rows = Math.max(1, Math.ceil(sched.games.length / cols));
+      const tw = (gw - gap * (cols - 1)) / cols, th = (gh - gap * (rows - 1)) / rows;
+
+      sched.games.forEach((g, i) => {
+        const x = gx + (i % cols) * (tw + gap), y = gy + Math.floor(i / cols) * (th + gap);
+        const bg = g.home ? team.color : "#FFFFFF";
+        ctx.fillStyle = bg;
+        ctx.fillRect(x, y, tw, th);
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = GOLD;
+        ctx.strokeRect(x, y, tw, th);
+
+        const logoSize = Math.min(tw, th) * 0.78;
+        drawContained(oppLogos[i], x + (tw - logoSize) / 2, y + (th - logoSize) / 2, logoSize);
+
+        if (g.done) {
+          const color = g.won ? WIN : LOSS;
+          outlined(g.won ? "WIN" : "LOSS", x + tw / 2, y + th * 0.36, { font: `${Math.round(th * 0.4)}px Anton`, fill: color, stroke: "#0B0B0B", width: 8, maxWidth: tw - 16 });
+          outlined(g.score, x + tw / 2, y + th - 14, { font: `${Math.round(th * 0.3)}px Anton`, fill: color, stroke: "#0B0B0B", width: 7, maxWidth: tw - 16 });
+        } else {
+          const label = `${g.date.toLocaleDateString("en-US", { month: "short", timeZone: "America/New_York" }).toUpperCase()}. ${g.date.toLocaleDateString("en-US", { day: "numeric", timeZone: "America/New_York" })}`;
+          const fill = g.home ? (isLight(team.color) ? "#111" : "#FFFFFF") : (team.color === "#000000" ? "#111" : team.color);
+          outlined(label, x + tw / 2, y + th - 14, { font: `${Math.round(th * 0.17)}px 'Archivo Black'`, fill, stroke: g.home ? "#000" : "#FFFFFF", width: 5, maxWidth: tw - 16 });
+        }
+      });
+    }
+
+    async function chooseTeam(key) {
+      const team = TEAMS.find(t => t.abbr === key || String(t.id) === key) || TEAMS.find(t => t.abbr === "LSU");
+      document.getElementById("teamSelect").value = team.abbr;
+      history.replaceState(null, "", `?team=${team.abbr}${params.get("bare") === "1" ? "&bare=1" : ""}`);
+      setNote(`Loading ${team.name}...`);
+      const sched = await loadSchedule(team);
+      if (!sched) { setNote(`Couldn't load ${team.name}'s schedule from ESPN.`); return; }
+      await draw(team, sched);
+      current = team;
+      setNote(`${team.name}: ${sched.record} (${sched.secRecord} SEC), through today's finished games.`);
+    }
+
+    function downloadPng() {
+      if (!current) return;
+      try {
+        canvas.toBlob(blob => {
+          if (!blob) return setNote("Couldn't save the image.");
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `${current.abbr}-schedule.png`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        }, "image/png");
+      } catch (err) {
+        setNote(exportBlocked ? "ESPN's logos block saving the image. Take a screenshot of the graphic instead." : `Couldn't save the image: ${err.message}`);
+      }
+    }
+
+    document.getElementById("teamSelect").innerHTML = TEAMS.map(t => `<option value="${t.abbr}">${t.name}</option>`).join("");
+    chooseTeam(params.get("team") || "LSU");
+  </script>
+</body>
+</html>
