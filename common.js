@@ -166,7 +166,10 @@ function championWeeksHtml(name) {
   return weeks.length ? `<div>&#127942; Champion weeks: ${weeks.map(w => `W${w}`).join(", ")}</div>` : "";
 }
 
-// Logo and titles after a player's name on a card or in the standings.
+// The standings show just the logo; titles stay on the cards.
+const podiumLogoHtml = name => favoriteLogoHtml(playerFavorites[(name || "").toLowerCase()]);
+
+// Logo and titles after a player's name on a card.
 const playerBadgesHtml = name => favoriteLogoHtml(playerFavorites[(name || "").toLowerCase()]) + championChipsHtml(name);
 
 async function loadPlayerFavorites() {
@@ -564,7 +567,7 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
   const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
   const namesGrid = (members, gridId) => {
     const sorted = [...members].sort((a, b) => a.user_name.localeCompare(b.user_name));
-    return `<div class="tier-names-grid${namesOpen ? " open" : ""}" id="${gridId}">${sorted.map(m => `<span>${m.user_name}${playerBadgesHtml(m.user_name)}</span>`).join("")}</div>`;
+    return `<div class="tier-names-grid${namesOpen ? " open" : ""}" id="${gridId}">${sorted.map(m => `<span>${m.user_name}${podiumLogoHtml(m.user_name)}</span>`).join("")}</div>`;
   };
 
   top5Container.innerHTML = podiumTiers.map((tier, idx) => {
@@ -577,7 +580,7 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
         <div class="tier-header ${isTie ? 'expandable' : ''}" ${isTie ? `onclick="toggleTierExpand('${gridId}')"` : ''}>
           <div style="display: flex; align-items: center;">
             <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">${idx + 1}</span>
-            <strong>${label}</strong>${isTie ? "" : playerBadgesHtml(rep.user_name)}
+            <strong>${label}</strong>${isTie ? "" : podiumLogoHtml(rep.user_name)}
           </div>
           <div style="display: flex; align-items: center;">
             <span style="font-weight: 800; color: var(--accent-gold);">${rep.correct}-${rep.incorrect}</span>
