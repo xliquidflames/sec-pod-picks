@@ -195,8 +195,8 @@ header {
 
 .tier-names-grid {
   display: none;
-  column-count: 4;
-  column-gap: 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.15rem 1rem;
   font-size: 0.64rem;
   color: var(--text-muted);
   line-height: 1.75;
@@ -206,22 +206,11 @@ header {
 }
 
 .tier-names-grid.open {
-  display: block;
+  display: flex;
 }
 
 .tier-names-grid span {
-  display: block;
-  break-inside: avoid;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-@media (max-width: 380px) {
-  .tier-names-grid {
-      column-count: 3;
-  }
-
 }
 
 .tiebreakers-toggle {
