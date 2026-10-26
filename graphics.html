@@ -6,37 +6,85 @@
   <title>Show Graphics</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Barlow+Condensed:wght@500;700&display=swap" rel="stylesheet" />
   <style>
-    :root { --bg: #0f172a; --card: #1e293b; --gold: #fbbf24; --text: #f8fafc; --muted: #94a3b8; --border: #334155; }
+    :root { --bg: #0f172a; --card: #1e293b; --card2: #162032; --gold: #fbbf24; --text: #f8fafc; --muted: #94a3b8; --border: #334155; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 1rem; }
-    h1 { color: var(--gold); font-size: 1.3rem; font-weight: 900; margin-bottom: 0.8rem; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 1rem; max-width: 1100px; margin: 0 auto; }
+    h1 { color: var(--gold); font-size: 1.35rem; font-weight: 900; margin-bottom: 0.3rem; }
+    h2 { color: var(--gold); font-size: 1.05rem; font-weight: 800; margin-bottom: 0.6rem; }
+    .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.4; }
+    .card { background: var(--card); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
     .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem; }
-    select, button { font: inherit; font-weight: 700; padding: 0.55rem 0.8rem; border-radius: 8px; border: 2px solid var(--gold); background: var(--card); color: var(--text); }
+    select, button { font: inherit; font-weight: 700; font-size: 0.9rem; padding: 0.5rem 0.75rem; border-radius: 8px; border: 2px solid var(--gold); background: var(--card2); color: var(--text); }
     button { background: var(--gold); color: #0f172a; cursor: pointer; }
-    #note { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.8rem; min-height: 1.2rem; }
-    canvas { width: 100%; max-width: 1920px; height: auto; display: block; border: 1px solid var(--border); background: #000; }
-    /* ?bare=1: just the graphic at full size, for a streaming app's browser layer. */
-    body.bare { padding: 0; background: #000; }
-    body.bare .panel { display: none; }
-    body.bare canvas { width: 1920px; border: none; }
+    button.ghost { background: var(--card2); color: var(--text); }
+    button:disabled { opacity: 0.5; cursor: default; }
+    label.check { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.9rem; font-weight: 600; margin-right: 0.6rem; }
+    .note { color: var(--muted); font-size: 0.85rem; margin: 0.4rem 0 0.6rem; min-height: 1.1rem; }
+    canvas { width: 100%; height: auto; display: block; border: 1px solid var(--border); background: #000; border-radius: 6px; }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.7rem; }
+    .thumb { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 0.45rem; }
+    .thumb .name { font-size: 0.75rem; font-weight: 700; margin: 0.35rem 0; word-break: break-all; }
+    .thumb button { font-size: 0.75rem; padding: 0.3rem 0.55rem; }
+    .thumb canvas { cursor: zoom-in; }
+    /* ?bare=1: just the single graphic at full size, for a streaming app's browser layer. */
+    body.bare { padding: 0; background: #000; max-width: none; }
+    body.bare > *:not(#singleCard) { display: none; }
+    body.bare #singleCard { padding: 0; background: #000; margin: 0; }
+    body.bare #singleCard > *:not(#singleCanvas) { display: none; }
+    body.bare #singleCanvas { width: 1920px; border: none; border-radius: 0; }
   </style>
 </head>
 <body>
-  <div class="panel">
-    <h1>Team Schedule Graphic</h1>
+  <h1>Show Graphics</h1>
+  <p class="sub">Every graphic is built from ESPN's data for the week you pick, at 1920&times;1080. Preview one at a time, or generate the whole week and download it as one zip.</p>
+
+  <div class="card">
     <div class="controls">
-      <select id="teamSelect" onchange="chooseTeam(this.value)"></select>
-      <button type="button" onclick="downloadPng()">Download PNG</button>
+      <select id="weekSelect" onchange="loadWeek(+this.value)"></select>
+      <span class="note" id="weekNote" style="margin: 0;"></span>
     </div>
-    <div id="note">Loading...</div>
   </div>
-  <canvas id="stage" width="1920" height="1080"></canvas>
+
+  <div class="card" id="singleCard">
+    <h2>One Graphic</h2>
+    <div class="controls">
+      <select id="kindSelect" onchange="renderSingle()">
+        <option value="scores">Week Scores</option>
+        <option value="stats">Game Stats</option>
+        <option value="drives">Drive Chart</option>
+        <option value="schedule">Team Schedule</option>
+      </select>
+      <select id="gameSelect" onchange="renderSingle()"></select>
+      <select id="sideSelect" onchange="renderSingle()"></select>
+      <select id="teamSelect" onchange="renderSingle()"></select>
+      <button type="button" onclick="downloadCanvas(document.getElementById('singleCanvas'), singleName)">Download PNG</button>
+    </div>
+    <div class="note" id="singleNote"></div>
+    <canvas id="singleCanvas" width="1920" height="1080"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Whole Week</h2>
+    <div class="controls">
+      <label class="check"><input type="checkbox" id="incScores" checked /> Week Scores</label>
+      <label class="check"><input type="checkbox" id="incStats" checked /> Game Stats</label>
+      <label class="check"><input type="checkbox" id="incDrives" checked /> Drive Charts</label>
+      <label class="check"><input type="checkbox" id="incSchedules" checked /> Team Schedules</label>
+    </div>
+    <div class="controls">
+      <button type="button" id="genAllBtn" onclick="generateAll()">Generate All</button>
+      <button type="button" id="zipBtn" class="ghost" onclick="downloadAll()" disabled>Download All (.zip)</button>
+    </div>
+    <div class="note" id="allNote">Only finished games get Game Stats and Drive Charts.</div>
+    <div class="gallery" id="gallery"></div>
+  </div>
 
   <script>
-    // The 16 SEC teams: ESPN id, the abbreviation used in links, and the
-    // team's main color (home squares) and second color.
+    // ---- Teams, colors and data ----
+    const SEASON = 2026;
+    const TOTAL_WEEKS = 14;
     const TEAMS = [
       { id: 333, abbr: "ALA", name: "Alabama", color: "#9E1B32", alt: "#FFFFFF" },
       { id: 8, abbr: "ARK", name: "Arkansas", color: "#9D2235", alt: "#FFFFFF" },
@@ -56,77 +104,422 @@
       { id: 238, abbr: "VAN", name: "Vanderbilt", color: "#000000", alt: "#866D4B" }
     ];
     const SEC_IDS = new Set(TEAMS.map(t => String(t.id)));
-    const SEASON = 2026;
-    const W = 1920, H = 1080;
-    const GOLD = "#D9A520", WIN = "#22C55E", LOSS = "#FF2D2D";
-
-    const params = new URLSearchParams(location.search);
-    if (params.get("bare") === "1") document.body.classList.add("bare");
-    const canvas = document.getElementById("stage");
-    const ctx = canvas.getContext("2d");
-    let current = null;
-    let exportBlocked = false;
-
-    const setNote = text => { document.getElementById("note").textContent = text; };
-
-    // Logos come from ESPN. Asked for with CORS so the PNG can be saved; if
-    // ESPN won't allow that, they still draw, but saving is blocked.
-    const imageCache = {};
-    function loadImage(src) {
-      if (!imageCache[src]) {
-        imageCache[src] = new Promise(resolve => {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => resolve(img);
-          img.onerror = () => {
-            const plain = new Image();
-            plain.onload = () => { exportBlocked = true; resolve(plain); };
-            plain.onerror = () => resolve(null);
-            plain.src = src;
-          };
-          img.src = src;
-        });
-      }
-      return imageCache[src];
+    const teamById = id => TEAMS.find(t => String(t.id) === String(id));
+    // A color that shows up on black: very dark main colors use the team's
+    // second color (Auburn orange, Missouri gold), or a brighter shade of the
+    // main one when the second color is white or black (A&M maroon).
+    const luminance = hex => { const n = parseInt(hex.slice(1), 16); return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255); };
+    // Scales a color up until it's bright enough to read on black.
+    const brighten = hex => {
+      const f = Math.min(3, 45 / Math.max(1, luminance(hex)));
+      return "#" + [16, 8, 0].map(sh => Math.min(255, Math.round(((parseInt(hex.slice(1), 16) >> sh) & 255) * f)).toString(16).padStart(2, "0")).join("");
+    };
+    function brightColor(t) {
+      if (!t) return "#9E1B32";
+      if (luminance(t.color) >= 40) return t.color;
+      const alt = luminance(t.alt);
+      return alt >= 40 && alt <= 220 ? t.alt : brighten(t.color);
     }
 
-    const isLight = hex => {
-      const n = parseInt(hex.slice(1), 16);
-      return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 170;
-    };
+    const W = 1920, H = 1080;
+    const GOLD = "#D9A520", WIN = "#22C55E", LOSS = "#FF2D2D";
+    const ESPN = "https://site.api.espn.com/apis/site/v2/sports/football/college-football";
+    const ESPN_WEB = "https://site.web.api.espn.com/apis/site/v2/sports/football/college-football";
 
-    // Big outlined text, like the show's graphics.
-    function outlined(text, x, y, { font, fill, stroke = "#111", width = 8, align = "center", baseline = "alphabetic", maxWidth } = {}) {
+    async function fetchJson(path) {
+      for (const base of [ESPN, ESPN_WEB]) {
+        try { const res = await fetch(base + path); if (res.ok) return await res.json(); } catch (e) {}
+      }
+      return null;
+    }
+
+    const cache = {};
+    const cached = (key, fn) => (cache[key] ||= fn());
+    const loadScoreboard = week => cached(`sb${week}`, () => fetchJson(`/scoreboard?groups=8&seasontype=2&dates=${SEASON}&week=${week}&limit=100`));
+    const loadSummary = id => cached(`sum${id}`, () => fetchJson(`/summary?event=${id}`));
+    const loadTeamSchedule = id => cached(`sch${id}`, () => fetchJson(`/teams/${id}/schedule?season=${SEASON}`));
+
+    // Logos come from ESPN, asked for with CORS so the PNG can be saved. If
+    // ESPN won't allow that they still draw, but saving is blocked.
+    let exportBlocked = false;
+    const imageCache = {};
+    function loadImage(src) {
+      if (!src) return Promise.resolve(null);
+      return (imageCache[src] ||= new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = () => {
+          const plain = new Image();
+          plain.onload = () => { exportBlocked = true; resolve(plain); };
+          plain.onerror = () => resolve(null);
+          plain.src = src;
+        };
+        img.src = src;
+      }));
+    }
+    const logoUrl = team => (team && ((team.logos && team.logos[0] && team.logos[0].href) || team.logo)) ||
+      (team && team.id ? `https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png` : "");
+
+    let fontsReady = null;
+    const loadFonts = () => (fontsReady ||= Promise.all(
+      ["100px Anton", "100px 'Archivo Black'", "500 40px 'Barlow Condensed'", "700 40px 'Barlow Condensed'"]
+        .map(f => document.fonts.load(f).catch(() => null))));
+
+    // ---- Drawing helpers ----
+    function outlined(ctx, text, x, y, { font, fill, stroke = "#111", width = 8, align = "center", baseline = "alphabetic", maxWidth } = {}) {
       ctx.font = font;
       ctx.textAlign = align;
       ctx.textBaseline = baseline;
       ctx.lineJoin = "round";
-      ctx.lineWidth = width;
-      ctx.strokeStyle = stroke;
-      ctx.strokeText(text, x, y, maxWidth);
+      if (width > 0) {
+        ctx.lineWidth = width;
+        ctx.strokeStyle = stroke;
+        ctx.strokeText(text, x, y, maxWidth);
+      }
       ctx.fillStyle = fill;
       ctx.fillText(text, x, y, maxWidth);
     }
+    const plain = (ctx, text, x, y, opts) => outlined(ctx, text, x, y, { ...opts, width: 0 });
 
-    function drawContained(img, x, y, size) {
+    function drawContained(ctx, img, x, y, size) {
       if (!img) return;
       const scale = Math.min(size / img.width, size / img.height);
       const w = img.width * scale, h = img.height * scale;
       ctx.drawImage(img, x + (size - w) / 2, y + (size - h) / 2, w, h);
     }
+    const isLight = hex => {
+      const n = parseInt(hex.slice(1), 16);
+      return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 170;
+    };
+    function blank(ctx, color = "#000") {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, W, H);
+    }
 
-    // The team's games from ESPN, with results and the records worked out.
-    async function loadSchedule(team) {
-      const urls = [
-        `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${team.id}/schedule?season=${SEASON}`,
-        `https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/${team.id}/schedule?season=${SEASON}`
-      ];
-      let data = null;
-      for (const url of urls) {
-        try { const res = await fetch(url); if (res.ok) { data = await res.json(); break; } } catch (e) {}
+    // ---- Games for a week ----
+    // [{ id, away, home, done, state, date }] with each side's team, score and record.
+    async function weekGames(week) {
+      const sb = await loadScoreboard(week);
+      if (!sb || !sb.events) return [];
+      return sb.events.map(ev => {
+        const comp = (ev.competitions || [])[0] || {};
+        const side = ha => {
+          const c = (comp.competitors || []).find(x => x.homeAway === ha) || {};
+          const rec = (c.records || []).find(r => r.type === "total") || (c.records || [])[0];
+          return { team: c.team || {}, score: parseInt(c.score, 10), winner: c.winner === true, record: rec ? rec.summary : "", rank: c.curatedRank && c.curatedRank.current };
+        };
+        const type = (comp.status && comp.status.type) || {};
+        return { id: String(ev.id), away: side("away"), home: side("home"), done: !!type.completed, state: type.state, date: new Date(comp.date || ev.date) };
+      }).sort((a, b) => a.date - b.date);
+    }
+    const gameLabel = g => `${g.away.team.abbreviation || g.away.team.shortDisplayName} @ ${g.home.team.abbreviation || g.home.team.shortDisplayName}${g.done ? "" : " (not final)"}`;
+    const slug = s => String(s || "").toLowerCase().replace(/&/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+    // ---- 1. Week scores board ----
+    async function drawScores(ctx, week, games) {
+      await loadFonts();
+      const logos = await Promise.all(games.flatMap(g => [loadImage(logoUrl(g.away.team)), loadImage(logoUrl(g.home.team))]));
+      const pod = await loadImage("logo.png");
+      blank(ctx);
+
+      // Title strip.
+      outlined(ctx, `WEEK ${week} SCORES`, 60, 105, { font: "90px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 6, align: "left" });
+      drawContained(ctx, pod, W - 200, 12, 150);
+
+      const n = Math.max(games.length, 1);
+      const cols = n <= 4 ? n : n <= 8 ? 4 : n <= 12 ? 4 : 5;
+      const rows = Math.ceil(n / cols);
+      const top = 170, gap = 18, gx = 40;
+      const tw = (W - gx * 2 - gap * (cols - 1)) / cols, th = Math.min(420, (H - top - 30 - gap * (rows - 1)) / rows);
+      const startY = top + ((H - top - 30) - (th * rows + gap * (rows - 1))) / 2;
+
+      games.forEach((g, i) => {
+        const r = Math.floor(i / cols), c = i % cols;
+        const inRow = Math.min(cols, n - r * cols);
+        const rowOffset = (cols - inRow) * (tw + gap) / 2;
+        const x = gx + rowOffset + c * (tw + gap), y = startY + r * (th + gap);
+        const grad = ctx.createLinearGradient(0, y, 0, y + th);
+        grad.addColorStop(0, "#B7BBBF"); grad.addColorStop(1, "#8E9399");
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, y, tw, th);
+
+        // Winner on top once final; otherwise away on top.
+        const homeFirst = g.done && g.home.score > g.away.score;
+        const sides = homeFirst ? [[g.home, logos[i * 2 + 1]], [g.away, logos[i * 2]]] : [[g.away, logos[i * 2]], [g.home, logos[i * 2 + 1]]];
+        const half = th / 2, logoSize = Math.min(half * 0.82, tw * 0.42);
+        sides.forEach(([s, img], k) => {
+          const ly = y + k * half + (half - logoSize) / 2;
+          drawContained(ctx, img, x + tw * 0.05, ly, logoSize);
+          const text = g.done || g.state === "in" ? String(isNaN(s.score) ? "" : s.score) : "";
+          if (text) outlined(ctx, text, x + tw * 0.96, y + k * half + half * 0.78, { font: `${Math.round(half * 0.72)}px Anton`, fill: "#FFFFFF", stroke: "#2B2B2B", width: 9, align: "right", maxWidth: tw * 0.5 });
+        });
+        if (!g.done) {
+          const label = g.state === "in" ? "LIVE" : g.date.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" }).toUpperCase();
+          outlined(ctx, label, x + tw * 0.96, y + th / 2 + 18, { font: `${Math.round(th * 0.12)}px 'Archivo Black'`, fill: "#FFFFFF", stroke: "#2B2B2B", width: 5, align: "right" });
+        }
+      });
+      if (!games.length) plain(ctx, "No games found for this week.", W / 2, H / 2, { font: "60px 'Archivo Black'", fill: "#FFFFFF" });
+    }
+
+    // ---- 2. Game stats ----
+    const statOf = (teamBox, name) => {
+      const s = (teamBox.statistics || []).find(x => x.name === name);
+      return s ? String(s.displayValue ?? s.value ?? "") : null;
+    };
+    const madeAtt = v => { const m = String(v).match(/(\d+)\s*-\s*(\d+)/); return m ? [+m[1], +m[2]] : null; };
+    const clockSecs = v => { const m = String(v).match(/(\d+):(\d+)/); return m ? +m[1] * 60 + +m[2] : 0; };
+    // label, ESPN stat name, how to compare two values, how to show each side.
+    const STAT_ROWS = [
+      ["First Downs", "firstDowns"],
+      ["3rd Down Efficiency", "thirdDownEff", v => { const p = madeAtt(v); return p && p[1] ? p[0] / p[1] : 0; }],
+      ["4th Down Efficiency", "fourthDownEff", v => { const p = madeAtt(v); return p && p[1] ? p[0] / p[1] : 0; }],
+      ["Rushing Yards", "rushingYards"],
+      ["Passing Yards", "netPassingYards"],
+      ["Total Yards", "totalYards"],
+      ["Sacks (Yards)", "sacksYardsLost", v => (madeAtt(v) || [0])[0], (v, side) => { const p = madeAtt(v); return p ? (side ? `(${p[1]}) ${p[0]}` : `${p[0]} (${p[1]})`) : v; }],
+      ["Interceptions Thrown", "interceptions"],
+      ["Penalties (Yards)", "totalPenaltiesYards", v => (madeAtt(v) || [0])[0], (v, side) => { const p = madeAtt(v); return p ? (side ? `(${p[1]}) ${p[0]}` : `${p[0]} (${p[1]})`) : v; }],
+      ["Fumbles Lost", "fumblesLost"],
+      ["Possession", "possessionTime", clockSecs]
+    ];
+
+    async function drawStats(ctx, game) {
+      await loadFonts();
+      const sum = await loadSummary(game.id);
+      const boxTeams = (sum && sum.boxscore && sum.boxscore.teams) || [];
+      const box = side => boxTeams.find(t => String(t.team && t.team.id) === String(game[side].team.id)) || {};
+      const [awayLogo, homeLogo] = await Promise.all([loadImage(logoUrl(game.away.team)), loadImage(logoUrl(game.home.team))]);
+      blank(ctx);
+
+      // The two teams, away on the left.
+      [["away", 0, awayLogo], ["home", 1, homeLogo]].forEach(([side, k, img]) => {
+        const cx = k ? W - 280 : 280, s = game[side];
+        outlined(ctx, isNaN(s.score) ? "" : String(s.score), cx, 250, { font: "250px Anton", fill: "#FFFFFF", stroke: "#8A8A8A", width: 10 });
+        drawContained(ctx, img, cx - 190, 300, 380);
+        outlined(ctx, s.record || "", cx, 1010, { font: "180px Anton", fill: "#FFFFFF", stroke: "#8A8A8A", width: 9 });
+      });
+
+      // The stats table between them.
+      const tx = 580, tw = W - tx * 2;
+      ctx.fillStyle = "#1F1F22";
+      ctx.fillRect(tx, 70, tw, 56);
+      plain(ctx, game.away.team.shortDisplayName || game.away.team.displayName || "", tx + 22, 108, { font: "500 34px 'Barlow Condensed'", fill: "#C9CCD1", align: "left" });
+      plain(ctx, game.home.team.shortDisplayName || game.home.team.displayName || "", tx + tw - 22, 108, { font: "500 34px 'Barlow Condensed'", fill: "#C9CCD1", align: "right" });
+
+      const rows = STAT_ROWS.map(([label, name, cmp, show]) => {
+        const a = statOf(box("away"), name), h = statOf(box("home"), name);
+        return a === null && h === null ? null : { label, a: a ?? "-", h: h ?? "-", cmp: cmp || (v => parseFloat(v) || 0), show: show || (v => v) };
+      }).filter(Boolean);
+      if (!rows.length) {
+        plain(ctx, "No stats yet for this game.", W / 2, H / 2, { font: "700 52px 'Barlow Condensed'", fill: "#FFFFFF" });
+        return;
       }
-      if (!data || !data.events) return null;
+      const rowH = Math.min(78, (H - 150 - 40) / rows.length);
+      const awayBar = brightColor(teamById(game.away.team.id)) || "#2F6FDB";
+      const homeBar = brightColor(teamById(game.home.team.id)) || "#E8A33D";
+      rows.forEach((r, i) => {
+        const y = 150 + i * rowH;
+        plain(ctx, r.show(r.a, 0), tx + 22, y + rowH * 0.5, { font: "700 34px 'Barlow Condensed'", fill: "#FFFFFF", align: "left" });
+        plain(ctx, r.label, tx + tw / 2, y + rowH * 0.5, { font: "700 34px 'Barlow Condensed'", fill: "#FFFFFF" });
+        plain(ctx, r.show(r.h, 1), tx + tw - 22, y + rowH * 0.5, { font: "700 34px 'Barlow Condensed'", fill: "#FFFFFF", align: "right" });
+        // Bars from each edge, split by each side's share.
+        const av = Math.max(0, r.cmp(r.a)), hv = Math.max(0, r.cmp(r.h));
+        const share = av + hv > 0 ? av / (av + hv) : 0.5;
+        const by = y + rowH * 0.72, inner = tw - 44, split = 22 + inner * share;
+        ctx.fillStyle = awayBar === "#FFFFFF" ? "#2F6FDB" : awayBar;
+        ctx.fillRect(tx + 22, by, Math.max(0, split - 22 - 8), 5);
+        ctx.fillStyle = homeBar === "#FFFFFF" ? "#E8A33D" : homeBar;
+        ctx.fillRect(tx + split + 8, by, Math.max(0, tw - 22 - split - 8), 5);
+      });
+    }
 
+    // ---- 3. Drive chart ----
+    const RESULT_LABELS = [
+      [/touchdown|^td$|\btd\b/i, "TD"], [/missed fg|fg missed|blocked fg|missed field|fga/i, "FGA"], [/field goal|^fg$|\bfg\b/i, "FG"],
+      [/interception|^int$/i, "INT"], [/fumble/i, "FUMB"], [/punt/i, "PUNT"], [/downs/i, "DOWNS"], [/safety/i, "SAF"],
+      [/end of half|half/i, "HALF"], [/end of game|game/i, "END"]
+    ];
+    function shortResult(d) {
+      const text = d.shortDisplayResult || d.displayResult || d.result || "";
+      const hit = RESULT_LABELS.find(([re]) => re.test(text));
+      return hit ? hit[1] : String(text).toUpperCase().slice(0, 6);
+    }
+    // How a drive started, from the drive before it.
+    function howStarted(prev, d) {
+      if (!prev) return "KO";
+      const pq = prev.start && prev.start.period && prev.start.period.number, q = d.start && d.start.period && d.start.period.number;
+      if (pq && q && pq <= 2 && q >= 3) return "KO";
+      const r = shortResult(prev);
+      if (r === "TD" || r === "FG" || r === "HALF") return "KO";
+      if (r === "SAF") return "FK";
+      if (r === "FGA") return "MFG";
+      return r;
+    }
+    const spot = s => String((s && s.text) || "").replace(/\s+/g, "");
+    const clockOf = s => String((s && s.clock && s.clock.displayValue) || "");
+    const quarterOf = s => (s && s.period && s.period.number) || "";
+
+    // Yards from the team's own goal line: "ALA 25" for Alabama is 25, "TAM 25" is 75.
+    function ownYards(s, abbr) {
+      const m = String((s && s.text) || "").match(/([A-Za-z&]+)?\s*(\d+)/);
+      if (!m) return null;
+      const n = +m[2];
+      if (!m[1]) return n;
+      return m[1].toUpperCase() === String(abbr).toUpperCase() ? n : 100 - n;
+    }
+
+    function driveStats(drives, all, teamId, abbr) {
+      const n = drives.length;
+      if (!n) return [];
+      const secs = d => clockSecs(d.timeElapsed && d.timeElapsed.displayValue);
+      const plays = d => d.offensivePlays ?? (d.plays || []).length;
+      const fmt = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+      const avg = f => drives.reduce((t, d) => t + f(d), 0) / n;
+      const scoring = drives.filter(d => d.isScore || ["TD", "FG"].includes(shortResult(d))).length;
+      const tds = drives.filter(d => shortResult(d) === "TD").length;
+      const starts = drives.map(d => ownYards(d.start, abbr)).filter(v => v !== null);
+      const avgStart = starts.length ? Math.round(starts.reduce((a, b) => a + b, 0) / starts.length) : null;
+
+      // 3rd down distance from the plays, when ESPN includes them.
+      const thirds = drives.flatMap(d => (d.plays || []).filter(p => p.start && p.start.down === 3 && p.start.distance > 0).map(p => p.start.distance));
+
+      // Points on drives that began after the other team turned it over.
+      let ptsOffTo = 0;
+      drives.forEach(d => {
+        const i = all.indexOf(d), prev = all[i - 1];
+        if (!prev || String(prev.team && prev.team.id) === String(teamId)) return;
+        const r = shortResult(prev);
+        if (r !== "INT" && r !== "FUMB") return;
+        const res = shortResult(d);
+        ptsOffTo += res === "TD" ? 7 : res === "FG" ? 3 : 0;
+      });
+
+      const out = [
+        ["Total Drives", n],
+        ["Scoring Drives", `${scoring} (${Math.round(scoring / n * 100)}%)`],
+        ["Avg Start", avgStart === null ? "-" : avgStart <= 50 ? `OWN ${avgStart}` : `OPP ${100 - avgStart}`],
+        ["Avg Time of Poss", fmt(avg(secs))],
+        ["Avg Yds Gained", Math.round(avg(d => d.yards || 0))],
+        ["Avg Num Plays", Math.round(avg(plays))],
+        ["70+ Yard Drives", drives.filter(d => (d.yards || 0) >= 70).length],
+        ["10+ Play Drives", drives.filter(d => plays(d) >= 10).length],
+        ["5:00+ Drives", drives.filter(d => secs(d) >= 300).length],
+        ["1:00- Drives", drives.filter(d => secs(d) < 60).length],
+        ["3-and-Outs", drives.filter(d => plays(d) <= 3 && shortResult(d) === "PUNT").length],
+        ["TD Rate", `${Math.round(tds / n * 100)}%`]
+      ];
+      if (thirds.length) out.push(["Avg 3rd Down Distance", (thirds.reduce((a, b) => a + b, 0) / thirds.length).toFixed(1)]);
+      out.push(["Pts Off TOs", ptsOffTo]);
+      return out;
+    }
+
+    async function drawDrives(ctx, game, side) {
+      await loadFonts();
+      const sum = await loadSummary(game.id);
+      const all = (sum && sum.drives && sum.drives.previous) || [];
+      const espnTeam = game[side].team;
+      const team = teamById(espnTeam.id);
+      const drives = all.filter(d => String(d.team && d.team.id) === String(espnTeam.id));
+      const accent = brightColor(team) || "#9E1B32";
+      const logo = await loadImage(logoUrl(espnTeam));
+      blank(ctx, "#0B0B0B");
+
+      // Frame and title bar.
+      const fx = 50, fy = 30, fw = W - 100, fh = H - 60;
+      ctx.fillStyle = "#23262B";
+      ctx.fillRect(fx, fy, fw, fh);
+      ctx.fillStyle = accent;
+      ctx.fillRect(fx, fy, 8, fh);
+      ctx.fillStyle = "#1A1C20";
+      ctx.fillRect(fx + 8, fy, fw - 8, 84);
+      drawContained(ctx, logo, fx + 24, fy + 8, 68);
+      const title = `${(espnTeam.shortDisplayName || espnTeam.displayName || "").toUpperCase()} DRIVE CHART`;
+      plain(ctx, title, fx + 110, fy + 58, { font: "700 46px 'Barlow Condensed'", fill: "#FFFFFF", align: "left" });
+      const opp = game[side === "away" ? "home" : "away"];
+      const scoreLine = `${side === "away" ? "@" : "vs"} ${opp.team.abbreviation || opp.team.shortDisplayName || ""}${game.done ? ` · ${game[side].score}-${opp.score} ${game[side].score > opp.score ? "W" : "L"}` : ""}`;
+      plain(ctx, scoreLine, fx + fw - 30, fy + 58, { font: "700 40px 'Barlow Condensed'", fill: "#C9CCD1", align: "right" });
+
+      if (!drives.length) {
+        plain(ctx, "No drive data from ESPN for this game yet.", W / 2, H / 2, { font: "700 52px 'Barlow Condensed'", fill: "#FFFFFF" });
+        return;
+      }
+
+      // Column groups.
+      const cols = [
+        ["SPOT", 0.012, "left"], ["QTR", 0.13, "center"], ["TIME", 0.205, "center"], ["HOW", 0.31, "center"],
+        ["SPOT", 0.405, "left"], ["QTR", 0.53, "center"], ["TIME", 0.605, "center"], ["RSLT", 0.71, "center"],
+        ["PL-YDS", 0.835, "center"], ["TOP", 0.945, "center"]
+      ];
+      const ix = fx + 30, iw = fw - 60, colX = f => ix + iw * f;
+      let y = fy + 98;
+      ctx.fillStyle = "#F2F2F2";
+      ctx.fillRect(ix, y, iw, 34);
+      [["DRIVE STARTED", 0.17], ["DRIVE ENDED", 0.56], ["CONSUMED", 0.89]].forEach(([t, f]) =>
+        plain(ctx, t, colX(f), y + 26, { font: "700 26px 'Barlow Condensed'", fill: "#1A1C20" }));
+      y += 34;
+      ctx.fillStyle = "#9AA0A6";
+      ctx.fillRect(ix, y, iw, 30);
+      cols.forEach(([t, f, a]) => plain(ctx, t, colX(f), y + 23, { font: "700 24px 'Barlow Condensed'", fill: "#F2F2F2", align: a }));
+      y += 30;
+
+      // One row per drive, sized to fit.
+      const stats = driveStats(drives, all, espnTeam.id, espnTeam.abbreviation || "");
+      const statRows = Math.ceil(stats.length / 3);
+      const statsH = 52 + statRows * 46;
+      const rowH = Math.min(52, (fy + fh - statsH - 20 - y) / drives.length);
+      const fontPx = Math.round(Math.min(40, rowH * 0.8));
+      drives.forEach((d, i) => {
+        const ry = y + i * rowH, base = ry + rowH * 0.78;
+        const all_i = all.indexOf(d);
+        const res = shortResult(d);
+        const cells = [
+          spot(d.start), quarterOf(d.start), clockOf(d.start), howStarted(all[all_i - 1], d),
+          spot(d.end), quarterOf(d.end), clockOf(d.end), res,
+          `${d.offensivePlays ?? (d.plays || []).length} / ${d.yards ?? 0}`, (d.timeElapsed && d.timeElapsed.displayValue) || ""
+        ];
+        cells.forEach((v, k) => {
+          const [, f, a] = cols[k];
+          if (k === 7 && ["TD", "FG", "INT", "FUMB"].includes(res)) {
+            const bw = 120, bh = rowH * 0.86;
+            ctx.fillStyle = res === "INT" || res === "FUMB" ? "#E0503C" : accent;
+            ctx.fillRect(colX(f) - bw / 2, ry + (rowH - bh) / 2, bw, bh);
+            ctx.strokeStyle = "#FFFFFF"; ctx.lineWidth = 2;
+            ctx.strokeRect(colX(f) - bw / 2, ry + (rowH - bh) / 2, bw, bh);
+            plain(ctx, v, colX(f), base, { font: `700 ${fontPx}px 'Barlow Condensed'`, fill: "#FFFFFF" });
+          } else {
+            plain(ctx, String(v), colX(f), base, { font: `500 ${fontPx}px 'Barlow Condensed'`, fill: "#F2F2F2", align: a });
+          }
+        });
+      });
+
+      // Drive statistics, three across.
+      let sy = fy + fh - statsH - 10;
+      ctx.fillStyle = "#B9BDC2";
+      ctx.fillRect(ix, sy, iw, 42);
+      plain(ctx, "Drive Statistics", ix + iw / 2, sy + 32, { font: "700 32px 'Barlow Condensed'", fill: "#1A1C20" });
+      sy += 52;
+      stats.forEach(([label, value], i) => {
+        const col = i % 3, row = Math.floor(i / 3);
+        const x = ix + 20 + col * (iw / 3), yy = sy + row * 46 + 34;
+        ctx.font = "500 34px 'Barlow Condensed'";
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#F2F2F2";
+        const labelText = `${label}: `;
+        ctx.fillText(labelText, x, yy);
+        const lw = ctx.measureText(labelText).width;
+        ctx.font = "700 34px 'Barlow Condensed'";
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillText(String(value), x + lw, yy);
+      });
+    }
+
+    // ---- 4. Team schedule ----
+    async function scheduleData(team) {
+      const data = await loadTeamSchedule(team.id);
+      if (!data || !data.events) return null;
       let w = 0, l = 0, cw = 0, cl = 0;
       const games = data.events.map(ev => {
         const comp = (ev.competitions || [])[0] || {};
@@ -138,121 +531,267 @@
         const ours = score(us), theirs = score(them);
         const won = done && (us.winner === true || ours > theirs);
         const sec = SEC_IDS.has(String(them.team.id));
-        if (done) {
-          if (won) { w++; if (sec) cw++; } else { l++; if (sec) cl++; }
-        }
+        if (done) { if (won) { w++; if (sec) cw++; } else { l++; if (sec) cl++; } }
         return {
           date: new Date(comp.date || ev.date),
           home: us.homeAway === "home" && !comp.neutralSite,
-          logo: (them.team.logos && them.team.logos[0] && them.team.logos[0].href) || them.team.logo ||
-            `https://a.espncdn.com/i/teamlogos/ncaa/500/${them.team.id}.png`,
-          done, won,
+          logo: logoUrl(them.team), done, won,
           score: done ? `${Math.max(ours, theirs)}-${Math.min(ours, theirs)}` : ""
         };
       }).filter(Boolean).sort((a, b) => a.date - b.date);
-
       return { games, record: `${w}-${l}`, secRecord: `${cw}-${cl}` };
     }
 
-    async function draw(team, sched) {
+    async function drawSchedule(ctx, team) {
+      await loadFonts();
+      const sched = await scheduleData(team);
+      blank(ctx);
+      if (!sched) {
+        plain(ctx, `Couldn't load ${team.name}'s schedule.`, W / 2, H / 2, { font: "60px 'Archivo Black'", fill: "#FFFFFF" });
+        return;
+      }
       const [teamLogo, podLogo, ...oppLogos] = await Promise.all([
-        loadImage(`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`),
-        loadImage("logo.png"),
-        ...sched.games.map(g => loadImage(g.logo))
+        loadImage(`https://a.espncdn.com/i/teamlogos/ncaa/500/${team.id}.png`), loadImage("logo.png"), ...sched.games.map(g => loadImage(g.logo))
       ]);
-      // The fonts aren't on the page until something asks for them.
-      await Promise.all(["100px Anton", "100px 'Archivo Black'"].map(f => document.fonts.load(f).catch(() => null)));
 
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, W, H);
-
-      // Left: overall and SEC records.
       const left = 310;
-      outlined("RECORD", left, 180, { font: "108px 'Archivo Black'", fill: team.color === "#000000" ? team.alt : team.color, stroke: "#FFFFFF", width: 7, maxWidth: 560 });
-      outlined(sched.record, left, 560, { font: "340px Anton", fill: "#FFFFFF", stroke: "#8A8A8A", width: 10, maxWidth: 580 });
-      outlined("SEC", left, 720, { font: "120px 'Archivo Black'", fill: "#0B4EA2", stroke: "#F4C430", width: 7 });
-      outlined(sched.secRecord, left, 1020, { font: "280px Anton", fill: "#FFFFFF", stroke: "#8A8A8A", width: 10, maxWidth: 560 });
+      outlined(ctx, "RECORD", left, 180, { font: "108px 'Archivo Black'", fill: brightColor(team), stroke: "#FFFFFF", width: 7, maxWidth: 560 });
+      outlined(ctx, sched.record, left, 560, { font: "340px Anton", fill: "#FFFFFF", stroke: "#8A8A8A", width: 10, maxWidth: 580 });
+      outlined(ctx, "SEC", left, 720, { font: "120px 'Archivo Black'", fill: "#0B4EA2", stroke: "#F4C430", width: 7 });
+      outlined(ctx, sched.secRecord, left, 1020, { font: "280px Anton", fill: "#FFFFFF", stroke: "#8A8A8A", width: 10, maxWidth: 560 });
 
-      // Right panel.
       const px = 640, pw = W - px - 30;
       ctx.fillStyle = "#2B2B2E";
       ctx.fillRect(px, 0, pw, H);
-
-      drawContained(teamLogo, px + 30, 20, 250);
+      drawContained(ctx, teamLogo, px + 30, 20, 250);
       const year = String(sched.games[0] ? sched.games[0].date.getFullYear() : SEASON);
-      outlined(year, px + 640, 160, { font: "170px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 6 });
-      outlined("SCHEDULE", px + 640, 240, { font: "78px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 5 });
+      outlined(ctx, year, px + 640, 160, { font: "170px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 6 });
+      outlined(ctx, "SCHEDULE", px + 640, 240, { font: "78px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 5 });
 
-      // Legend: home squares in the team color, away squares white.
       const ly = 268, sq = 42;
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = GOLD;
+      ctx.lineWidth = 4; ctx.strokeStyle = GOLD;
       ctx.fillStyle = team.color; ctx.fillRect(px + 360, ly, sq, sq); ctx.strokeRect(px + 360, ly, sq, sq);
-      outlined("HOME", px + 415, ly + sq - 4, { font: "48px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 4, align: "left" });
+      outlined(ctx, "HOME", px + 415, ly + sq - 4, { font: "48px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 4, align: "left" });
       ctx.fillStyle = "#FFFFFF"; ctx.fillRect(px + 620, ly, sq, sq); ctx.strokeRect(px + 620, ly, sq, sq);
-      outlined("AWAY", px + 675, ly + sq - 4, { font: "48px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 4, align: "left" });
-      drawContained(podLogo, px + pw - 150, 200, 120);
+      outlined(ctx, "AWAY", px + 675, ly + sq - 4, { font: "48px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 4, align: "left" });
+      drawContained(ctx, podLogo, px + pw - 150, 200, 120);
 
-      // The games, four to a row.
       const gx = px + 25, gy = 330, gw = pw - 50, gh = H - gy - 20, gap = 14, cols = 4;
       const rows = Math.max(1, Math.ceil(sched.games.length / cols));
       const tw = (gw - gap * (cols - 1)) / cols, th = (gh - gap * (rows - 1)) / rows;
-
       sched.games.forEach((g, i) => {
         const x = gx + (i % cols) * (tw + gap), y = gy + Math.floor(i / cols) * (th + gap);
-        const bg = g.home ? team.color : "#FFFFFF";
-        ctx.fillStyle = bg;
+        ctx.fillStyle = g.home ? team.color : "#FFFFFF";
         ctx.fillRect(x, y, tw, th);
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = GOLD;
+        ctx.lineWidth = 5; ctx.strokeStyle = GOLD;
         ctx.strokeRect(x, y, tw, th);
-
         const logoSize = Math.min(tw, th) * 0.78;
-        drawContained(oppLogos[i], x + (tw - logoSize) / 2, y + (th - logoSize) / 2, logoSize);
-
+        drawContained(ctx, oppLogos[i], x + (tw - logoSize) / 2, y + (th - logoSize) / 2, logoSize);
         if (g.done) {
           const color = g.won ? WIN : LOSS;
-          outlined(g.won ? "WIN" : "LOSS", x + tw / 2, y + th * 0.36, { font: `${Math.round(th * 0.4)}px Anton`, fill: color, stroke: "#0B0B0B", width: 8, maxWidth: tw - 16 });
-          outlined(g.score, x + tw / 2, y + th - 14, { font: `${Math.round(th * 0.3)}px Anton`, fill: color, stroke: "#0B0B0B", width: 7, maxWidth: tw - 16 });
+          outlined(ctx, g.won ? "WIN" : "LOSS", x + tw / 2, y + th * 0.36, { font: `${Math.round(th * 0.4)}px Anton`, fill: color, stroke: "#0B0B0B", width: 8, maxWidth: tw - 16 });
+          outlined(ctx, g.score, x + tw / 2, y + th - 14, { font: `${Math.round(th * 0.3)}px Anton`, fill: color, stroke: "#0B0B0B", width: 7, maxWidth: tw - 16 });
         } else {
           const label = `${g.date.toLocaleDateString("en-US", { month: "short", timeZone: "America/New_York" }).toUpperCase()}. ${g.date.toLocaleDateString("en-US", { day: "numeric", timeZone: "America/New_York" })}`;
           const fill = g.home ? (isLight(team.color) ? "#111" : "#FFFFFF") : (team.color === "#000000" ? "#111" : team.color);
-          outlined(label, x + tw / 2, y + th - 14, { font: `${Math.round(th * 0.17)}px 'Archivo Black'`, fill, stroke: g.home ? "#000" : "#FFFFFF", width: 5, maxWidth: tw - 16 });
+          outlined(ctx, label, x + tw / 2, y + th - 14, { font: `${Math.round(th * 0.17)}px 'Archivo Black'`, fill, stroke: g.home ? "#000" : "#FFFFFF", width: 5, maxWidth: tw - 16 });
         }
       });
     }
 
-    async function chooseTeam(key) {
-      const team = TEAMS.find(t => t.abbr === key || String(t.id) === key) || TEAMS.find(t => t.abbr === "LSU");
-      document.getElementById("teamSelect").value = team.abbr;
-      history.replaceState(null, "", `?team=${team.abbr}${params.get("bare") === "1" ? "&bare=1" : ""}`);
-      setNote(`Loading ${team.name}...`);
-      const sched = await loadSchedule(team);
-      if (!sched) { setNote(`Couldn't load ${team.name}'s schedule from ESPN.`); return; }
-      await draw(team, sched);
-      current = team;
-      setNote(`${team.name}: ${sched.record} (${sched.secRecord} SEC), through today's finished games.`);
+    // ---- Saving ----
+    function canvasBlob(canvas) {
+      return new Promise((resolve, reject) => {
+        try { canvas.toBlob(b => (b ? resolve(b) : reject(new Error("empty image"))), "image/png"); }
+        catch (err) { reject(err); }
+      });
+    }
+    const exportHelp = err => exportBlocked
+      ? "ESPN's logos block saving images from this page. Take a screenshot for now, and tell Liquid."
+      : `Couldn't save: ${err.message}`;
+
+    async function downloadCanvas(canvas, name) {
+      try {
+        const blob = await canvasBlob(canvas);
+        saveBlob(blob, name);
+      } catch (err) {
+        document.getElementById("singleNote").textContent = exportHelp(err);
+      }
+    }
+    function saveBlob(blob, name) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     }
 
-    function downloadPng() {
-      if (!current) return;
+    // A plain .zip (PNGs are already compressed, so files are stored as-is).
+    const CRC_TABLE = (() => {
+      const t = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+      return t;
+    })();
+    const crc32 = bytes => { let c = 0xFFFFFFFF; for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+    async function makeZip(files) {
+      const enc = new TextEncoder(), parts = [], central = [];
+      let offset = 0;
+      const now = new Date();
+      const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+      const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+      for (const f of files) {
+        const data = new Uint8Array(await f.blob.arrayBuffer());
+        const name = enc.encode(f.name), crc = crc32(data);
+        const local = new DataView(new ArrayBuffer(30));
+        [[0, 0x04034b50, 4], [4, 20, 2], [6, 0, 2], [8, 0, 2], [10, dosTime, 2], [12, dosDate, 2], [14, crc, 4], [18, data.length, 4], [22, data.length, 4], [26, name.length, 2], [28, 0, 2]]
+          .forEach(([o, v, s]) => s === 4 ? local.setUint32(o, v, true) : local.setUint16(o, v, true));
+        parts.push(new Uint8Array(local.buffer), name, data);
+        const cen = new DataView(new ArrayBuffer(46));
+        [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0, 2], [10, 0, 2], [12, dosTime, 2], [14, dosDate, 2], [16, crc, 4], [20, data.length, 4], [24, data.length, 4], [28, name.length, 2], [30, 0, 2], [32, 0, 2], [34, 0, 2], [36, 0, 2], [38, 0, 4], [42, offset, 4]]
+          .forEach(([o, v, s]) => s === 4 ? cen.setUint32(o, v, true) : cen.setUint16(o, v, true));
+        central.push(new Uint8Array(cen.buffer), name);
+        offset += 30 + name.length + data.length;
+      }
+      const centralSize = central.reduce((t, p) => t + p.length, 0);
+      const end = new DataView(new ArrayBuffer(22));
+      [[0, 0x06054b50, 4], [4, 0, 2], [6, 0, 2], [8, files.length, 2], [10, files.length, 2], [12, centralSize, 4], [16, offset, 4], [20, 0, 2]]
+        .forEach(([o, v, s]) => s === 4 ? end.setUint32(o, v, true) : end.setUint16(o, v, true));
+      return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: "application/zip" });
+    }
+
+    // ---- Page ----
+    const params = new URLSearchParams(location.search);
+    if (params.get("bare") === "1") document.body.classList.add("bare");
+    let currentWeek = 1, games = [], singleName = "graphic.png", generated = [];
+
+    async function guessWeek() {
+      const sb = await fetchJson(`/scoreboard?groups=8`);
+      const n = sb && sb.week && sb.week.number;
+      if (!n) return 1;
+      // Early in a week, last week's games are the ones to recap.
+      const anyDone = (sb.events || []).some(e => e.competitions && e.competitions[0].status.type.completed);
+      return anyDone ? n : Math.max(1, n - 1);
+    }
+
+    async function loadWeek(week) {
+      currentWeek = week;
+      document.getElementById("weekSelect").value = String(week);
+      document.getElementById("weekNote").textContent = "Loading games...";
+      games = await weekGames(week);
+      const done = games.filter(g => g.done).length;
+      document.getElementById("weekNote").textContent = `${games.length} games, ${done} final`;
+      document.getElementById("gameSelect").innerHTML = games.map((g, i) => `<option value="${i}">${gameLabel(g)}</option>`).join("");
+      const firstDone = games.findIndex(g => g.done);
+      if (firstDone >= 0) document.getElementById("gameSelect").value = String(firstDone);
+      generated = [];
+      document.getElementById("gallery").innerHTML = "";
+      document.getElementById("zipBtn").disabled = true;
+      fillSides();
+      await renderSingle();
+    }
+
+    function fillSides() {
+      const g = games[+document.getElementById("gameSelect").value];
+      const sel = document.getElementById("sideSelect");
+      const keep = sel.value;
+      sel.innerHTML = g ? ["away", "home"].map(s => `<option value="${s}">${g[s].team.shortDisplayName || g[s].team.abbreviation}</option>`).join("") : "";
+      if (keep) sel.value = keep;
+    }
+
+    let renderToken = 0;
+    async function renderSingle() {
+      const kind = document.getElementById("kindSelect").value;
+      document.getElementById("gameSelect").style.display = kind === "stats" || kind === "drives" ? "" : "none";
+      document.getElementById("sideSelect").style.display = kind === "drives" ? "" : "none";
+      document.getElementById("teamSelect").style.display = kind === "schedule" ? "" : "none";
+      fillSides();
+      const token = ++renderToken;
+      const note = document.getElementById("singleNote");
+      note.textContent = "Drawing...";
+      const ctx = document.getElementById("singleCanvas").getContext("2d");
+      const g = games[+document.getElementById("gameSelect").value];
+      const side = document.getElementById("sideSelect").value || "away";
+      const team = teamById(document.getElementById("teamSelect").value) || TEAMS[6];
+
+      if (kind === "scores") { await drawScores(ctx, currentWeek, games); singleName = `week${currentWeek}-scores.png`; }
+      else if (kind === "stats") { if (!g) return note.textContent = "No games this week."; await drawStats(ctx, g); singleName = fileFor("stats", g); }
+      else if (kind === "drives") { if (!g) return note.textContent = "No games this week."; await drawDrives(ctx, g, side); singleName = fileFor("drives", g, side); }
+      else { await drawSchedule(ctx, team); singleName = `${team.abbr.toLowerCase()}-schedule.png`; }
+      if (token === renderToken) note.textContent = singleName;
+    }
+
+    const fileFor = (kind, g, side) => kind === "stats"
+      ? `week${currentWeek}-${slug(g.away.team.abbreviation)}-at-${slug(g.home.team.abbreviation)}-stats.png`
+      : `week${currentWeek}-${slug(g[side].team.abbreviation)}-drives-vs-${slug(g[side === "away" ? "home" : "away"].team.abbreviation)}.png`;
+
+    async function generateAll() {
+      const btn = document.getElementById("genAllBtn"), note = document.getElementById("allNote"), gallery = document.getElementById("gallery");
+      btn.disabled = true;
+      document.getElementById("zipBtn").disabled = true;
+      gallery.innerHTML = "";
+      generated = [];
+      const jobs = [];
+      if (document.getElementById("incScores").checked) jobs.push({ name: `week${currentWeek}-scores.png`, draw: ctx => drawScores(ctx, currentWeek, games) });
+      games.filter(g => g.done).forEach(g => {
+        if (document.getElementById("incStats").checked) jobs.push({ name: fileFor("stats", g), draw: ctx => drawStats(ctx, g) });
+        if (document.getElementById("incDrives").checked) ["away", "home"].forEach(s => {
+          if (SEC_IDS.has(String(g[s].team.id))) jobs.push({ name: fileFor("drives", g, s), draw: ctx => drawDrives(ctx, g, s) });
+        });
+      });
+      if (document.getElementById("incSchedules").checked) TEAMS.forEach(t => jobs.push({ name: `${t.abbr.toLowerCase()}-schedule.png`, draw: ctx => drawSchedule(ctx, t) }));
+
+      for (let i = 0; i < jobs.length; i++) {
+        note.textContent = `Drawing ${i + 1} of ${jobs.length}...`;
+        const canvas = document.createElement("canvas");
+        canvas.width = W; canvas.height = H;
+        try { await jobs[i].draw(canvas.getContext("2d")); } catch (err) { console.error(jobs[i].name, err); }
+        const item = document.createElement("div");
+        item.className = "thumb";
+        item.innerHTML = `<div class="name">${jobs[i].name}</div>`;
+        item.prepend(canvas);
+        canvas.title = "Open full size";
+        canvas.onclick = () => canvasBlob(canvas).then(b => window.open(URL.createObjectURL(b), "_blank")).catch(err => note.textContent = exportHelp(err));
+        const dl = document.createElement("button");
+        dl.textContent = "Download";
+        dl.onclick = () => canvasBlob(canvas).then(b => saveBlob(b, jobs[i].name)).catch(err => note.textContent = exportHelp(err));
+        item.appendChild(dl);
+        gallery.appendChild(item);
+        generated.push({ name: jobs[i].name, canvas });
+      }
+      note.textContent = `${generated.length} graphics ready. Check them, then download them all at once.`;
+      btn.disabled = false;
+      document.getElementById("zipBtn").disabled = !generated.length;
+    }
+
+    async function downloadAll() {
+      const note = document.getElementById("allNote");
       try {
-        canvas.toBlob(blob => {
-          if (!blob) return setNote("Couldn't save the image.");
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(blob);
-          a.download = `${current.abbr}-schedule.png`;
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-        }, "image/png");
+        note.textContent = "Building the zip...";
+        const files = [];
+        for (const g of generated) files.push({ name: g.name, blob: await canvasBlob(g.canvas) });
+        saveBlob(await makeZip(files), `week${currentWeek}-graphics.zip`);
+        note.textContent = `Saved week${currentWeek}-graphics.zip with ${files.length} graphics.`;
       } catch (err) {
-        setNote(exportBlocked ? "ESPN's logos block saving the image. Take a screenshot of the graphic instead." : `Couldn't save the image: ${err.message}`);
+        note.textContent = exportHelp(err);
       }
     }
 
-    document.getElementById("teamSelect").innerHTML = TEAMS.map(t => `<option value="${t.abbr}">${t.name}</option>`).join("");
-    chooseTeam(params.get("team") || "LSU");
+    (async () => {
+      document.getElementById("weekSelect").innerHTML = Array.from({ length: TOTAL_WEEKS }, (_, i) => `<option value="${i + 1}">Week ${i + 1}</option>`).join("");
+      document.getElementById("teamSelect").innerHTML = TEAMS.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+      document.getElementById("teamSelect").value = "99";
+      // Links like ?team=LSU still open that team's schedule.
+      const teamParam = params.get("team");
+      const linked = teamParam && TEAMS.find(t => t.abbr === teamParam.toUpperCase() || String(t.id) === teamParam);
+      if (linked) {
+        document.getElementById("kindSelect").value = "schedule";
+        document.getElementById("teamSelect").value = String(linked.id);
+      }
+      const week = +params.get("week") || await guessWeek();
+      await loadWeek(Math.min(Math.max(week, 1), TOTAL_WEEKS));
+    })();
   </script>
 </body>
 </html>
