@@ -6,8 +6,8 @@
   <title data-site-text="Make Picks - {name}">Make Picks - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=44"></script>
-  <script src="sec.js?v=35"></script>
+  <script src="common.js?v=46"></script>
+  <script src="sec.js?v=41"></script>
   <link rel="stylesheet" href="styles.css?v=46" />
 </head>
 <body>
@@ -117,8 +117,8 @@
 
     async function fetchEspnSchedule(week) {
       try {
-        const data = await (await fetch(scoreboardUrl(week))).json();
-        if (!data.events || data.events.length === 0) return [];
+        const { data } = await fetchEspnRaw(week);
+        if (!data || !data.events || data.events.length === 0) return [];
         rememberEvents(data.events);
 
         const games = data.events.map(ev => {
@@ -184,8 +184,8 @@
     }
 
     async function initForm() {
-      document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
-      document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
+      document.getElementById("pageHeading").textContent = `${weekName(targetWeek).toUpperCase()} PICKS`;
+      document.getElementById("pageSubHeading").textContent = `Make your selections for ${weekName(targetWeek)}`;
 
       // Picks go in under the signed-in account's name.
       const account = await requireAccount();
@@ -235,7 +235,7 @@
     function renderForm() {
       const container = document.getElementById("gamesList");
       if (currentSchedule.length === 0) {
-        container.innerHTML = `<div style="text-align:center; color: var(--danger); padding: 1.5rem 0;">No scheduled games found for Week ${targetWeek} yet.</div>`;
+        container.innerHTML = `<div style="text-align:center; color: var(--danger); padding: 1.5rem 0;">No scheduled games found for ${weekName(targetWeek)} yet.</div>`;
         return;
       }
 
@@ -410,7 +410,7 @@
           .limit(1);
 
         if (existing && existing.length > 0) {
-          return fail(`An entry under "${finalUsername}" has already been submitted for Week ${targetWeek}! Only one submission per ${SITE.players.one} is allowed.`);
+          return fail(`An entry under "${finalUsername}" has already been submitted for ${weekName(targetWeek)}! Only one submission per ${SITE.players.one} is allowed.`);
         }
 
         const { error } = await supabaseClient
@@ -425,7 +425,7 @@
 
         if (error) {
           if (error.code === "23505" || error.message?.includes("unique")) {
-            return fail(`An entry under "${finalUsername}" was already submitted for Week ${targetWeek}!`);
+            return fail(`An entry under "${finalUsername}" was already submitted for ${weekName(targetWeek)}!`);
           }
           throw error;
         }
@@ -434,7 +434,7 @@
           localStorage.setItem("secPickEmUserName", finalUsername);
         } catch (storageErr) {}
 
-        setStatus("var(--success)", `Week ${targetWeek} ballot submitted! Returning to Leaderboard...`);
+        setStatus("var(--success)", `${weekName(targetWeek)} picks submitted! Returning to Leaderboard...`);
         setTimeout(() => { window.location.href = "index.html"; }, 1800);
       } catch (err) {
         fail(`Error: ${err.message}`);
