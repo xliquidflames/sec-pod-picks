@@ -182,10 +182,12 @@ async function sendContactMessage(form) {
   button.disabled = true;
   say("var(--text-muted)", "Sending...");
   try {
-    const { error } = await supabaseClient.functions.invoke("contact", {
+    // Gives up after 20 seconds instead of saying "Sending..." forever.
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("No answer after 20 seconds")), 20000));
+    const { error } = await Promise.race([timeout, supabaseClient.functions.invoke("contact", {
       body: { name: field("name"), reply: field("reply"), message: field("message"), website: field("website"),
               account: (signedInAccount && signedInAccount.name) || "", page: thisPage() }
-    });
+    })]);
     if (error) throw error;
     form.elements.message.value = "";
     say("var(--success)", "Sent. Thanks! You'll hear back by email.");
@@ -251,6 +253,13 @@ const podiumLogoHtml = name => favoriteLogoHtml(playerFavorites[(name || "").toL
 
 // Logo and titles after a player's name on a card.
 const playerBadgesHtml = name => favoriteLogoHtml(playerFavorites[(name || "").toLowerCase()]) + championChipsHtml(name);
+
+// Top of an opened card: weeks won and how far back, kept off the
+// collapsed row so the list stays clean.
+function cardBadgesHtml(name, extra = "") {
+  const inner = championChipsHtml(name) + extra;
+  return inner ? `<div class="card-badges">${inner}</div>` : "";
+}
 
 async function loadPlayerFavorites() {
   try {
