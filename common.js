@@ -145,6 +145,7 @@ const pageSport = () => {
 let playerFavorites = {};   // lower-case name -> { cfb, nfl, hoops }
 let weeklyChampions = {};   // lower-case name -> [week numbers]
 let championsByWeek = {};   // week -> [names]
+let championRecords = {};   // week -> "9-1", the winning record
 
 function favoriteLogoHtml(favorites) {
   const team = favorites && favorites[pageSport()];
@@ -189,14 +190,17 @@ const MIN_CHAMPION_GAMES = 4;
 function computeWeeklyChampions() {
   weeklyChampions = {};
   championsByWeek = {};
+  championRecords = {};
   const weeks = new Set(allWeekRows.map(r => r.week_number));
   weeks.forEach(w => {
     if (w >= CURRENT_OPEN_WEEK || (weekSchedules[w] || []).length < MIN_CHAMPION_GAMES) return;
     const rows = allWeekRows.filter(r => !r.is_host && r.week_number === w)
-      .map(r => ({ name: r.user_name, correct: gradePicks(r.picks, w).correct }));
+      .map(r => ({ name: r.user_name, ...gradePicks(r.picks, w) }));
     const best = Math.max(0, ...rows.map(r => r.correct));
     if (best === 0) return;
-    championsByWeek[w] = rows.filter(r => r.correct === best).map(r => r.name).sort((a, b) => a.localeCompare(b));
+    const winners = rows.filter(r => r.correct === best);
+    championsByWeek[w] = winners.map(r => r.name).sort((a, b) => a.localeCompare(b));
+    championRecords[w] = `${best}-${Math.min(...winners.map(r => r.incorrect))}`;
     championsByWeek[w].forEach(n => (weeklyChampions[n.toLowerCase()] ||= []).push(w));
   });
   Object.values(weeklyChampions).forEach(list => list.sort((a, b) => a - b));
@@ -556,6 +560,25 @@ function updateSubmitButton(weekNum, page) {
   }
 }
 
+// Under the podium: everyone in 1st for the most recent finished week.
+function latestChampionsHtml() {
+  const weeks = Object.keys(championsByWeek).map(Number);
+  if (!weeks.length) return "";
+  const week = Math.max(...weeks);
+  const names = championsByWeek[week];
+  return `
+      <div class="top3-item weekly-champs" style="flex-direction: column; align-items: stretch;">
+        <div class="tier-header">
+          <div style="display: flex; align-items: center;">
+            <span class="rank-badge rank-gold" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">&#127942;</span>
+            <strong>${weekName(week)} ${names.length > 1 ? "Champs" : "Champ"}</strong>
+          </div>
+          <span style="font-weight: 800; color: var(--accent-gold);">${championRecords[week]}</span>
+        </div>
+        <div class="tier-names-grid open">${names.map(n => `<span>${escapeHtml(n)}${podiumLogoHtml(n)}</span>`).join("")}</div>
+      </div>`;
+}
+
 // Season podium: most correct picks, then fewest losses. An identical record
 // is a shared spot, shown as a tie. totals: [{ user_name, correct, incorrect }].
 function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
@@ -605,7 +628,7 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
         ${isTie ? namesGrid(tier.members, gridId) : ''}
       </div>
     `;
-  }).join("");
+  }).join("") + latestChampionsHtml();
 
   if (decisionLog) {
     const placeLabels = ["1st Place", "2nd Place", "3rd Place"];
