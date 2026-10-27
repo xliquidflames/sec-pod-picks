@@ -1,14 +1,97 @@
 // SEC pages (index, makepicks, hostpicks): team names, ESPN feeds, and the
 // Top 25 / SEC Standings / team schedule popups. Loads after common.js.
 
-const TOTAL_WEEKS = 14;
+// Weeks 1-14 are ESPN's regular season (14 is the SEC Championship). After
+// that, each round of bowls and the College Football Playoff is its own week.
+const REGULAR_WEEKS = 14;
+const TOTAL_WEEKS = 18;
 const WEEK_NUMS = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1);
+const WEEK_NAMES = { 14: "SEC Championship", 15: "Bowls & CFP Round 1", 16: "CFP Quarterfinals", 17: "CFP Semifinals", 18: "CFP National Championship" };
+const WEEK_SHORT = { 14: "SECCG", 15: "Bowls", 16: "CFP QF", 17: "CFP SF", 18: "CFP Final" };
 const PICKS_TABLE = "picks";
 
 const scoreboardUrl = week => `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
 
-// Lock of the Week started in Week 2.
-const isLockWeek = week => week !== 1;
+// Lock of the Week runs Weeks 2-13: not Week 1, the SEC Championship or the postseason.
+const isLockWeek = week => week >= 2 && week <= 13;
+
+// ---- Postseason: bowls with an SEC team, and every Playoff game ----
+const SEC_ESPN_IDS = new Set(["333", "8", "2", "57", "61", "96", "99", "145", "344", "142", "201", "2579", "2633", "251", "245", "238"]);
+// Playoff rounds, read from ESPN's note on each game, and their week.
+const CFP_ROUNDS = [[/first round/i, 15], [/quarterfinal/i, 16], [/semifinal/i, 17], [/national championship/i, 18]];
+// When each later round starts (2026-27), used until ESPN lists its games.
+// A bowl goes in the week of whichever round has started by its date.
+const CFP_ROUND_STARTS = { 16: "2026-12-30T00:00:00-05:00", 17: "2027-01-14T00:00:00-05:00", 18: "2027-01-25T00:00:00-05:00" };
+const POSTSEASON_URL = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?seasontype=3&dates=20261201-20270131&limit=300";
+
+let postseasonLoad = null;
+function loadPostseason() {
+  return (postseasonLoad ||= (async () => {
+    let data = null, currentTime = new Date();
+    for (const url of [`${POSTSEASON_URL}&groups=80`, POSTSEASON_URL]) {
+      try {
+        const res = await fetch(url);
+        const header = res.headers.get("date");
+        if (header) currentTime = new Date(header);
+        const json = await res.json();
+        if (json && json.events && json.events.length) { data = json; break; }
+      } catch (err) {
+        console.error("ESPN postseason fetch failed:", err);
+      }
+    }
+    const events = (data && data.events) || [];
+    const noteOf = ev => [...((((ev.competitions || [])[0]) || {}).notes || []), ...(ev.notes || [])].map(n => n.headline || n.text || "").join(" ");
+    const cfpWeek = ev => {
+      const note = noteOf(ev);
+      if (!/playoff|cfp/i.test(note)) return null;
+      const hit = CFP_ROUNDS.find(([re]) => re.test(note));
+      return hit ? hit[1] : null;
+    };
+    const dateOf = ev => new Date((((ev.competitions || [])[0]) || {}).date || ev.date);
+
+    const starts = {};
+    Object.entries(CFP_ROUND_STARTS).forEach(([w, d]) => { starts[w] = new Date(d); });
+    const listed = {};
+    events.forEach(ev => {
+      const w = cfpWeek(ev);
+      if (w > 15 && (!listed[w] || dateOf(ev) < listed[w])) listed[w] = dateOf(ev);
+    });
+    Object.assign(starts, listed);
+
+    const byWeek = { 15: [], 16: [], 17: [], 18: [] };
+    events.forEach(ev => {
+      let w = cfpWeek(ev);
+      if (!w) {
+        const teams = ((((ev.competitions || [])[0]) || {}).competitors || []).map(c => String(c.team && c.team.id));
+        if (!teams.some(id => SEC_ESPN_IDS.has(id))) return;
+        w = 15;
+        [16, 17, 18].forEach(r => { if (dateOf(ev) >= starts[r]) w = r; });
+      }
+      byWeek[w].push(ev);
+    });
+    return { byWeek, currentTime };
+  })());
+}
+
+// Replaces common.js's version: regular weeks come straight from ESPN, and
+// postseason weeks are cut from ESPN's postseason list.
+async function fetchEspnRaw(week) {
+  if (espnRawCache[week]) return espnRawCache[week];
+  if (week > REGULAR_WEEKS) {
+    const { byWeek, currentTime } = await loadPostseason();
+    return (espnRawCache[week] = { data: { events: byWeek[week] || [] }, currentTime });
+  }
+  try {
+    const res = await fetch(scoreboardUrl(week));
+    const serverDateHeader = res.headers.get("date");
+    const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+    const data = await res.json();
+    return (espnRawCache[week] = { data, currentTime });
+  } catch (err) {
+    console.error(`ESPN fetch failed for week ${week}:`, err);
+    return { data: null, currentTime: new Date() };
+  }
+}
 
 // Every spelling ESPN might use for each SEC team. Matching is exact, so
 // "Texas State" or "Florida State" never count as SEC. Pages can add more
