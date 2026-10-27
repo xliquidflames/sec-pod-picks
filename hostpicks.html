@@ -6,8 +6,8 @@
   <title data-site-text="Host Portal - {name}">Host Portal - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=44"></script>
-  <script src="sec.js?v=40"></script>
+  <script src="common.js?v=46"></script>
+  <script src="sec.js?v=41"></script>
   <link rel="stylesheet" href="styles.css?v=46" />
 </head>
 <body>
@@ -24,20 +24,7 @@
         <div class="control-group">
           <label for="weekSelect">Select Week:</label>
           <select class="form-field" id="weekSelect" onchange="onWeekChange()">
-            <option value="1">Week 1</option>
-            <option value="2">Week 2</option>
-            <option value="3">Week 3</option>
-            <option value="4">Week 4</option>
-            <option value="5">Week 5</option>
-            <option value="6">Week 6</option>
-            <option value="7">Week 7</option>
-            <option value="8">Week 8</option>
-            <option value="9">Week 9</option>
-            <option value="10">Week 10</option>
-            <option value="11">Week 11</option>
-            <option value="12">Week 12</option>
-            <option value="13">Week 13</option>
-            <option value="14">Week 14</option>
+            <!-- Filled from sec.js. -->
           </select>
         </div>
 
@@ -98,7 +85,7 @@
 
     async function fetchEspnSchedule(week) {
       try {
-        const data = await (await fetch(scoreboardUrl(week))).json();
+        const { data } = await fetchEspnRaw(week);
         if (!data.events || data.events.length === 0) return [];
 
         const games = data.events.map(ev => {
@@ -151,7 +138,7 @@
 
     async function loadSchedule() {
       const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
-      document.getElementById("portalSubHeading").textContent = `Week ${weekNum} Picks, Scores & Lock Submission`;
+      document.getElementById("portalSubHeading").textContent = `${weekName(weekNum)} Picks, Scores${isLockWeek(weekNum) ? " & Lock" : ""}`;
       currentSchedule = await fetchEspnSchedule(weekNum);
       renderCards();
       await fetchExistingHostData();
@@ -159,6 +146,7 @@
 
     function renderCards() {
       const container = document.getElementById("gamesContainer");
+      const lockWeek = isLockWeek(parseInt(document.getElementById("weekSelect").value, 10));
       if (currentSchedule.length === 0) {
         container.innerHTML = `<div style="text-align: center; color: var(--danger); padding: 1.5rem 0;">No scheduled games found for this week.</div>`;
         return;
@@ -188,9 +176,9 @@
         card.innerHTML = `
           <div class="game-header-row">
             <span class="game-title"><strong>GAME ${game.id}</strong></span>
-            <button type="button" class="btn-lock-toggle" id="lock_btn_${game.matchupKey}" onclick="toggleLock('${game.matchupKey}')">
+            ${lockWeek ? `<button type="button" class="btn-lock-toggle" id="lock_btn_${game.matchupKey}" onclick="toggleLock('${game.matchupKey}')">
               Lock of Week
-            </button>
+            </button>` : ""}
           </div>
           <div class="pick-grid">
             ${pickBtn(left, teamOf(left))}
@@ -359,7 +347,7 @@
         }
       });
 
-      hostPicks.lock_matchup_key = currentLockMatchupKey;
+      hostPicks.lock_matchup_key = isLockWeek(weekNum) ? currentLockMatchupKey : null;
       hostPicks.scores = hostScores;
 
       setStatus("var(--text-muted)", "Saving...");
@@ -373,7 +361,7 @@
 
         clearDraft();
         const picked = currentSchedule.filter(g => hostPicks[g.matchupKey]).length;
-        setStatus("var(--success)", `Saved ${picked} of ${currentSchedule.length} picks for ${hostName}, Week ${weekNum}.`);
+        setStatus("var(--success)", `Saved ${picked} of ${currentSchedule.length} picks for ${hostName}, ${weekName(weekNum)}.`);
       } catch (err) {
         setStatus("var(--danger)", `Error: ${err.message}`);
       }
@@ -381,6 +369,9 @@
 
     // Hosts move to the next week on the Monday after its last game ends
     // (a day before the public leaderboard).
+    document.getElementById("weekSelect").innerHTML =
+      WEEK_NUMS.map(w => `<option value="${w}">${weekName(w)}</option>`).join("");
+
     (async () => {
       // Only accounts listed as site admins in the database can save.
       const account = await requireAccount();
