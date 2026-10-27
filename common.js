@@ -117,6 +117,85 @@ const accountHelpHtml = () => SITE.discord
   ? `Can't sign in, or someone has your name? <a href="${SITE.discord}" target="_blank" rel="noopener">DM ${SITE.accountHelp || "us"} on Discord</a>.`
   : "";
 
+// ---- Contact: email, X, Discord and a message form ----
+// Any element with data-contact-box gets one; its value is the heading.
+function contactBoxHtml(heading) {
+  const who = escapeHtml(SITE.accountHelp || "us");
+  const links = [
+    SITE.contactEmail && `<a class="contact-link" href="mailto:${SITE.contactEmail}">&#9993;&#65039; ${escapeHtml(SITE.contactEmail)}</a>`,
+    SITE.contactX && `<a class="contact-link" href="https://x.com/${SITE.contactX}" target="_blank" rel="noopener">&#120143; @${escapeHtml(SITE.contactX)}</a>`,
+    SITE.discord && `<a class="contact-link" href="${SITE.discord}" target="_blank" rel="noopener">&#128172; DM ${who} on Discord</a>`
+  ].filter(Boolean).join("");
+  const button = SITE.contactForm
+    ? `<button type="button" class="btn-provider contact-open" onclick="openContactForm()">&#9998;&#65039; Send a Message</button>` : "";
+  return `<div class="contact-heading">${escapeHtml(heading || `Need help? Contact ${SITE.accountHelp || "us"}`)}</div>
+    <div class="contact-links">${links}</div>${button}`;
+}
+
+// The message form, in a pop-up made the first time it's opened.
+function openContactForm() {
+  let overlay = document.getElementById("contactOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "contactOverlay";
+    overlay.className = "team-sched-overlay";
+    overlay.onclick = e => { if (e.target === overlay) closeContactForm(); };
+    overlay.innerHTML = `
+      <div class="team-sched-modal contact-modal" role="dialog" aria-modal="true" aria-labelledby="contactTitle">
+        <div class="team-sched-header">
+          <div class="team-sched-title" id="contactTitle">Message ${escapeHtml(SITE.accountHelp || "us")}</div>
+          <button type="button" class="team-sched-close" onclick="closeContactForm()" aria-label="Close">&times;</button>
+        </div>
+        <form class="contact-form" onsubmit="sendContactMessage(this); return false;">
+          <label class="contact-label" for="contactReply">Your email<small>So I can reply to you</small></label>
+          <input class="form-field" id="contactReply" name="reply" type="email" maxlength="120" autocomplete="email" required />
+          <label class="contact-label" for="contactName">Your picks name<small>What name do you go by on this site?</small></label>
+          <input class="form-field" id="contactName" name="name" maxlength="60" autocomplete="off" />
+          <label class="contact-label" for="contactMessage">What issue are you having?</label>
+          <textarea class="form-field" id="contactMessage" name="message" maxlength="2000" rows="7" required></textarea>
+          <input class="contact-trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+          <button type="submit" class="btn-submit">Send Message</button>
+          <div class="contact-status"></div>
+        </form>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeContactForm(); });
+  }
+  const nameField = document.getElementById("contactName");
+  if (!nameField.value && signedInAccount && signedInAccount.name) nameField.value = signedInAccount.name;
+  overlay.querySelector(".contact-status").innerHTML = "";
+  overlay.style.display = "flex";
+  document.getElementById("contactReply").focus();
+}
+
+function closeContactForm() {
+  const overlay = document.getElementById("contactOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+async function sendContactMessage(form) {
+  const status = form.querySelector(".contact-status");
+  const button = form.querySelector("button[type=submit]");
+  const field = n => form.elements[n].value.trim();
+  if (!field("message")) return;
+  const say = (color, html) => { status.style.color = color; status.innerHTML = html; };
+  button.disabled = true;
+  say("var(--text-muted)", "Sending...");
+  try {
+    const { error } = await supabaseClient.functions.invoke("contact", {
+      body: { name: field("name"), reply: field("reply"), message: field("message"), website: field("website"),
+              account: (signedInAccount && signedInAccount.name) || "", page: thisPage() }
+    });
+    if (error) throw error;
+    form.elements.message.value = "";
+    say("var(--success)", "Sent. Thanks! You'll hear back by email.");
+  } catch (err) {
+    console.error("Contact form failed:", err);
+    say("var(--danger)", `Couldn't send that.${SITE.contactEmail ? ` Email <a href="mailto:${SITE.contactEmail}">${escapeHtml(SITE.contactEmail)}</a> instead.` : ""}`);
+  }
+  button.disabled = false;
+}
+
 // On a picks page: the name box shows the account's name and can't be changed.
 function showAccountName(account) {
   const input = document.getElementById("userNameInput");
@@ -253,6 +332,7 @@ function siteText(template) {
     websiteLabel: SITE.website.label,
     discord: SITE.discord,
     contact: SITE.contact,
+    accountHelp: SITE.accountHelp || "us",
     one: SITE.players.one,
     many: SITE.players.many,
     oneLower: SITE.players.one.toLowerCase(),
@@ -270,6 +350,7 @@ function siteText(template) {
 function applySiteSettings(root = document) {
   root.querySelectorAll("[data-site-text]").forEach(el => { el.textContent = siteText(el.dataset.siteText); });
   root.querySelectorAll("[data-site-html]").forEach(el => { el.innerHTML = siteText(el.dataset.siteHtml); });
+  root.querySelectorAll("[data-contact-box]").forEach(el => { el.innerHTML = contactBoxHtml(siteText(el.dataset.contactBox)); });
   root.querySelectorAll("[data-site-attr]").forEach(el => {
     el.dataset.siteAttr.split(";").forEach(pair => {
       const i = pair.indexOf(":");
