@@ -3627,3 +3627,22 @@ a.btn-submit.bk-cta {
 .footer-contact .contact-heading {
   font-size: 0.9rem;
 }
+
+/* Weeks won and "N back", at the top of an opened card. */
+.card-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.55rem;
+}
+
+.card-badges .champ-chip {
+  margin-left: 0;
+  font-size: 0.8rem;
+}
+
+/* The favorite logo sits between the rank bubble and the name. */
+.cousin-header .rank-badge + .fav-logo {
+  margin: 0 0.15rem;
+}
