@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-site-text="Sign In - {name}">Sign In - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=41"></script>
-  <script src="common.js?v=44"></script>
-  <link rel="stylesheet" href="styles.css?v=46" />
+  <script src="config.js?v=42"></script>
+  <script src="common.js?v=49"></script>
+  <link rel="stylesheet" href="styles.css?v=48" />
 </head>
 <body>
 
@@ -67,8 +67,9 @@
       </div>
 
       <div id="statusAlert" class="status-alert"></div>
-      <div class="signin-help" id="signinHelp"></div>
     </div>
+
+    <div class="card contact-box" data-contact-box="Can't sign in, or someone has your name? Contact {accountHelp}"></div>
   </div>
 
   <script>
@@ -185,7 +186,6 @@
       if (params.has("next")) location.replace(next);
     }
 
-    document.getElementById("signinHelp").innerHTML = accountHelpHtml();
     setupNameAutocomplete(() => knownNames, (name, query) => name.toLowerCase().includes(query.toLowerCase()));
 
     let recovering = /type=recovery/.test(location.hash);
