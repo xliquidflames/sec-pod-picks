@@ -19,6 +19,13 @@ const SITE = {
   // their name. Shown on the sign-in and picks pages.
   accountHelp: "Liquid",
 
+  // More ways to reach accountHelp, shown on the sign-in page and in the
+  // footer. contactForm sends messages through the "contact" Edge Function
+  // (supabase/contact.ts); set it to false until that's set up. "" hides one.
+  contactEmail: "xLiquidFlames@gmail.com",
+  contactX: "LiquidFlames",
+  contactForm: true,
+
   // The hosts, in the order they appear. Each host's picks are saved
   // under this exact name, so don't rename a host mid-season.
   hosts: ["Mike", "Shane", "Steven"],
