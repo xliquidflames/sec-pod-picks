@@ -7,9 +7,9 @@
   <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=42"></script>
-  <script src="common.js?v=49"></script>
+  <script src="common.js?v=51"></script>
   <script src="sec.js?v=41"></script>
-  <link rel="stylesheet" href="styles.css?v=48" />
+  <link rel="stylesheet" href="styles.css?v=49" />
 </head>
 <body>
 
@@ -1053,15 +1053,15 @@
         item.innerHTML = `
           <div class="cousin-header" onclick="this.nextElementSibling.classList.toggle('open')">
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
-              <span class="rank-badge ${c.rankClass}">#${c.rank}</span>
-              <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>${playerBadgesHtml(c.user_name)}
+              <span class="rank-badge ${c.rankClass}">#${c.rank}</span>${podiumLogoHtml(c.user_name)}
+              <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
               ${hitLotw ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
               <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">${c.score.correct}-${c.score.incorrect}</span>
-              ${path ? `<span class="path-chip ${path.isLeader ? 'leader' : ''}">${path.chip}</span>` : ''}
             </div>
             <span style="color: var(--accent-gold); font-weight: bold;">+</span>
           </div>
           <div class="cousin-picks-body">
+            ${cardBadgesHtml(c.user_name, path ? `<span class="path-chip ${path.isLeader ? 'leader' : ''}">${path.chip}</span>` : '')}
             ${path ? `<div class="path-line ${path.isLeader ? 'leader' : ''}"><span class="path-line-label">Path to First</span>${path.line}</div>` : ''}
             ${seasonBoxHtml(seasons[c.user_name], c.user_name)}
             ${games.map(g => {
