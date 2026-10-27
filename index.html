@@ -7,8 +7,8 @@
   <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=45"></script>
-  <script src="sec.js?v=35"></script>
+  <script src="common.js?v=46"></script>
+  <script src="sec.js?v=41"></script>
   <link rel="stylesheet" href="styles.css?v=46" />
 </head>
 <body>
@@ -69,20 +69,7 @@
     <div class="week-selector-bar">
       <button type="button" class="btn-step" onclick="changeWeekOffset(-1)">&larr; Prev</button>
       <select id="mainWeekSelect" class="week-dropdown" onchange="switchWeek(parseInt(this.value, 10))">
-        <option value="1">Week 1</option>
-        <option value="2">Week 2</option>
-        <option value="3">Week 3</option>
-        <option value="4">Week 4</option>
-        <option value="5">Week 5</option>
-        <option value="6">Week 6</option>
-        <option value="7">Week 7</option>
-        <option value="8">Week 8</option>
-        <option value="9">Week 9</option>
-        <option value="10">Week 10</option>
-        <option value="11">Week 11</option>
-        <option value="12">Week 12</option>
-        <option value="13">Week 13</option>
-        <option value="14">Week 14</option>
+        <!-- Filled from sec.js: Weeks 1-13, then the SEC Championship and the postseason. -->
       </select>
       <button type="button" class="btn-step" onclick="changeWeekOffset(1)">Next &rarr;</button>
     </div>
@@ -265,6 +252,9 @@
 
     // A season card and a grid column for each host in config.js, then the
     // players' consensus.
+    document.getElementById("mainWeekSelect").innerHTML =
+      WEEK_NUMS.map(w => `<option value="${w}">${weekName(w)}</option>`).join("");
+
     (function buildHostColumns() {
       const card = (label, id, key) => `
         <div class="host-season-card">
@@ -613,9 +603,9 @@
       const dropdown = document.getElementById("mainWeekSelect");
       if (dropdown) dropdown.value = weekNum;
 
-      document.getElementById("weekHostTitle").textContent = `Week ${weekNum} Info Hub`;
+      document.getElementById("weekHostTitle").textContent = `${weekName(weekNum)} Info Hub`;
       fillWeekPodLinks(document.getElementById("weekPodLinks"), weekNum);
-      document.getElementById("weekCousinsTitle").textContent = `The ${possessive(SITE.players.many)} Week ${weekNum} Picks`;
+      document.getElementById("weekCousinsTitle").textContent = `The ${possessive(SITE.players.many)} ${weekName(weekNum)} Picks`;
 
       const sortDesc = document.getElementById("leaderboardSortDesc");
       if (sortDesc) {
@@ -906,7 +896,7 @@
       return `
         <div class="season-box">
           <span class="path-line-label">Season So Far</span>
-          <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">W${w.week} ${w.c}-${w.i}</span>`).join("")}</div>
+          <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">${weekShort(w.week)} ${w.c}-${w.i}</span>`).join("")}</div>
           ${championWeeksHtml(name)}
           ${facts.length ? `<div>${facts.join(" · ")}</div>` : ""}
         </div>`;
@@ -991,11 +981,11 @@
 
       body.innerHTML = `
         <div class="entrant-record">${me.correct}-${me.incorrect}</div>
-        ${path ? `<div class="path-line ${path.isLeader ? "leader" : ""}"><span class="path-line-label">Path to First · Week ${activeWeek}</span>${path.line}</div>` : ""}
+        ${path ? `<div class="path-line ${path.isLeader ? "leader" : ""}"><span class="path-line-label">Path to First · ${weekName(activeWeek)}</span>${path.line}</div>` : ""}
         ${b.weeks.length ? `
         <div class="season-box">
           <span class="path-line-label">Season So Far</span>
-          <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">W${w.week} ${w.c}-${w.i}</span>`).join("")}</div>
+          <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">${weekShort(w.week)} ${w.c}-${w.i}</span>`).join("")}</div>
           ${facts.map(f => `<div>${f}</div>`).join("")}
         </div>` : `<div class="team-sched-note">No decided games yet.</div>`}
       `;
@@ -1017,7 +1007,7 @@
       const card = [...document.querySelectorAll("#cousinsList .cousin-item")]
         .find(el => squash(el.dataset.name || "") === squash(name));
       if (!card) {
-        note.textContent = `No Week ${activeWeek} picks from ${name} yet.`;
+        note.textContent = `No ${weekName(activeWeek)} picks from ${name} yet.`;
         note.style.display = "block";
         return;
       }
@@ -1047,7 +1037,7 @@
 
       const listContainer = document.getElementById("cousinsList");
       listContainer.innerHTML = cousinRows.length === 0
-        ? `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No picks submitted for Week ${activeWeek} yet.</div>`
+        ? `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No picks submitted for ${weekName(activeWeek)} yet.</div>`
         : "";
 
       const paths = computePathsToFirst(games);
@@ -1306,7 +1296,7 @@
       if (!container) return;
 
       if (games.length === 0) {
-        container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No games scheduled for Week ${activeWeek} yet.</div>`;
+        container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No games scheduled for ${weekName(activeWeek)} yet.</div>`;
         return;
       }
 
