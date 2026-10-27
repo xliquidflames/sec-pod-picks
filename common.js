@@ -157,13 +157,13 @@ function favoriteLogoHtml(favorites) {
 function championChipsHtml(name) {
   const weeks = weeklyChampions[(name || "").toLowerCase()] || [];
   if (!weeks.length) return "";
-  return `<span class="champ-chip" title="Week ${weeks.join(", ")} champion">&#127942;&times;${weeks.length}</span>`;
+  return `<span class="champ-chip" title="${weeks.map(weekName).join(", ")} champion">&#127942;&times;${weeks.length}</span>`;
 }
 
 // Every week won, spelled out, for the Season So Far box on a card.
 function championWeeksHtml(name) {
   const weeks = weeklyChampions[(name || "").toLowerCase()] || [];
-  return weeks.length ? `<div>&#127942; Champion weeks: ${weeks.map(w => `W${w}`).join(", ")}</div>` : "";
+  return weeks.length ? `<div>&#127942; Champion weeks: ${weeks.map(weekShort).join(", ")}</div>` : "";
 }
 
 // The standings show just the logo; titles stay on the cards.
@@ -183,13 +183,15 @@ async function loadPlayerFavorites() {
 }
 
 // A finished week's champions: every listener tied for the most correct
-// picks that week, the same as #1 in that week's list.
+// picks that week, the same as #1 in that week's list. Weeks with fewer than
+// four games (the SEC Championship, the later Playoff rounds) don't crown one.
+const MIN_CHAMPION_GAMES = 4;
 function computeWeeklyChampions() {
   weeklyChampions = {};
   championsByWeek = {};
   const weeks = new Set(allWeekRows.map(r => r.week_number));
   weeks.forEach(w => {
-    if (w >= CURRENT_OPEN_WEEK) return;
+    if (w >= CURRENT_OPEN_WEEK || (weekSchedules[w] || []).length < MIN_CHAMPION_GAMES) return;
     const rows = allWeekRows.filter(r => !r.is_host && r.week_number === w)
       .map(r => ({ name: r.user_name, correct: gradePicks(r.picks, w).correct }));
     const best = Math.max(0, ...rows.map(r => r.correct));
@@ -220,9 +222,13 @@ function renderChampionLine(weekNum) {
   }
   const names = championsByWeek[week];
   const shown = names.length > 6 ? `${names.slice(0, 6).map(escapeHtml).join(", ")} and ${names.length - 6} more` : names.map(escapeHtml).join(", ");
-  line.innerHTML = `&#127942; <strong>Week ${week} ${names.length > 1 ? "Champions" : "Champion"}:</strong> ${shown}`;
+  line.innerHTML = `&#127942; <strong>${weekName(week)} ${names.length > 1 ? "Champions" : "Champion"}:</strong> ${shown}`;
   line.style.display = "";
 }
+
+// "Week 7", or the SEC pages' names for later weeks ("SEC Championship").
+const weekName = w => (typeof WEEK_NAMES !== "undefined" && WEEK_NAMES[w]) || `Week ${w}`;
+const weekShort = w => (typeof WEEK_SHORT !== "undefined" && WEEK_SHORT[w]) || `W${w}`;
 
 const hostKey = name => name.toLowerCase();
 const possessive = word => word.endsWith("s") ? `${word}'` : `${word}'s`;
@@ -523,17 +529,26 @@ function changeWeekOffset(delta) {
 
 // Show the "Submit Week N Picks" button only for the current week. Picks
 // stay open all week; games that have started lock on their own.
+// Picks are open for the current week. In the postseason, a later round also
+// opens as soon as its matchups are set, since bowls can still be going on.
+function picksOpen(weekNum) {
+  if (weekNum === CURRENT_OPEN_WEEK) return true;
+  if (typeof REGULAR_WEEKS === "undefined" || weekNum <= REGULAR_WEEKS || weekNum < CURRENT_OPEN_WEEK) return false;
+  const now = new Date();
+  return (weekSchedules[weekNum] || []).some(g => g.kickoff > now && !/\btbd\b/i.test(`${g.teamA} ${g.teamB}`));
+}
+
 function updateSubmitButton(weekNum, page) {
   renderChampionLine(weekNum);
   const ctaBtn = document.getElementById("ctaBtn");
-  if (weekNum === CURRENT_OPEN_WEEK) {
+  if (picksOpen(weekNum)) {
     ctaBtn.style.display = "flex";
-    ctaBtn.innerHTML = `<span>Submit Week ${weekNum} Picks &rarr;</span>`;
+    ctaBtn.innerHTML = `<span>Submit ${weekName(weekNum)} Picks &rarr;</span>`;
     ctaBtn.href = `${page}?week=${weekNum}`;
     // Signed out: sign in first, then on to the picks.
     supabaseClient.auth.getSession().then(({ data }) => {
       if (data && data.session) return;
-      ctaBtn.innerHTML = `<span>Sign In &amp; Submit Week ${weekNum} Picks &rarr;</span>`;
+      ctaBtn.innerHTML = `<span>Sign In &amp; Submit ${weekName(weekNum)} Picks &rarr;</span>`;
       ctaBtn.href = signInUrl(`${page}?week=${weekNum}`);
     }).catch(() => {});
   } else {
