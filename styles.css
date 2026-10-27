@@ -3519,3 +3519,111 @@ a.btn-submit.bk-cta {
   text-align: center;
   text-decoration: none;
 }
+
+/* ---- Contact box: sign-in page and footer ---- */
+.contact-box {
+  text-align: center;
+}
+
+.contact-heading {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 0.7rem;
+}
+
+.contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--accent-gold);
+  border-radius: 8px;
+  color: var(--accent-gold);
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.contact-link:hover {
+  background: var(--accent-gold);
+  color: var(--bg-main);
+}
+
+.contact-open {
+  max-width: 260px;
+  margin: 0.8rem auto 0;
+  display: block;
+}
+
+.contact-modal {
+  max-width: 460px;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.contact-label {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  margin-top: 0.4rem;
+}
+
+.contact-label small {
+  display: block;
+  font-weight: 500;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.contact-form textarea.form-field {
+  resize: vertical;
+  font-family: inherit;
+  min-height: 9rem;
+}
+
+.contact-form .btn-submit {
+  margin-top: 0.6rem;
+}
+
+.contact-status a {
+  color: var(--accent-gold);
+}
+
+.contact-status {
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* Hidden from people; bots that fill every box get ignored. */
+.contact-trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.footer-contact {
+  max-width: 460px;
+  width: 100%;
+  margin: 0.25rem auto 0;
+}
+
+.footer-contact .contact-heading {
+  font-size: 0.9rem;
+}
