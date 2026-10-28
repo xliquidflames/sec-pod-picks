@@ -989,7 +989,8 @@ async function fillSeries(body, teamA, teamB, finished) {
   } catch (err) {
     clearTimeout(slow);
     console.error("Series error:", err);
-    box.remove();
+    const lines = box.querySelector(".series-lines");
+    if (lines) lines.innerHTML = `<div class="series-line">Series history unavailable right now.</div>`;
   }
 }
 
