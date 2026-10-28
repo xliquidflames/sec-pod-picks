@@ -576,28 +576,110 @@ function dropLatePicks(row) {
   if (changed) row.picks = picks;
 }
 
-// Every row, keeping only each person's first entry for a week.
+// ---- Changing picks ----
+// Every submission is kept. For each game, the pick that counts is the
+// latest one sent before kickoff (plus the grace period), so a change can't
+// reach a game that has started. Only entries from a signed-in account can
+// change picks; older duplicate entries without one are ignored, as before.
+const entryTime = r => new Date(r.created_at).getTime();
+const kickedOffBefore = (at, game) => {
+  const kick = game && game.kickoff instanceof Date ? game.kickoff.getTime() : NaN;
+  return !isNaN(kick) && game.kickoff.getFullYear() < 9999 && at - kick > LATE_PICK_GRACE_MS;
+};
+
+// rows: one person's entries for one week. Returns one row with the picks
+// that count, dated by the first entry.
+function mergeEntryRows(rows, games) {
+  const sorted = [...rows].sort((a, b) => entryTime(a) - entryTime(b));
+  const first = sorted[0];
+  const entries = [first, ...sorted.slice(1).filter(r => r.user_id)];
+  if (entries.length === 1 || !games || !games.length) return first;
+  const parsed = entries.map(r => ({ at: entryTime(r), picks: parseUserPicks(r.picks) }));
+
+  const picks = {};
+  games.forEach(game => {
+    for (let i = parsed.length - 1; i >= 0; i--) {
+      if (kickedOffBefore(parsed[i].at, game)) continue;
+      const pick = getMatchedUserPick(parsed[i].picks, game);
+      if (pick) { picks[game.matchupKey] = pick; break; }
+    }
+  });
+
+  // The Lock can move only while both the old and the new Lock games are
+  // still to come.
+  let lock = null;
+  parsed.forEach(e => {
+    const game = games.find(g => isLockMatch(e.picks, g));
+    if (!game || kickedOffBefore(e.at, game)) return;
+    if (lock && kickedOffBefore(e.at, lock)) return;
+    lock = game;
+  });
+  if (lock) picks.lock_matchup_key = lock.matchupKey;
+
+  return { ...sorted[sorted.length - 1], id: first.id, created_at: first.created_at, picks, changed: true };
+}
+
+// The signed-in player's picks that count for a week, for the picks page.
+// { picks, lockKey, lockStarted } or null if they haven't entered.
+async function loadMyEntry(week, games, name) {
+  if (!name) return null;
+  const { data, error } = await supabaseClient.from(PICKS_TABLE)
+    .select("*").eq("week_number", week).ilike("user_name", name).order("created_at", { ascending: true });
+  if (error || !data || !data.length) return null;
+  const row = mergeEntryRows(data, games);
+  dropLatePicks(row);
+  const picks = parseUserPicks(row.picks);
+  const lockGame = games.find(g => isLockMatch(picks, g));
+  return { picks, lockKey: lockGame ? lockGame.matchupKey : null, lockStarted: !!(lockGame && lockGame.isFinal) };
+}
+
+// Marks a saved entry's picks on the picks page. choose(matchupKey, team)
+// and toggleLock(matchupKey) are the page's own handlers.
+function applySavedPicks(saved, games, choose, toggleLock) {
+  games.filter(g => !g.isFinal).forEach(g => {
+    const pick = getMatchedUserPick(saved.picks, g);
+    const n = normalizeTeam(pick || "");
+    const team = n && n === normalizeTeam(g.teamA) ? g.teamA : n && n === normalizeTeam(g.teamB) ? g.teamB : null;
+    if (team) choose(g.matchupKey, team);
+  });
+  if (saved.lockKey && !saved.lockStarted) toggleLock(saved.lockKey);
+  if (saved.lockStarted) document.querySelectorAll(".btn-lock-toggle").forEach(b => { b.style.display = "none"; });
+  const btn = document.getElementById("submitBtn");
+  if (btn) { btn.dataset.label = "Update Picks"; btn.textContent = "Update Picks"; }
+  const lockNote = saved.lockStarted ? " Your Lock of the Week has kicked off, so it stays." : "";
+  setStatus("var(--text-muted)", `These are your saved picks. Change any game that hasn't kicked off and tap Update Picks.${lockNote}`);
+}
+
+// All rows, a page at a time (the database sends at most 1,000 per request).
+async function fetchAllPickRows() {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabaseClient.from(PICKS_TABLE).select("*")
+      .order("created_at", { ascending: true }).order("id", { ascending: true }).range(from, from + 999);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < 1000) return rows;
+  }
+}
+
+// Every row, one per person per week: their picks that count.
 async function loadAllSeasonData() {
   try {
-    const { data: rows, error } = await supabaseClient
-      .from(PICKS_TABLE)
-      .select("*")
-      .order("created_at", { ascending: true })
-      .limit(5000);
-    if (error) throw error;
+    const rows = await fetchAllPickRows();
 
-    const seen = new Set();
-    allWeekRows = (rows || []).filter(r => {
+    const groups = new Map();
+    rows.forEach(r => {
       const key = `${r.user_name?.toLowerCase().trim()}_w${r.week_number}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
     });
+    allWeekRows = [...groups.values()].map(g => g[0]);
 
     const uniqueWeeks = Array.from(
       new Set(allWeekRows.map(r => r.week_number).concat([1, activeWeek]))
     ).filter(w => w >= 1 && w <= TOTAL_WEEKS);
     await Promise.all([...uniqueWeeks.map(fetchEspnSchedule), loadPlayerFavorites()]);
+    allWeekRows = [...groups.values()].map(g => g.length > 1 ? mergeEntryRows(g, weekSchedules[g[0].week_number] || []) : g[0]);
     allWeekRows.forEach(dropLatePicks);
     computeWeeklyChampions();
     renderAccountBar();
@@ -639,9 +721,17 @@ function updateSubmitButton(weekNum, page) {
     ctaBtn.style.display = "flex";
     ctaBtn.innerHTML = `<span>Submit ${weekName(weekNum)} Picks &rarr;</span>`;
     ctaBtn.href = `${page}?week=${weekNum}`;
-    // Signed out: sign in first, then on to the picks.
-    supabaseClient.auth.getSession().then(({ data }) => {
-      if (data && data.session) return;
+    // Signed out: sign in first, then on to the picks. Already entered:
+    // the button is for changing them.
+    supabaseClient.auth.getSession().then(async ({ data }) => {
+      if (data && data.session) {
+        const account = await currentAccount();
+        const me = account && account.name && account.name.toLowerCase();
+        if (me && allWeekRows.some(r => !r.is_host && r.week_number === weekNum && (r.user_name || "").toLowerCase() === me)) {
+          ctaBtn.innerHTML = `<span>Change ${weekName(weekNum)} Picks &rarr;</span>`;
+        }
+        return;
+      }
       ctaBtn.innerHTML = `<span>Sign In &amp; Submit ${weekName(weekNum)} Picks &rarr;</span>`;
       ctaBtn.href = signInUrl(`${page}?week=${weekNum}`);
     }).catch(() => {});
@@ -842,5 +932,5 @@ function refreshLockButtons(games, lockKey, offLabel) {
 function resetSubmitButton() {
   const submitBtn = document.getElementById("submitBtn");
   submitBtn.disabled = false;
-  submitBtn.textContent = "Submit Ballot";
+  submitBtn.textContent = submitBtn.dataset.label || "Submit Ballot";
 }
