@@ -6,7 +6,7 @@
   <title>Make Picks - NFL Pick'em</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=44"></script>
+  <script src="common.js?v=52"></script>
   <script src="nfl.js?v=6"></script>
   <link rel="stylesheet" href="styles.css?v=46" />
 </head>
@@ -50,6 +50,7 @@
     let currentSchedule = [];
     let userSelections = {};
     let currentLockMatchupKey = null;
+    let lockFrozenKey = null;   // a saved Lock whose game has started
     let knownNames = [];
 
     async function fetchEspnSchedule(week) {
@@ -129,6 +130,12 @@
 
       currentSchedule = await fetchEspnSchedule(targetWeek);
       renderForm();
+      // Already entered: show those picks so they can be changed.
+      const saved = await loadMyEntry(targetWeek, currentSchedule, account.name);
+      if (saved) {
+        lockFrozenKey = saved.lockStarted ? saved.lockKey : null;
+        applySavedPicks(saved, currentSchedule, chooseTeam, toggleUserLock);
+      }
     }
 
     function renderForm() {
@@ -181,6 +188,7 @@
     }
 
     function toggleUserLock(matchupKey) {
+      if (lockFrozenKey) return;
       currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
       refreshLockButtons(currentSchedule, currentLockMatchupKey, "Lock Of\nThe Week");
     }
@@ -206,26 +214,15 @@
         return setStatus("var(--danger)", `Please make selections for all ${pickableGames.length} remaining games.`);
       }
 
-      if (!currentLockMatchupKey) return setStatus("var(--danger)", "Please select your Lock of the Week pick before submitting.");
+      if (!currentLockMatchupKey && !lockFrozenKey) return setStatus("var(--danger)", "Please select your Lock of the Week pick before submitting.");
 
-      userSelections.lock_matchup_key = currentLockMatchupKey;
+      userSelections.lock_matchup_key = lockFrozenKey || currentLockMatchupKey;
 
       submitBtn.disabled = true;
       submitBtn.textContent = "Submitting picks...";
       setStatus("var(--text-muted)", "Submitting your picks...");
 
       try {
-        const { data: existing } = await supabaseClient
-          .from(PICKS_TABLE)
-          .select("id")
-          .ilike("user_name", username)
-          .eq("week_number", targetWeek)
-          .limit(1);
-
-        if (existing && existing.length > 0) {
-          return fail(`An entry under "${username}" has already been submitted for Week ${targetWeek}! Only one submission per person is allowed.`);
-        }
-
         const { error } = await supabaseClient
           .from(PICKS_TABLE)
           .insert({
@@ -237,12 +234,12 @@
 
         if (error) {
           if (error.code === "23505" || error.message?.includes("unique")) {
-            return fail(`An entry under "${username}" was already submitted for Week ${targetWeek}!`);
+            return fail(`Changing picks isn't turned on yet. Message ${SITE.accountHelp || "us"} about it.`);
           }
           throw error;
         }
 
-        setStatus("var(--success)", `Week ${targetWeek} ballot submitted! Returning to Leaderboard...`);
+        setStatus("var(--success)", `Week ${targetWeek} picks saved! Returning to Leaderboard...`);
         setTimeout(() => { window.location.href = "nflindex.html"; }, 1800);
       } catch (err) {
         fail(`Error: ${err.message}`);
