@@ -6,7 +6,7 @@
   <title data-site-text="Hoops Picks - {name}">Hoops Picks - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=44"></script>
+  <script src="common.js?v=52"></script>
   <script src="hoops.js?v=3"></script>
   <link rel="stylesheet" href="styles.css?v=46" />
 </head>
@@ -95,6 +95,7 @@
     let currentSchedule = [];
     let userSelections = {};
     let currentLockMatchupKey = null;
+    let lockFrozenKey = null;   // a saved Lock whose game has started
     let knownNames = [];
 
     // Team schedules highlight the week being picked.
@@ -196,6 +197,12 @@
 
       currentSchedule = await fetchEspnSchedule(targetWeek);
       renderForm();
+      // Already entered: show those picks so they can be changed.
+      const saved = await loadMyEntry(targetWeek, currentSchedule, account.name);
+      if (saved) {
+        lockFrozenKey = saved.lockStarted ? saved.lockKey : null;
+        applySavedPicks(saved, currentSchedule, chooseTeam, toggleUserLock);
+      }
       startLockCountdown();
     }
 
@@ -360,6 +367,7 @@
     }
 
     function toggleUserLock(matchupKey) {
+      if (lockFrozenKey) return;
       if (!isLockWeek(targetWeek)) return;
       currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
       refreshLockButtons(currentSchedule, currentLockMatchupKey, "Lock Of\nThe Week");
@@ -386,7 +394,7 @@
         return setStatus("var(--danger)", `Please make selections for all ${pickableGames.length} remaining games.`);
       }
 
-      if (isLockWeek(targetWeek) && !currentLockMatchupKey) {
+      if (isLockWeek(targetWeek) && !currentLockMatchupKey && !lockFrozenKey) {
         return setStatus("var(--danger)", "Please select your Lock of the Week pick before submitting.");
       }
 
@@ -395,7 +403,7 @@
       const possibleMatch = findPossibleNameMatch(username);
       if (possibleMatch) finalUsername = await confirmNameMatch(username, possibleMatch);
 
-      if (isLockWeek(targetWeek)) userSelections.lock_matchup_key = currentLockMatchupKey;
+      if (isLockWeek(targetWeek)) userSelections.lock_matchup_key = lockFrozenKey || currentLockMatchupKey;
       else delete userSelections.lock_matchup_key;
 
       submitBtn.disabled = true;
@@ -403,17 +411,6 @@
       setStatus("var(--text-muted)", "Submitting your picks...");
 
       try {
-        const { data: existing } = await supabaseClient
-          .from(PICKS_TABLE)
-          .select("id")
-          .ilike("user_name", finalUsername)
-          .eq("week_number", targetWeek)
-          .limit(1);
-
-        if (existing && existing.length > 0) {
-          return fail(`An entry under "${finalUsername}" has already been submitted for Week ${targetWeek}! Only one submission per ${SITE.players.one} is allowed.`);
-        }
-
         const { error } = await supabaseClient
           .from(PICKS_TABLE)
           .insert({
@@ -426,7 +423,7 @@
 
         if (error) {
           if (error.code === "23505" || error.message?.includes("unique")) {
-            return fail(`An entry under "${finalUsername}" was already submitted for Week ${targetWeek}!`);
+            return fail(`Changing picks isn't turned on yet. Message ${SITE.accountHelp || "us"} about it.`);
           }
           throw error;
         }
@@ -435,7 +432,7 @@
           localStorage.setItem("secPickEmUserName", finalUsername);
         } catch (storageErr) {}
 
-        setStatus("var(--success)", `Week ${targetWeek} ballot submitted! Returning to Leaderboard...`);
+        setStatus("var(--success)", `Week ${targetWeek} picks saved! Returning to Leaderboard...`);
         setTimeout(() => { window.location.href = "hoopsindex.html"; }, 1800);
       } catch (err) {
         fail(`Error: ${err.message}`);
