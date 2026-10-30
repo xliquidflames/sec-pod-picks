@@ -795,7 +795,7 @@ function gameInfoHtml(s, ev, sbComp, comp) {
   const when = [];
   if (!isNaN(date.getTime())) {
     when.push(date.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" }));
-    when.push(date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
+    when.push(date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZoneName: "short" }));
   }
   const tv = tvNetwork(sbComp) || tvNetwork(comp);
   if (tv) when.push(tv);
