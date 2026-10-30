@@ -7,8 +7,8 @@
   <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=42"></script>
-  <script src="common.js?v=52"></script>
-  <script src="sec.js?v=42"></script>
+  <script src="common.js?v=53"></script>
+  <script src="sec.js?v=43"></script>
   <link rel="stylesheet" href="styles.css?v=49" />
 </head>
 <body>
@@ -415,8 +415,9 @@
           } else if (comp.date) {
             // The date is on the day divider row, so just the time and TV:
             // "12PM on ABC", "3:30PM on SECN".
-            const time = new Date(comp.date).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-              .replace(":00", "").replace(/\s+/g, "");
+            const kick = new Date(comp.date);
+            const time = `${kick.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+              .replace(":00", "").replace(/\s+/g, "")} ${tzAbbr(kick)}`.trim();
             const tv = shortNetwork(comp);
             detail = tv ? `${time} on ${tv}` : time;
           }
