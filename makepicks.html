@@ -6,8 +6,8 @@
   <title data-site-text="Make Picks - {name}">Make Picks - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=52"></script>
-  <script src="sec.js?v=42"></script>
+  <script src="common.js?v=53"></script>
+  <script src="sec.js?v=43"></script>
   <link rel="stylesheet" href="styles.css?v=46" />
 </head>
 <body>
@@ -145,7 +145,7 @@
             const d = new Date(comp.date);
             if (!isNaN(d.getTime())) kickoff = d;
             time = d.toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " +
-                   d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+                   d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZoneName: "short" });
           }
 
           // A game locks once it has started, not just when it's over.
