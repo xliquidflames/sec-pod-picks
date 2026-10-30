@@ -3166,6 +3166,25 @@ a.btn-submit.bk-cta {
   border-bottom: 2px solid var(--accent-gold);
 }
 
+/* An opened game and its details get one gold box around them, so it's
+   clear where each game starts and ends. Drawn with inset shadows so the
+   columns don't shift when it opens. */
+.host-grid-table tr.details-open > td {
+  box-shadow: inset 0 2px 0 var(--accent-gold);
+}
+
+.host-grid-table tr.details-open > td:first-child {
+  box-shadow: inset 0 2px 0 var(--accent-gold), inset 2px 0 0 var(--accent-gold);
+}
+
+.host-grid-table tr.details-open > td:last-child {
+  box-shadow: inset 0 2px 0 var(--accent-gold), inset -2px 0 0 var(--accent-gold);
+}
+
+.host-grid-table tr.inline-details-row > td {
+  box-shadow: inset 2px 0 0 var(--accent-gold), inset -2px 0 0 var(--accent-gold);
+}
+
 .host-grid-table .inline-details th,
 .host-grid-table .inline-details td {
   border-right: none;
@@ -3646,4 +3665,3 @@ a.btn-submit.bk-cta {
 .cousin-header .rank-badge + .fav-logo {
   margin: 0 0.15rem;
 }
-
