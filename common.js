@@ -318,6 +318,15 @@ function renderChampionLine(weekNum) {
   line.style.display = "";
 }
 
+// The visitor's time zone, short: "EDT", "CST". Times on the site are
+// already in the visitor's own zone; this labels them so they know.
+function tzAbbr(date) {
+  try {
+    const part = new Intl.DateTimeFormat([], { timeZoneName: "short" }).formatToParts(date).find(p => p.type === "timeZoneName");
+    return part ? part.value : "";
+  } catch (e) { return ""; }
+}
+
 // "Week 7", or the SEC pages' names for later weeks ("SEC Championship").
 const weekName = w => (typeof WEEK_NAMES !== "undefined" && WEEK_NAMES[w]) || `Week ${w}`;
 const weekShort = w => (typeof WEEK_SHORT !== "undefined" && WEEK_SHORT[w]) || `W${w}`;
