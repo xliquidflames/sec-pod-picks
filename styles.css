@@ -188,9 +188,17 @@ header {
 }
 
 .tier-toggle-arrow {
+  display: inline-block;
+  width: 0.8em;
+  text-align: center;
   color: var(--accent-gold);
   font-weight: bold;
   margin-left: 0.5rem;
+}
+
+/* Rows without a tie keep the same space, so every record lines up. */
+.tier-toggle-arrow.placeholder {
+  visibility: hidden;
 }
 
 .tier-names-grid {
