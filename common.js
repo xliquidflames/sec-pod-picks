@@ -762,7 +762,10 @@ function latestChampionsHtml() {
             <span class="rank-badge rank-gold" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">&#127942;</span>
             <strong>${weekName(week)} ${names.length > 1 ? "Champs" : "Champ"}</strong>
           </div>
-          <span style="font-weight: 800; color: var(--accent-gold);">${championRecords[week]}</span>
+          <div style="display: flex; align-items: center;">
+            <span style="font-weight: 800; color: var(--accent-gold);">${championRecords[week]}</span>
+            <span class="tier-toggle-arrow placeholder">&minus;</span>
+          </div>
         </div>
         <div class="tier-names-grid open">${names.map(n => `<span>${escapeHtml(n)}${podiumLogoHtml(n)}</span>`).join("")}</div>
       </div>`;
@@ -811,7 +814,7 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
           </div>
           <div style="display: flex; align-items: center;">
             <span style="font-weight: 800; color: var(--accent-gold);">${rep.correct}-${rep.incorrect}</span>
-            ${isTie ? `<span class="tier-toggle-arrow">${namesOpen ? "&minus;" : "+"}</span>` : ''}
+            <span class="tier-toggle-arrow${isTie ? "" : " placeholder"}">${namesOpen ? "&minus;" : "+"}</span>
           </div>
         </div>
         ${isTie ? namesGrid(tier.members, gridId) : ''}
