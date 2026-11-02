@@ -9,7 +9,7 @@
   <script src="config.js?v=42"></script>
   <script src="common.js?v=54"></script>
   <script src="sec.js?v=43"></script>
-  <link rel="stylesheet" href="styles.css?v=51" />
+  <link rel="stylesheet" href="styles.css?v=53" />
 </head>
 <body>
 
@@ -117,39 +117,40 @@
           <span class="entry-pill" id="entryPill">0 Entries</span>
         </div>
 
+        <!-- Fan stats: players grouped by the favorite team on their account. -->
         <div class="pulse-grid">
           <div class="pulse-card">
-            <div class="pulse-label">Chalk Meter</div>
-            <div class="pulse-stat" id="statChalkMeter">--</div>
-            <div class="pulse-desc" id="statChalkMeterDesc">Picked the Favorite</div>
+            <div class="pulse-label">Homer Rate</div>
+            <div class="pulse-stat" id="fanHomer">--</div>
+            <div class="pulse-desc" id="fanHomerDesc"></div>
           </div>
           <div class="pulse-card">
-            <div class="pulse-label">Toss-Up Game</div>
-            <div class="pulse-stat" id="statTossUp">--</div>
-            <div class="pulse-desc" id="statTossUpDesc">Closest Split</div>
+            <div class="pulse-label">Homer Record</div>
+            <div class="pulse-stat" id="fanHomerRecord">--</div>
+            <div class="pulse-desc" id="fanHomerRecordDesc"></div>
           </div>
           <div class="pulse-card">
-            <div class="pulse-label">Pick Consensus</div>
-            <div class="pulse-stat" id="statLock">--</div>
-            <div class="pulse-desc" id="statLockDesc">Highest Slate Agreement</div>
+            <div class="pulse-label">Traitors</div>
+            <div class="pulse-stat" id="fanTraitors">--</div>
+            <div class="pulse-desc" id="fanTraitorsDesc"></div>
           </div>
         </div>
 
-        <div class="pulse-grid" id="lockShowcaseRow">
+        <div class="pulse-grid">
           <div class="pulse-card">
-            <div class="pulse-label">Consensus Lock</div>
-            <div class="pulse-stat" id="statPeoplesLock">--</div>
-            <div class="pulse-desc" id="statPeoplesLockDesc">Most Locked Team</div>
+            <div class="pulse-label">Best Fan Base</div>
+            <div class="pulse-stat" id="fanBest">--</div>
+            <div class="pulse-desc" id="fanBestDesc"></div>
           </div>
           <div class="pulse-card">
-            <div class="pulse-label">Lock Accuracy</div>
-            <div class="pulse-stat" id="statLockAccuracy">--</div>
-            <div class="pulse-desc" id="statLockAccuracyDesc" data-site-text="{one} Locks Hit">Cousin Locks Hit</div>
+            <div class="pulse-label">Worst Fan Base</div>
+            <div class="pulse-stat" id="fanWorst">--</div>
+            <div class="pulse-desc" id="fanWorstDesc"></div>
           </div>
           <div class="pulse-card">
-            <div class="pulse-label">Boldest Lock</div>
-            <div class="pulse-stat" id="statLockBattle">--</div>
-            <div class="pulse-desc" id="statLockBattleDesc">Longest Odds</div>
+            <div class="pulse-label">Biggest Fan Base</div>
+            <div class="pulse-stat" id="fanBiggest">--</div>
+            <div class="pulse-desc" id="fanBiggestDesc"></div>
           </div>
         </div>
 
@@ -1085,145 +1086,85 @@
       });
     }
 
-    // The stat cards above the cousins' picks.
-    function renderWeekStats(games, cousinRows, isLockActiveThisWeek) {
-      if (cousinRows.length === 0 || games.length === 0) {
-        setText("statChalkMeter", "--");
-        setText("statChalkMeterDesc", "Picked the Favorite");
-        setText("statTossUp", "--");
-        setText("statTossUpDesc", "Closest Split");
-        setText("statLock", "--");
-        setText("statLockDesc", "100% Consensus");
-        return;
-      }
+    // The fan stat cards above the cousins' picks, from each player's
+    // favorite college team (set on the Account page).
+    function renderWeekStats(games, cousinRows) {
+      const show = (id, stat, desc) => {
+        document.getElementById(id).innerHTML = stat;
+        document.getElementById(`${id}Desc`).textContent = desc;
+      };
+      const teamHtml = team => `${team.logo ? `<img class="pulse-logo" src="${escapeHtml(team.logo)}" alt="">` : ""}${escapeHtml(shortenPickDisplay(team.name))}`;
+      const record = (w, l) => `${w}-${l}`;
 
-      const lockCounts = {};
-      let totalLocksPlaced = 0, locksWon = 0, locksLost = 0, locksPending = 0;
-      let chalkTotal = 0, chalkPicks = 0;
+      // Every player this week who has a favorite team.
+      const fans = cousinRows.map(c => ({ row: c, team: (playerFavorites[(c.user_name || "").toLowerCase()] || {}).cfb }))
+        .filter(f => f.team && f.team.name);
 
-      cousinRows.forEach(c => {
-        const picks = parseUserPicks(c.picks);
-        games.forEach(g => {
-          const pick = getMatchedUserPick(picks, g);
-          if (!pick) return;
-
-          // Chalk Meter: share of picks that went with the betting favorite.
-          const fav = lineFavorite(g);
-          if (fav) {
-            chalkTotal++;
-            if (normalizeTeam(pick) === normalizeTeam(fav.team)) chalkPicks++;
-          }
-
-          if (isLockActiveThisWeek && isLockMatch(picks, g)) {
-            totalLocksPlaced++;
-            lockCounts[pick] = (lockCounts[pick] || 0) + 1;
-            const winner = winnerOf(activeWeek, g);
-            if (!winner) locksPending++;
-            else if (normalizeTeam(pick) === normalizeTeam(winner)) locksWon++;
-            else locksLost++;
-          }
-        });
-      });
-
-      if (chalkTotal > 0) {
-        const chalkPct = Math.round((chalkPicks / chalkTotal) * 100);
-        setText("statChalkMeter", `${chalkPct}%`);
-        setText("statChalkMeterDesc", `${100 - chalkPct}% Picked Upsets`);
-      } else {
-        setText("statChalkMeter", "--");
-        setText("statChalkMeterDesc", "No Lines Available");
-      }
-
-      // Votes per team; the most-picked team is the Consensus card.
-      let topConsensusTeam = "--", maxConsensusVotes = 0;
-      const teamVotes = {};
-      games.forEach(g => {
-        [g.teamA, g.teamB].forEach(team => {
-          const count = cousinRows.filter(c => {
-            const userPick = getMatchedUserPick(parseUserPicks(c.picks), g);
-            return userPick && normalizeTeam(userPick) === normalizeTeam(team);
-          }).length;
-          teamVotes[team] = count;
-          if (count > maxConsensusVotes) {
-            maxConsensusVotes = count;
-            topConsensusTeam = team;
-          }
-        });
-      });
-      setText("statLock", topConsensusTeam);
-      setText("statLockDesc", `${Math.min(Math.round((maxConsensusVotes / cousinRows.length) * 100) || 0, 100)}% Consensus`);
-
-      // Toss-Up: the game the cousins are most evenly split on.
-      let tossUpGame = null, tossUpDiff = Infinity, tossUpCountA = 0, tossUpCountB = 0;
-      games.forEach(g => {
-        const countA = teamVotes[g.teamA] || 0;
-        const countB = teamVotes[g.teamB] || 0;
-        if (countA + countB === 0) return;
-        const diff = Math.abs(countA - countB);
-        if (diff < tossUpDiff) {
-          tossUpDiff = diff;
-          tossUpGame = g;
-          tossUpCountA = countA;
-          tossUpCountB = countB;
-        }
-      });
-      if (tossUpGame) {
-        const pctA = Math.round((tossUpCountA / (tossUpCountA + tossUpCountB)) * 100);
-        setText("statTossUp", `${pctA}-${100 - pctA}`);
-        setText("statTossUpDesc", `${shortenPickDisplay(tossUpGame.teamA)} vs ${shortenPickDisplay(tossUpGame.teamB)}`);
-      } else {
-        setText("statTossUp", "--");
-        setText("statTossUpDesc", "Closest Split");
-      }
-
-      const lockRow = document.getElementById("lockShowcaseRow");
-      if (!isLockActiveThisWeek) {
-        if (lockRow) lockRow.style.display = "none";
-        return;
-      }
-      if (lockRow) lockRow.style.display = "grid";
-
-      let topLockedTeam = "--", maxLocks = 0;
-      Object.entries(lockCounts).forEach(([team, count]) => {
-        if (count > maxLocks) {
-          maxLocks = count;
-          topLockedTeam = team;
-        }
-      });
-      setText("statPeoplesLock", topLockedTeam);
-      setText("statPeoplesLockDesc", totalLocksPlaced > 0 ? `${maxLocks} Locks (${Math.round((maxLocks / totalLocksPlaced) * 100)}%)` : "No Locks Placed");
-
-      const decidedLocks = locksWon + locksLost;
-      if (decidedLocks > 0) {
-        setText("statLockAccuracy", `${Math.round((locksWon / decidedLocks) * 100)}%`);
-        setText("statLockAccuracyDesc", `${locksWon}-${locksLost}, ${locksPending} pending`);
-      } else {
-        setText("statLockAccuracy", totalLocksPlaced > 0 ? `${totalLocksPlaced} Locked` : "--");
-        setText("statLockAccuracyDesc", totalLocksPlaced > 0 ? "Awaiting Results" : "No Locks Placed");
-      }
-
-      // Boldest Lock: the SEC underdog locked with the most points against it.
-      let boldestTeam = null, boldestSpread = 0;
-      Object.keys(lockCounts).forEach(team => {
-        if (!isSecTeam(team)) return;
-        const game = games.find(g => normalizeTeam(g.teamA) === normalizeTeam(team) || normalizeTeam(g.teamB) === normalizeTeam(team));
-        const fav = game && lineFavorite(game);
-        if (!fav) return;
-        // Positive means the team is getting that many points.
-        const spread = normalizeTeam(team) === normalizeTeam(fav.team) ? fav.spread : Math.abs(fav.spread);
-        if (spread > 0 && spread > boldestSpread) {
-          boldestSpread = spread;
-          boldestTeam = team;
+      // Homers and traitors: fans whose own team played this week.
+      let backed = 0, against = 0, homerW = 0, homerL = 0, traitorW = 0, traitorL = 0;
+      fans.forEach(f => {
+        const mine = normalizeTeam(f.team.name);
+        const game = games.find(g => normalizeTeam(g.teamA) === mine || normalizeTeam(g.teamB) === mine);
+        const pick = game && getMatchedUserPick(parseUserPicks(f.row.picks), game);
+        if (!pick) return;
+        const loyal = normalizeTeam(pick) === mine;
+        const winner = winnerOf(activeWeek, game);
+        const right = winner ? normalizeTeam(pick) === normalizeTeam(winner) : null;
+        if (loyal) {
+          backed++;
+          if (right === true) homerW++; else if (right === false) homerL++;
+        } else {
+          against++;
+          if (right === true) traitorW++; else if (right === false) traitorL++;
         }
       });
 
-      if (boldestTeam) {
-        setText("statLockBattle", `${shortenPickDisplay(boldestTeam)} (+${boldestSpread})`);
-        setText("statLockBattleDesc", `${lockCounts[boldestTeam]} lock${lockCounts[boldestTeam] === 1 ? '' : 's'}`);
+      const playing = backed + against;
+      if (playing) {
+        show("fanHomer", `${Math.round(backed / playing * 100)}%`, `${backed} of ${playing} picked their team`);
+        show("fanHomerRecord", homerW + homerL ? record(homerW, homerL) : "--",
+          homerW + homerL ? "Backing their own team" : "Awaiting results");
+        show("fanTraitors", String(against), against === 0 ? "Everyone stayed loyal"
+          : `Picked against their team${traitorW + traitorL ? ` · ${record(traitorW, traitorL)}` : ""}`);
       } else {
-        setText("statLockBattle", "--");
-        setText("statLockBattleDesc", totalLocksPlaced > 0 ? "No Underdog Locks" : "No Locks Placed");
+        show("fanHomer", "--", "No fans' teams played");
+        show("fanHomerRecord", "--", "Backing their own team");
+        show("fanTraitors", "--", "Picked against their team");
       }
+
+      // Fan bases: everyone with the same favorite team, all their picks
+      // this week added up. Best and worst need at least 2 fans.
+      const bases = {};
+      fans.forEach(f => {
+        const key = normalizeTeam(f.team.name);
+        const base = bases[key] || (bases[key] = { team: f.team, fans: 0, w: 0, l: 0 });
+        base.fans++;
+        const score = gradePicks(f.row.picks, activeWeek);
+        base.w += score.correct;
+        base.l += score.incorrect;
+      });
+      const list = Object.values(bases);
+      const fansWord = n => `${n} fan${n === 1 ? "" : "s"}`;
+
+      const ranked = list.filter(b => b.fans >= 2 && b.w + b.l > 0)
+        .map(b => ({ ...b, pct: b.w / (b.w + b.l) }))
+        .sort((x, y) => (y.pct - x.pct) || (y.w - x.w) || (y.fans - x.fans));
+      if (ranked.length) {
+        const best = ranked[0];
+        show("fanBest", teamHtml(best.team), `${record(best.w, best.l)} · ${fansWord(best.fans)}`);
+      } else {
+        show("fanBest", "--", list.length ? "Awaiting results" : "No favorite teams set");
+      }
+      if (ranked.length > 1) {
+        const worst = ranked[ranked.length - 1];
+        show("fanWorst", teamHtml(worst.team), `${record(worst.w, worst.l)} · ${fansWord(worst.fans)}`);
+      } else {
+        show("fanWorst", "--", list.length ? "Awaiting results" : "No favorite teams set");
+      }
+
+      const biggest = [...list].sort((x, y) => (y.fans - x.fans) || x.team.name.localeCompare(y.team.name))[0];
+      if (biggest) show("fanBiggest", teamHtml(biggest.team), `${fansWord(biggest.fans)} played`);
+      else show("fanBiggest", "--", "No favorite teams set");
     }
 
     async function renderActiveWeek() {
@@ -1241,7 +1182,7 @@
       renderHostGrid(games, hostRows, cousinRows, isLockActiveThisWeek);
       renderCousinList(games, cousinRows, isLockActiveThisWeek);
       renderPerTeamView(games, cousinRows);
-      renderWeekStats(games, cousinRows, isLockActiveThisWeek);
+      renderWeekStats(games, cousinRows);
       computeSeasonTotals();
     }
 
