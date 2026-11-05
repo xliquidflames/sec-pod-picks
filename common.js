@@ -89,6 +89,12 @@ async function currentAccount() {
     const user = data && data.session && data.session.user;
     if (!user) return null;
     const { data: profile } = await supabaseClient.from("profiles").select("display_name, favorites").eq("user_id", user.id).maybeSingle();
+    if (!profile) {
+      // Hosts and admins get their name set up for them (host-admin.sql);
+      // everyone else gets null and chooses one on the sign-in page.
+      const { data: adminName } = await supabaseClient.rpc("claim_admin_name");
+      if (adminName) return { user, name: adminName, favorites: {} };
+    }
     return { user, name: profile ? profile.display_name : null, favorites: (profile && profile.favorites) || {} };
   } catch (err) {
     console.error("Account check failed:", err);
