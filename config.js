@@ -24,6 +24,8 @@ const SITE = {
   // (supabase/contact.ts); set it to false until that's set up. "" hides one.
   contactEmail: "xLiquidFlames@gmail.com",
   contactX: "LiquidFlames",
+  // The name to look for on Discord. The link goes to the server invite above.
+  contactDiscord: "Liquid",
   contactForm: true,
 
   // The hosts, in the order they appear. Each host's picks are saved
