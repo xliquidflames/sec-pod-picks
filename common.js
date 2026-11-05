@@ -120,16 +120,21 @@ const accountHelpHtml = () => SITE.discord
 // ---- Contact: email, X, Discord and a message form ----
 // Any element with data-contact-box gets one; its value is the heading.
 function contactBoxHtml(heading) {
-  const who = escapeHtml(SITE.accountHelp || "us");
-  const links = [
-    SITE.contactEmail && `<a class="contact-link" href="mailto:${SITE.contactEmail}">&#9993;&#65039; ${escapeHtml(SITE.contactEmail)}</a>`,
-    SITE.contactX && `<a class="contact-link" href="https://x.com/${SITE.contactX}" target="_blank" rel="noopener">&#120143; @${escapeHtml(SITE.contactX)}</a>`,
-    SITE.discord && `<a class="contact-link" href="${SITE.discord}" target="_blank" rel="noopener">&#128172; DM ${who} on Discord</a>`
-  ].filter(Boolean).join("");
-  const button = SITE.contactForm
-    ? `<button type="button" class="btn-provider contact-open" onclick="openContactForm()">&#9998;&#65039; Send a Message</button>` : "";
-  return `<div class="contact-heading">${escapeHtml(heading || `Need help? Contact ${SITE.accountHelp || "us"}`)}</div>
-    <div class="contact-links">${links}</div>${button}`;
+  const who = SITE.accountHelp || "us";
+  return `<div class="contact-heading">${escapeHtml(heading || `Questions, issues, comments? Contact ${who}:`)}</div>
+    <button type="button" class="btn-provider contact-open" onclick="openContactForm()">Send ${escapeHtml(who)} a message</button>`;
+}
+
+// Every way to reach accountHelp, as links in a sentence each.
+function contactWaysHtml() {
+  const link = (href, text) => `<a href="${href}" target="_blank" rel="noopener">${escapeHtml(text)}</a>`;
+  const ways = [
+    SITE.contactX && `DM me on X/Twitter: ${link(`https://x.com/${SITE.contactX}`, `@${SITE.contactX}`)}`,
+    SITE.discord && `DM me on Discord: ${link(SITE.discord, SITE.contactDiscord || SITE.accountHelp || "our server")}`,
+    SITE.contactEmail && `Email me: <a href="mailto:${SITE.contactEmail}">${escapeHtml(SITE.contactEmail)}</a>`,
+    SITE.contactForm && "Or fill out the form below. Make sure your email is right so I can reply to you."
+  ].filter(Boolean);
+  return `<div class="contact-ways"><p>You can reach me any of these ways:</p><ul>${ways.map(w => `<li>${w}</li>`).join("")}</ul></div>`;
 }
 
 // The message form, in a pop-up made the first time it's opened.
@@ -146,26 +151,29 @@ function openContactForm() {
           <div class="team-sched-title" id="contactTitle">Message ${escapeHtml(SITE.accountHelp || "us")}</div>
           <button type="button" class="team-sched-close" onclick="closeContactForm()" aria-label="Close">&times;</button>
         </div>
-        <form class="contact-form" onsubmit="sendContactMessage(this); return false;">
+        <div class="contact-body">
+        ${contactWaysHtml()}
+        ${SITE.contactForm ? `<form class="contact-form" onsubmit="sendContactMessage(this); return false;">
           <label class="contact-label" for="contactReply">Your email<small>So I can reply to you</small></label>
           <input class="form-field" id="contactReply" name="reply" type="email" maxlength="120" autocomplete="email" required />
           <label class="contact-label" for="contactName">Your picks name<small>What name do you go by on this site?</small></label>
           <input class="form-field" id="contactName" name="name" maxlength="60" autocomplete="off" />
-          <label class="contact-label" for="contactMessage">What issue are you having?</label>
+          <label class="contact-label" for="contactMessage">What's goin' on, cuz?</label>
           <textarea class="form-field" id="contactMessage" name="message" maxlength="2000" rows="7" required></textarea>
           <input class="contact-trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
           <button type="submit" class="btn-submit">Send Message</button>
           <div class="contact-status"></div>
-        </form>
+        </form>` : ""}
+        </div>
       </div>`;
     document.body.appendChild(overlay);
     document.addEventListener("keydown", e => { if (e.key === "Escape") closeContactForm(); });
   }
   const nameField = document.getElementById("contactName");
-  if (!nameField.value && signedInAccount && signedInAccount.name) nameField.value = signedInAccount.name;
-  overlay.querySelector(".contact-status").innerHTML = "";
+  if (nameField && !nameField.value && signedInAccount && signedInAccount.name) nameField.value = signedInAccount.name;
+  const status = overlay.querySelector(".contact-status");
+  if (status) status.innerHTML = "";
   overlay.style.display = "flex";
-  document.getElementById("contactReply").focus();
 }
 
 function closeContactForm() {
