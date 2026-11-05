@@ -3594,12 +3594,40 @@ a.btn-submit.bk-cta {
   max-width: 460px;
 }
 
+.contact-body {
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.contact-ways {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
+}
+
+.contact-ways p {
+  margin: 0 0 0.3rem;
+}
+
+.contact-ways ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.contact-ways li {
+  margin-bottom: 0.25rem;
+}
+
+.contact-ways a {
+  color: var(--accent-gold);
+  font-weight: 700;
+}
+
 .contact-form {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  padding: 1rem;
-  overflow-y: auto;
   text-align: left;
 }
 
