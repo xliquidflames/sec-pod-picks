@@ -7,9 +7,9 @@
   <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=43"></script>
-  <script src="common.js?v=58"></script>
+  <script src="common.js?v=59"></script>
   <script src="sec.js?v=43"></script>
-  <link rel="stylesheet" href="styles.css?v=56" />
+  <link rel="stylesheet" href="styles.css?v=57" />
 </head>
 <body>
 
@@ -128,9 +128,6 @@
         <!-- This week's cards, filled by renderWeekCards. -->
         <div id="weekFanStats" class="fan-stats"></div>
 
-        <p id="leaderboardSortDesc" style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.8rem; line-height: 1.4;">
-          Ranked by correct picks then sorted alphabetically. Click any row to expand selections.
-        </p>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
           <div style="display: flex; gap: 0.4rem;" id="cousinViewControls">
@@ -578,13 +575,6 @@
       document.getElementById("weekHostTitle").textContent = `${weekName(weekNum)} Info Hub`;
       fillWeekPodLinks(document.getElementById("weekPodLinks"), weekNum);
       document.getElementById("weekCousinsTitle").textContent = `The ${possessive(SITE.players.many)} ${weekName(weekNum)} Picks`;
-
-      const sortDesc = document.getElementById("leaderboardSortDesc");
-      if (sortDesc) {
-        sortDesc.textContent = weekNum === 1
-          ? "Ranked by correct picks then sorted alphabetically. Click any row to expand selections."
-          : "Ranked by correct picks then sorted by LOTW hits, then alphabetical. Click any row to expand selections.";
-      }
 
       updateSubmitButton(weekNum, "makepicks.html");
 
