@@ -3418,15 +3418,40 @@ a.btn-submit.bk-cta {
   text-decoration: underline;
 }
 
+/* Last week's champions, in a gold box above the cousins' picks. */
 .champion-line {
-  margin: -0.2rem 0 0.8rem;
-  font-size: 0.82rem;
-  line-height: 1.4;
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.8rem;
+  border: 2px solid var(--accent-gold);
+  border-radius: 10px;
+  background: rgba(251, 191, 36, 0.06);
   color: var(--text-main);
 }
 
-.champion-line strong {
+.champion-line-title {
+  font-weight: 800;
+  font-size: 0.95rem;
   color: var(--accent-gold);
+  margin-bottom: 0.4rem;
+}
+
+.champion-line-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.champion-line-names span {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* The signed-in player's own card, pinned to the top of the list. */
+.cousin-item.pinned-me {
+  margin-bottom: 1.1rem;
+  border-color: var(--accent-gold);
 }
 
 /* ---- Account page: favorite team pickers ---- */
