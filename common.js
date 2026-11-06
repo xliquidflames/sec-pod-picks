@@ -327,8 +327,8 @@ function renderChampionLine(weekNum) {
     return;
   }
   const names = championsByWeek[week];
-  const shown = names.length > 6 ? `${names.slice(0, 6).map(escapeHtml).join(", ")} and ${names.length - 6} more` : names.map(escapeHtml).join(", ");
-  line.innerHTML = `&#127942; <strong>${weekName(week)} ${names.length > 1 ? "Champions" : "Champion"}:</strong> ${shown}`;
+  line.innerHTML = `<div class="champion-line-title">&#127942; ${weekName(week)} ${names.length > 1 ? "Champions" : "Champion"} &middot; ${championRecords[week] || ""}</div>
+    <div class="champion-line-names">${names.map(n => `<span>${escapeHtml(n)}${podiumLogoHtml(n)}</span>`).join("")}</div>`;
   line.style.display = "";
 }
 
@@ -763,26 +763,18 @@ function updateSubmitButton(weekNum, page) {
   }
 }
 
-// Under the podium: everyone in 1st for the most recent finished week.
-function latestChampionsHtml() {
-  const weeks = Object.keys(championsByWeek).map(Number);
-  if (!weeks.length) return "";
-  const week = Math.max(...weeks);
-  const names = championsByWeek[week];
-  return `
-      <div class="top3-item weekly-champs" style="flex-direction: column; align-items: stretch;">
-        <div class="tier-header">
-          <div style="display: flex; align-items: center;">
-            <span class="rank-badge rank-gold" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">&#127942;</span>
-            <strong>${weekName(week)} ${names.length > 1 ? "Champs" : "Champ"}</strong>
-          </div>
-          <div style="display: flex; align-items: center;">
-            <span style="font-weight: 800; color: var(--accent-gold);">${championRecords[week]}</span>
-            <span class="tier-toggle-arrow placeholder">&minus;</span>
-          </div>
-        </div>
-        <div class="tier-names-grid open">${names.map(n => `<span>${escapeHtml(n)}${podiumLogoHtml(n)}</span>`).join("")}</div>
-      </div>`;
+// Moves the signed-in player's card to the top of the week's list, with a
+// little space below it. Their rank badge still shows where they stand.
+function pinMyCard() {
+  let name = "";
+  try { name = localStorage.getItem("secPickEmUserName") || ""; } catch (e) {}
+  const list = document.getElementById("cousinsList");
+  if (!name || !list) return;
+  const squash = s => (s || "").trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+  const card = [...list.querySelectorAll(".cousin-item")].find(el => squash(el.dataset.name) === squash(name));
+  if (!card || list.children.length < 2) return;
+  card.classList.add("pinned-me");
+  list.prepend(card);
 }
 
 // Season podium: most correct picks, then fewest losses. An identical record
@@ -834,7 +826,7 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
         ${isTie ? namesGrid(tier.members, gridId) : ''}
       </div>
     `;
-  }).join("") + latestChampionsHtml();
+  }).join("");
 
   if (decisionLog) {
     const placeLabels = ["1st Place", "2nd Place", "3rd Place"];
