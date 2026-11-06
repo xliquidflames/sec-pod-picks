@@ -315,6 +315,63 @@ async function renderRankings(body) {
     </table>`;
 }
 
+// The selection committee's rankings, from the same ESPN feed as the AP
+// poll. ESPN adds them once the committee starts releasing in November.
+async function renderCfpRankings(body) {
+  body.innerHTML = `<div class="team-sched-note">Loading...</div>`;
+  let data;
+  try {
+    data = infoCache.rankings || (infoCache.rankings = await fetchFirstOk(["https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"]));
+  } catch (e) {
+    body.innerHTML = `<div class="team-sched-note">Couldn't load the rankings right now.</div>`;
+    return;
+  }
+  const poll = (data.rankings || []).find(p => p.ranks && p.ranks.length &&
+    (/cfp/i.test(p.type || "") || /playoff/i.test(`${p.name || ""} ${p.shortName || ""}`)));
+  if (!poll) {
+    body.innerHTML = `<div class="team-sched-note">The committee's rankings aren't out yet. They're released Tuesday nights starting in early November.</div>`;
+    return;
+  }
+  const teamName = t => t.location || t.nickname || t.shortDisplayName || t.name || t.displayName || "";
+  const rows = poll.ranks.slice().sort((a, b) => a.current - b.current).slice(0, 25).map(r => {
+    const t = r.team || {};
+    const name = teamName(t);
+    const logo = teamLogoFrom(t);
+    return `<tr>
+      <td class="top25-rank">${r.current}</td>
+      <td class="top25-cell">
+        <span class="top25-team ${isSecTeam(name) ? "sec" : ""}">
+          ${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}
+          <span>${shortenPickDisplay(name)}</span>
+        </span>
+      </td>
+      <td class="top25-record">${r.recordSummary || ""}</td>
+    </tr>`;
+  }).join("");
+  const updated = poll.headline || poll.name || "College Football Playoff Rankings";
+  body.innerHTML = `
+    <div class="rankings-caption">${updated}</div>
+    <table class="top25-table cfp-table"><tbody>${rows}</tbody></table>`;
+}
+
+// Rankings tabs in the Week Info Hub. Tapping the open tab closes it.
+let openRankTab = null;
+function showRankTab(tab) {
+  const panel = document.getElementById("rankingsPanel");
+  if (!panel) return;
+  openRankTab = openRankTab === tab ? null : tab;
+  document.querySelectorAll(".rank-tab").forEach(b => b.classList.toggle("active", b.dataset.tab === openRankTab));
+  if (!openRankTab) {
+    panel.style.display = "none";
+    return;
+  }
+  panel.style.display = "";
+  panel.innerHTML = `<div class="team-sched-note">Loading...</div>`;
+  if (openRankTab === "cfp") renderCfpRankings(panel);
+  else if (openRankTab === "top25") renderRankings(panel);
+  else renderStandings(panel);
+}
+
 // Finds every team entry however ESPN nests conferences or divisions.
 function collectStandingsEntries(node, out) {
   if (!node || typeof node !== "object") return;
