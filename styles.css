@@ -3418,27 +3418,29 @@ a.btn-submit.bk-cta {
   text-decoration: underline;
 }
 
-/* Last week's champions, in a gold box above the cousins' picks. */
+/* Last week's champions: a full-width card under the week's stat cards,
+   styled like them, with a gold border. */
 .champion-line {
-  margin: 0 0 1rem;
-  padding: 0.65rem 0.8rem;
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.6rem 0.75rem;
+  background: var(--bg-card-alt);
   border: 2px solid var(--accent-gold);
-  border-radius: 10px;
-  color: var(--text-main);
+  border-radius: 8px;
+  text-align: center;
 }
 
-.champion-line-title {
-  font-weight: 800;
-  font-size: 0.95rem;
-  color: var(--accent-gold);
-  margin-bottom: 0.4rem;
+.champion-line .pulse-stat {
+  font-size: 1.05rem;
+  margin-bottom: 0.45rem;
 }
 
 .champion-line-names {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem 0.9rem;
+  justify-content: center;
+  gap: 0.35rem 0.9rem;
   font-size: 0.85rem;
+  color: var(--text-main);
 }
 
 .champion-line-names span {
