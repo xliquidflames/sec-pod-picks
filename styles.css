@@ -3737,8 +3737,10 @@ a.btn-submit.bk-cta {
 }
 
 /* ---- Rankings tabs in the Week Info Hub ---- */
+/* Each Info Hub subheading sits as far below the section above it as
+   "On the Pod" sits below the Info Hub title. */
 .hub-rankings {
-  margin-top: 0.6rem;
+  margin-top: 1.1rem;
 }
 
 .hub-rankings-bar {
@@ -3749,7 +3751,7 @@ a.btn-submit.bk-cta {
 }
 
 .hub-games-title {
-  margin-top: 1rem;
+  margin-top: 1.1rem;
 }
 
 .hub-sub-title {
@@ -3765,17 +3767,7 @@ a.btn-submit.bk-cta {
   gap: 0.3rem;
 }
 
-.rank-tab {
-  background: transparent;
-  border: 1px solid var(--accent-gold);
-  border-radius: 6px;
-  color: var(--text-main);
-  font-weight: 700;
-  font-size: 0.8rem;
-  padding: 0.35rem 0.75rem;
-  cursor: pointer;
-}
-
+/* The tabs use .btn-ctrl, like Expand All; the open one fills gold. */
 .rank-tab.active {
   background: var(--accent-gold);
   color: var(--bg-main);
@@ -3805,4 +3797,10 @@ a.btn-submit.bk-cta {
   text-align: right;
   color: var(--text-muted);
   font-size: 0.72rem;
+}
+
+/* No episodes this week: Rankings comes right under the title, at the
+   same distance "On the Pod" would be. */
+.week-pod-links[style*="none"] + .hub-rankings {
+  margin-top: 0.6rem;
 }
