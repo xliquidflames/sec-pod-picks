@@ -8,8 +8,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=43"></script>
   <script src="common.js?v=59"></script>
-  <script src="sec.js?v=43"></script>
-  <link rel="stylesheet" href="styles.css?v=58" />
+  <script src="sec.js?v=44"></script>
+  <link rel="stylesheet" href="styles.css?v=59" />
 </head>
 <body>
 
@@ -93,14 +93,22 @@
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
         <div class="week-pod-links" id="weekPodLinks" style="display: none;"></div>
+        <!-- Rankings: tap a tab to open it, tap it again to close. -->
+        <div class="hub-rankings">
+          <div class="hub-rankings-bar">
+            <span class="hub-sub-title">Rankings</span>
+            <div class="rank-tabs">
+              <button type="button" class="rank-tab" data-tab="cfp" onclick="showRankTab('cfp')">CFP</button>
+              <button type="button" class="rank-tab" data-tab="top25" onclick="showRankTab('top25')">Top 25</button>
+              <button type="button" class="rank-tab" data-tab="sec" onclick="showRankTab('sec')">SEC</button>
+            </div>
+          </div>
+          <div id="rankingsPanel" class="rankings-panel" style="display: none;"></div>
+        </div>
         <div class="hub-action-row hub-split" style="margin-top: 0.6rem;">
           <div class="hub-group">
             <button type="button" class="btn-ctrl" onclick="toggleAllInlineDetails(true)">Expand All</button>
             <button type="button" class="btn-ctrl" onclick="toggleAllInlineDetails(false)">Collapse All</button>
-          </div>
-          <div class="hub-group">
-            <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
-            <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
           </div>
         </div>
         <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.4rem;">
