@@ -7,7 +7,7 @@
   <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=43"></script>
-  <script src="common.js?v=56"></script>
+  <script src="common.js?v=57"></script>
   <script src="sec.js?v=43"></script>
   <link rel="stylesheet" href="styles.css?v=54" />
 </head>
@@ -125,7 +125,7 @@
           <span class="entry-pill" id="entryPill">0 Entries</span>
         </div>
 
-        <!-- This week's fan stats, filled by renderFanStats. -->
+        <!-- This week's cards, filled by renderWeekCards. -->
         <div id="weekFanStats" class="fan-stats"></div>
 
         <p id="leaderboardSortDesc" style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.8rem; line-height: 1.4;">
@@ -1061,8 +1061,7 @@
     }
 
     // Fan stat cards, from each player's favorite college team (set on the
-    // Account page). Used twice: this week's (above the cousins' picks) and
-    // the whole season's (the Fanbase Showdown).
+    // Account page), for the whole season: the Fanbase Showdown.
     const FAN_CARDS = [
       ["Homer", "Homer Rate"], ["HomerRecord", "Homer Record"], ["Traitors", "Traitors"],
       ["Best", "Sharpest Fans"], ["Worst", "Coldest Fans"], ["Biggest", "Biggest Fan Base"]
@@ -1154,6 +1153,64 @@
       else show("Biggest", "--", noFavorites);
     }
 
+    // This week's three cards above the cousins' picks. All work as soon as
+    // picks come in, before any game is played.
+    function renderWeekCards(games, cousinRows) {
+      const box = document.getElementById("weekFanStats");
+      if (!box) return;
+      const card = (label, stat, desc) => `<div class="pulse-card">
+          <div class="pulse-label">${label}</div>
+          <div class="pulse-stat">${stat}</div>
+          <div class="pulse-desc">${escapeHtml(desc)}</div>
+        </div>`;
+
+      // Homer Rate: fans whose team played who picked their own team.
+      let backed = 0, playing = 0;
+      cousinRows.forEach(r => {
+        const team = (playerFavorites[(r.user_name || "").toLowerCase()] || {}).cfb;
+        if (!team || !team.name) return;
+        const mine = normalizeTeam(team.name);
+        const game = games.find(g => normalizeTeam(g.teamA) === mine || normalizeTeam(g.teamB) === mine);
+        const pick = game && getMatchedUserPick(parseUserPicks(r.picks), game);
+        if (!pick) return;
+        playing++;
+        if (normalizeTeam(pick) === mine) backed++;
+      });
+      const homer = playing
+        ? card("Homer Rate", `${Math.round(backed / playing * 100)}%`, `${backed} of ${playing} picked their team`)
+        : card("Homer Rate", "--", "Picked their own team");
+
+      // Toss-Up: the game the cousins are most evenly split on.
+      // Chalk Meter: share of picks that went with the betting favorite.
+      let tossUp = null, chalkTotal = 0, chalkPicks = 0;
+      games.forEach(g => {
+        let a = 0, b = 0;
+        const fav = lineFavorite(g);
+        cousinRows.forEach(r => {
+          const pick = getMatchedUserPick(parseUserPicks(r.picks), g);
+          if (!pick) return;
+          const n = normalizeTeam(pick);
+          if (n === normalizeTeam(g.teamA)) a++;
+          else if (n === normalizeTeam(g.teamB)) b++;
+          if (fav) {
+            chalkTotal++;
+            if (n === normalizeTeam(fav.team)) chalkPicks++;
+          }
+        });
+        if (a + b && (!tossUp || Math.abs(a - b) / (a + b) < tossUp.gap)) tossUp = { g, a, b, gap: Math.abs(a - b) / (a + b) };
+      });
+      const toss = tossUp
+        ? card("Toss-Up Game", `${Math.round(tossUp.a / (tossUp.a + tossUp.b) * 100)}-${Math.round(tossUp.b / (tossUp.a + tossUp.b) * 100)}`,
+            `${shortenPickDisplay(tossUp.g.teamA)} vs ${shortenPickDisplay(tossUp.g.teamB)}`)
+        : card("Toss-Up Game", "--", "Closest split");
+      const chalkPct = chalkTotal ? Math.round(chalkPicks / chalkTotal * 100) : null;
+      const chalk = chalkPct !== null
+        ? card("Chalk Meter", `${chalkPct}%`, `Picked the favorite · ${100 - chalkPct}% upsets`)
+        : card("Chalk Meter", "--", "No lines yet");
+
+      box.innerHTML = `<div class="pulse-grid">${homer}${toss}${chalk}</div>`;
+    }
+
     // The season's year: games from August on belong to that year's season.
     function seasonYear() {
       const d = new Date();
@@ -1175,7 +1232,7 @@
       renderHostGrid(games, hostRows, cousinRows, isLockActiveThisWeek);
       renderCousinList(games, cousinRows, isLockActiveThisWeek);
       renderPerTeamView(games, cousinRows);
-      renderFanStats("weekFanStats", cousinRows, false);
+      renderWeekCards(games, cousinRows);
       renderFanStats("seasonFanStats", allWeekRows.filter(r => !r.is_host), true);
       setText("fanShowdownTitle", `${seasonYear()} Fanbase Showdown`);
       computeSeasonTotals();
