@@ -9,7 +9,7 @@
   <script src="config.js?v=43"></script>
   <script src="common.js?v=59"></script>
   <script src="sec.js?v=43"></script>
-  <link rel="stylesheet" href="styles.css?v=57" />
+  <link rel="stylesheet" href="styles.css?v=58" />
 </head>
 <body>
 
@@ -64,6 +64,14 @@
       </div>
     </div>
 
+    <!-- Season-long fan stats, from each player's favorite team. -->
+    <div class="card elevated-card">
+      <div class="section-title-bar">
+        <h2 class="section-title" id="fanShowdownTitle">Fanbase Showdown</h2>
+      </div>
+      <div id="seasonFanStats" class="fan-stats"></div>
+    </div>
+
     <div class="section-divider"></div>
 
     <div class="week-selector-bar">
@@ -109,14 +117,6 @@
           </table>
         </div>
         <div id="byeBox" class="bye-box"></div>
-      </div>
-
-      <!-- Season-long fan stats, from each player's favorite team. -->
-      <div class="card elevated-card">
-        <div class="section-title-bar">
-          <h2 class="section-title" id="fanShowdownTitle">Fanbase Showdown</h2>
-        </div>
-        <div id="seasonFanStats" class="fan-stats"></div>
       </div>
 
       <div class="card elevated-card">
