@@ -319,7 +319,10 @@ function renderChampionLine(weekNum) {
     line = document.createElement("div");
     line.id = "weekChampionLine";
     line.className = "champion-line";
-    bar.after(line);
+    // Under the week's stat cards when the page has them; otherwise under
+    // the section title.
+    const cards = document.getElementById("weekFanStats");
+    if (cards) cards.after(line); else bar.after(line);
   }
   const week = championsByWeek[weekNum] ? weekNum : (weekNum === CURRENT_OPEN_WEEK && championsByWeek[weekNum - 1] ? weekNum - 1 : null);
   if (!week) {
@@ -327,7 +330,8 @@ function renderChampionLine(weekNum) {
     return;
   }
   const names = championsByWeek[week];
-  line.innerHTML = `<div class="champion-line-title">&#127942; ${weekName(week)} ${names.length > 1 ? "Champions" : "Champion"} &middot; ${championRecords[week] || ""}</div>
+  line.innerHTML = `<div class="pulse-label">&#127942; ${weekName(week)} ${names.length > 1 ? "Champions" : "Champion"}</div>
+    <div class="pulse-stat">${championRecords[week] || ""}</div>
     <div class="champion-line-names">${names.map(n => `<span>${escapeHtml(n)}${podiumLogoHtml(n)}</span>`).join("")}</div>`;
   line.style.display = "";
 }
