@@ -9,7 +9,7 @@
   <script src="config.js?v=43"></script>
   <script src="common.js?v=59"></script>
   <script src="sec.js?v=44"></script>
-  <link rel="stylesheet" href="styles.css?v=59" />
+  <link rel="stylesheet" href="styles.css?v=60" />
 </head>
 <body>
 
@@ -105,7 +105,8 @@
           </div>
           <div id="rankingsPanel" class="rankings-panel" style="display: none;"></div>
         </div>
-        <div class="hub-action-row hub-split" style="margin-top: 0.6rem;">
+        <div class="hub-sub-title hub-games-title" id="weekGamesTitle">Week 1 Games</div>
+        <div class="hub-action-row hub-split" style="margin-top: 0.4rem;">
           <div class="hub-group">
             <button type="button" class="btn-ctrl" onclick="toggleAllInlineDetails(true)">Expand All</button>
             <button type="button" class="btn-ctrl" onclick="toggleAllInlineDetails(false)">Collapse All</button>
@@ -581,6 +582,7 @@
       if (dropdown) dropdown.value = weekNum;
 
       document.getElementById("weekHostTitle").textContent = `${weekName(weekNum)} Info Hub`;
+      document.getElementById("weekGamesTitle").textContent = `${weekName(weekNum)} Games`;
       fillWeekPodLinks(document.getElementById("weekPodLinks"), weekNum);
       document.getElementById("weekCousinsTitle").textContent = `The ${possessive(SITE.players.many)} ${weekName(weekNum)} Picks`;
 
