@@ -9,7 +9,7 @@
   <script src="config.js?v=43"></script>
   <script src="common.js?v=58"></script>
   <script src="sec.js?v=43"></script>
-  <link rel="stylesheet" href="styles.css?v=55" />
+  <link rel="stylesheet" href="styles.css?v=56" />
 </head>
 <body>
 
@@ -149,9 +149,7 @@
         <div id="cousinSearchWrapper" style="margin-bottom: 0.75rem;">
           <div class="search-row">
             <input type="text" id="cousinSearchInput" class="cousin-search-input" placeholder="Find a name" oninput="filterCousinCards()" />
-            <button type="button" class="btn-ctrl" id="jumpToMeBtn" style="display: none;" onclick="jumpToMe()">Jump to me</button>
           </div>
-          <div id="jumpNote" class="jump-note" style="display: none;"></div>
         </div>
 
         <div id="cousinsList">
@@ -965,39 +963,7 @@
       `;
     }
 
-    // Name saved on this device when picks were last submitted.
-    function savedUserName() {
-      try { return localStorage.getItem("secPickEmUserName") || ""; } catch (e) { return ""; }
-    }
-
-    // Opens and scrolls to the saved name's row for the week being shown.
-    function jumpToMe() {
-      const name = savedUserName();
-      const note = document.getElementById("jumpNote");
-      const squash = s => s.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
-      document.getElementById("cousinSearchInput").value = "";
-      filterCousinCards();
-
-      const card = [...document.querySelectorAll("#cousinsList .cousin-item")]
-        .find(el => squash(el.dataset.name || "") === squash(name));
-      if (!card) {
-        note.textContent = `No ${weekName(activeWeek)} picks from ${name} yet.`;
-        note.style.display = "block";
-        return;
-      }
-      note.style.display = "none";
-      document.querySelectorAll("#cousinsList .cousin-item.me").forEach(el => el.classList.remove("me"));
-      card.classList.add("me");
-      card.querySelector(".cousin-picks-body").classList.add("open");
-      card.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-
     function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
-      const jumpBtn = document.getElementById("jumpToMeBtn");
-      if (jumpBtn) jumpBtn.style.display = savedUserName() ? "" : "none";
-      const jumpNote = document.getElementById("jumpNote");
-      if (jumpNote) jumpNote.style.display = "none";
-
       // Correct picks, then Lock of the Week hits (from Week 2), then name.
       // Everyone on the same number of wins shares a rank, with no gaps.
       cousinRows.forEach(c => c.score = gradePicks(c.picks, activeWeek));
