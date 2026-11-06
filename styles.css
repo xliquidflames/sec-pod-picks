@@ -3419,27 +3419,26 @@ a.btn-submit.bk-cta {
 }
 
 /* Last week's champions: a full-width card under the week's stat cards,
-   styled like them, with a gold border. */
+   matching them. */
 .champion-line {
   margin: 0 0 0.85rem;
-  padding: 0.65rem 0.6rem 0.75rem;
+  padding: 0.65rem 0.6rem;
   background: var(--bg-card-alt);
-  border: 2px solid var(--accent-gold);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   text-align: center;
 }
 
 .champion-line .pulse-stat {
-  font-size: 1.05rem;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.35rem;
 }
 
 .champion-line-names {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.35rem 0.9rem;
-  font-size: 0.85rem;
+  gap: 0.25rem 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-main);
 }
 
