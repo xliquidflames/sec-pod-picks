@@ -373,10 +373,11 @@
       WEEK_NUMS.map(w => `<option value="${w}">${weekName(w)}</option>`).join("");
 
     (async () => {
-      // Only accounts listed as site admins in the database can save.
+      // Only site admins and host pickers (host-pickers.sql) can save.
       const account = await requireAccount();
       if (!account) return;
-      const { data: isAdmin } = await supabaseClient.rpc("is_site_admin");
+      let { data: isAdmin, error: checkError } = await supabaseClient.rpc("can_save_host_picks");
+      if (checkError) ({ data: isAdmin } = await supabaseClient.rpc("is_site_admin"));
       const signOutLink = `<a href="#" onclick="signOut('hostpicks.html'); return false;">Sign out</a>`;
       document.getElementById("hostAccount").innerHTML = isAdmin
         ? `Saving as <strong>${account.name}</strong> · ${signOutLink}`
