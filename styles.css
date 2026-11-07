@@ -3804,3 +3804,180 @@ a.btn-submit.bk-cta {
 .week-pod-links[style*="none"] + .hub-rankings {
   margin-top: 0.6rem;
 }
+
+/* ---- Projected playoff bracket (Info Hub > Playoffs) ---- */
+.bk-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.3rem;
+}
+
+.bk-heads,
+.bk-grid {
+  display: grid;
+  grid-template-columns: 128px 14px 128px 14px 118px 14px 118px;
+  min-width: 534px;
+}
+
+.bk-heads span {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-gold);
+  text-align: center;
+  padding-bottom: 0.35rem;
+}
+
+.bk-grid {
+  grid-template-rows: repeat(8, 34px);
+}
+
+.bk-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.bk-r1 { grid-column: 1; }
+.bk-qf { grid-column: 3; }
+.bk-sf { grid-column: 5; }
+.bk-final { grid-column: 7; }
+
+.bk-game {
+  border: 1px solid var(--accent-gold);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+.bk-team {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 24px;
+  padding: 0 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.bk-team + .bk-team {
+  border-top: 1px solid var(--border-color);
+}
+
+.bk-team.sec .bk-name {
+  color: var(--accent-gold);
+}
+
+.bk-team.empty {
+  background: var(--bg-card-alt);
+}
+
+.bk-seed {
+  flex: 0 0 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--bg-main);
+  color: var(--accent-gold);
+  font-size: 0.62rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bk-team.empty .bk-seed {
+  background: transparent;
+}
+
+.bk-team img,
+.bk-logo-gap {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.bk-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Lines between rounds. */
+.bk-stub {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 2px solid var(--accent-gold);
+}
+
+.bk-join {
+  position: absolute;
+  left: 0;
+  width: 50%;
+  top: 25%;
+  bottom: 25%;
+  border: 2px solid var(--accent-gold);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+}
+
+.bk-join::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  width: 100%;
+  top: 50%;
+  border-top: 2px solid var(--accent-gold);
+}
+
+.bk-trophy {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(50% + 30px);
+  text-align: center;
+  font-size: 1.4rem;
+}
+
+.bk-final .bk-game {
+  border-width: 2px;
+}
+
+.bk-outs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.bk-out {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  color: var(--text-main);
+}
+
+.bk-out span {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.bk-note {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+}
