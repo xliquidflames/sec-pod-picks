@@ -315,43 +315,130 @@ async function renderRankings(body) {
     </table>`;
 }
 
-// The selection committee's rankings, from the same ESPN feed as the AP
-// poll. ESPN adds them once the committee starts releasing in November.
+// ---- Playoff bracket, projected from the committee's rankings ----
+// The field is the five highest-ranked conference leaders plus the next
+// seven highest-ranked teams, seeded 1-12 in ranking order. Seeds 1-4 get
+// byes; the first round is 12 at 5, 9 at 8, 11 at 6 and 10 at 7.
+
+const BRACKET_PODS = [[4, 5, 12], [1, 8, 9], [3, 6, 11], [2, 7, 10]];
+
+async function loadCfpPoll() {
+  const data = infoCache.rankings || (infoCache.rankings = await fetchFirstOk(["https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"]));
+  return (data.rankings || []).find(p => p.ranks && p.ranks.length &&
+    (/cfp/i.test(p.type || "") || /playoff/i.test(`${p.name || ""} ${p.shortName || ""}`))) || null;
+}
+
+// Each FBS conference's current leader by conference record, from ESPN.
+async function loadConferenceLeaders() {
+  if (!infoCache.fbsStandings) {
+    infoCache.fbsStandings = await fetchFirstOk([
+      "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80&season=2026",
+      "https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?group=80&season=2026"
+    ]);
+  }
+  const conferences = infoCache.fbsStandings.children || [];
+  const leaders = [];
+  conferences.forEach(conf => {
+    if (/independent/i.test(`${conf.name || ""} ${conf.abbreviation || ""}`)) return;
+    const entries = [];
+    collectStandingsEntries(conf, entries);
+    const rows = entries.map(e => {
+      const conf = statDisplay(e.stats, s =>
+        /^(vs\.?\s?conf(erence)?|conference)$/i.test(s.name || "") ||
+        (/conf/i.test(s.name || s.type || "") && !/behind|pct|percent|point|win|rank/i.test(s.name || s.type || "")));
+      const overall = statDisplay(e.stats, s => /^overall$/i.test(s.name || s.type || ""));
+      return { id: String((e.team || {}).id || ""), c: parseWL(conf), o: parseWL(overall) };
+    }).filter(r => r.id);
+    const pct = r => r.c.w + r.c.l ? r.c.w / (r.c.w + r.c.l) : 0;
+    rows.sort((x, y) => (pct(y) - pct(x)) || (y.c.w - x.c.w) || (y.o.w - x.o.w));
+    if (rows.length) leaders.push(rows[0].id);
+  });
+  return leaders;
+}
+
+// { seeds: [12 teams, seed order], out: [next two], usedLeaders }
+async function projectBracket() {
+  const poll = await loadCfpPoll();
+  if (!poll) return null;
+  const ranked = poll.ranks.slice().sort((a, b) => a.current - b.current).map(r => {
+    const t = r.team || {};
+    const name = t.location || t.nickname || t.shortDisplayName || t.name || t.displayName || "";
+    return { id: String(t.id || ""), name, logo: teamLogoFrom(t), rank: r.current, record: r.recordSummary || "" };
+  });
+
+  let leaders = [];
+  try { leaders = await loadConferenceLeaders(); } catch (e) { console.error("Standings error:", e); }
+  const rankedLeaders = ranked.filter(t => leaders.includes(t.id));
+  // Conference leaders outside the committee's top 25 can't be placed, so
+  // only ranked leaders count; that's nearly always enough for five.
+  const autos = rankedLeaders.slice(0, 5);
+  const field = [...autos];
+  for (const t of ranked) {
+    if (field.length >= 12) break;
+    if (!field.includes(t)) field.push(t);
+  }
+  field.sort((a, b) => a.rank - b.rank);
+  // With five automatic bids, a low-ranked champion can push a higher
+  // ranked team out; trim to 12 by dropping the lowest non-automatic team.
+  while (field.length > 12) {
+    const drop = [...field].reverse().find(t => !autos.includes(t));
+    field.splice(field.indexOf(drop), 1);
+  }
+  const out = ranked.filter(t => !field.includes(t)).slice(0, 2);
+  return { seeds: field, out, autos, usedLeaders: leaders.length > 0, title: poll.headline || poll.name || "" };
+}
+
 async function renderCfpRankings(body) {
   body.innerHTML = `<div class="team-sched-note">Loading...</div>`;
-  let data;
+  let bracket;
   try {
-    data = infoCache.rankings || (infoCache.rankings = await fetchFirstOk(["https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"]));
+    bracket = await projectBracket();
   } catch (e) {
     body.innerHTML = `<div class="team-sched-note">Couldn't load the rankings right now.</div>`;
     return;
   }
-  const poll = (data.rankings || []).find(p => p.ranks && p.ranks.length &&
-    (/cfp/i.test(p.type || "") || /playoff/i.test(`${p.name || ""} ${p.shortName || ""}`)));
-  if (!poll) {
+  if (!bracket || bracket.seeds.length < 12) {
     body.innerHTML = `<div class="team-sched-note">The committee's rankings aren't out yet. They're released Tuesday nights starting in early November.</div>`;
     return;
   }
-  const teamName = t => t.location || t.nickname || t.shortDisplayName || t.name || t.displayName || "";
-  const rows = poll.ranks.slice().sort((a, b) => a.current - b.current).slice(0, 25).map(r => {
-    const t = r.team || {};
-    const name = teamName(t);
-    const logo = teamLogoFrom(t);
-    return `<tr>
-      <td class="top25-rank">${r.current}</td>
-      <td class="top25-cell">
-        <span class="top25-team ${isSecTeam(name) ? "sec" : ""}">
-          ${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}
-          <span>${shortenPickDisplay(name)}</span>
-        </span>
-      </td>
-      <td class="top25-record">${r.recordSummary || ""}</td>
-    </tr>`;
-  }).join("");
-  const updated = poll.headline || poll.name || "College Football Playoff Rankings";
+
+  const seedTeam = n => bracket.seeds[n - 1];
+  const slot = (team, seed) => team
+    ? `<div class="bk-team ${isSecTeam(team.name) ? "sec" : ""}" title="#${team.rank} in the rankings${team.record ? ` · ${team.record}` : ""}">
+        <span class="bk-seed">${seed}</span>
+        ${team.logo ? `<img src="${team.logo}" alt="" onerror="this.style.visibility='hidden'">` : `<span class="bk-logo-gap"></span>`}
+        <span class="bk-name">${shortenPickDisplay(team.name)}</span>
+      </div>`
+    : `<div class="bk-team empty"><span class="bk-seed"></span><span class="bk-name"></span></div>`;
+  const game = (top, bottom) => `<div class="bk-game">${top}${bottom}</div>`;
+
+  // Grid rows: each quarter of the bracket takes 2 rows; semis span 4, the final 8.
+  const cells = [];
+  BRACKET_PODS.forEach(([bye, hi, lo], i) => {
+    const row = `grid-row: ${i * 2 + 1} / span 2;`;
+    cells.push(`<div class="bk-cell bk-r1" style="${row}">${game(slot(seedTeam(lo), lo), slot(seedTeam(hi), hi))}</div>`);
+    cells.push(`<div class="bk-cell bk-link" style="grid-column: 2; ${row}"><span class="bk-stub"></span></div>`);
+    cells.push(`<div class="bk-cell bk-qf" style="${row}">${game(slot(null), slot(seedTeam(bye), bye))}</div>`);
+  });
+  [0, 1].forEach(i => {
+    const row = `grid-row: ${i * 4 + 1} / span 4;`;
+    cells.push(`<div class="bk-cell bk-link" style="grid-column: 4; ${row}"><span class="bk-join"></span></div>`);
+    cells.push(`<div class="bk-cell bk-sf" style="${row}">${game(slot(null), slot(null))}</div>`);
+  });
+  cells.push(`<div class="bk-cell bk-link" style="grid-column: 6; grid-row: 1 / span 8;"><span class="bk-join"></span></div>`);
+  cells.push(`<div class="bk-cell bk-final" style="grid-row: 1 / span 8;"><div class="bk-trophy">&#127942;</div>${game(slot(null), slot(null))}</div>`);
+
+  const outChip = (t, label) => t ? `<div class="bk-out"><span>${label}</span><strong>${shortenPickDisplay(t.name)}</strong></div>` : "";
   body.innerHTML = `
-    <div class="rankings-caption">${updated}</div>
-    <table class="top25-table cfp-table"><tbody>${rows}</tbody></table>`;
+    <div class="rankings-caption">Projected bracket from the ${escapeHtml(bracket.title || "committee's rankings")}</div>
+    <div class="bk-scroll">
+      <div class="bk-heads"><span>First Round</span><span></span><span>Quarterfinals</span><span></span><span>Semifinals</span><span></span><span>Final</span></div>
+      <div class="bk-grid">${cells.join("")}</div>
+    </div>
+    <div class="bk-outs">${outChip(bracket.out[0], "First team out")}${outChip(bracket.out[1], "Second team out")}</div>
+    <div class="bk-note">${bracket.usedLeaders
+      ? "The five highest-ranked conference leaders get in, plus the next seven highest-ranked teams. Seeds follow the rankings."
+      : "Conference standings didn't load, so this is simply the top 12. The real field also guarantees spots for five conference champions."}</div>`;
 }
 
 // Rankings tabs in the Week Info Hub. Tapping the open tab closes it.
