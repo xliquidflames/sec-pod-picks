@@ -497,7 +497,7 @@
               const uPick = getMatchedUserPick(picks, g) || "No Pick";
               const isCousinLock = isLockMatch(picks, g);
               return `
-                <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}" style="${isCousinLock ? 'padding: 0.25rem 0.4rem; border-radius: 4px;' : ''}">
+                <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}">
                   <span class="nfl-matchup" style="color: var(--text-muted);">${g.logoA}${g.teamA} <span class="nfl-vs">@</span> ${g.logoB}${g.teamB}</span>
                   <span class="${getPickClass(uPick, g, activeWeek)}">
                     ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
