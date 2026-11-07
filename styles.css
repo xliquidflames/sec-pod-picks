@@ -4015,3 +4015,9 @@ a.btn-submit.bk-cta {
   background: var(--accent-gold);
   color: var(--bg-main);
 }
+
+/* Same soft white glow as the favorite-team logos, so dark logos show
+   up on the dark boxes. */
+.bk-team img {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.25));
+}
