@@ -404,7 +404,7 @@ async function renderCfpRankings(body) {
 
   const seedTeam = n => bracket.seeds[n - 1];
   const slot = (team, seed) => team
-    ? `<div class="bk-team ${isSecTeam(team.name) ? "sec" : ""}" title="#${team.rank} in the rankings${team.record ? ` · ${team.record}` : ""}">
+    ? `<div class="bk-team ${isSecTeam(team.name) ? "sec" : ""}" title="${escapeHtml(team.name)} · #${team.rank} in the rankings${team.record ? ` · ${team.record}` : ""}">
         <span class="bk-seed">${seed}</span>
         ${team.logo ? `<img src="${team.logo}" alt="" onerror="this.style.visibility='hidden'">` : `<span class="bk-logo-gap"></span>`}
         <span class="bk-name">${shortenPickDisplay(team.name)}</span>
@@ -431,8 +431,8 @@ async function renderCfpRankings(body) {
   const outChip = (t, label) => t ? `<div class="bk-out"><span>${label}</span><strong>${shortenPickDisplay(t.name)}</strong></div>` : "";
   body.innerHTML = `
     <div class="rankings-caption">Projected bracket from the ${escapeHtml(bracket.title || "committee's rankings")}</div>
-    <div class="bk-scroll">
-      <div class="bk-heads"><span>First Round</span><span></span><span>Quarterfinals</span><span></span><span>Semifinals</span><span></span><span>Final</span></div>
+    <div class="bk-scroll bk-logos">
+      <div class="bk-heads"><span>Round 1</span><span></span><span>Quarters</span><span></span><span>Semis</span><span></span><span>Final</span></div>
       <div class="bk-grid">${cells.join("")}</div>
     </div>
     <div class="bk-outs">${outChip(bracket.out[0], "First team out")}${outChip(bracket.out[1], "Second team out")}</div>
