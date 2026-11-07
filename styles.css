@@ -3981,3 +3981,37 @@ a.btn-submit.bk-cta {
   color: var(--text-muted);
   text-align: center;
 }
+
+/* Logos only: the whole bracket fits a phone's width, no sideways scroll. */
+.bk-logos .bk-heads,
+.bk-logos .bk-grid {
+  grid-template-columns: 1fr 10px 1fr 10px 1fr 10px 1fr;
+  min-width: 0;
+}
+
+.bk-logos .bk-grid {
+  grid-template-rows: repeat(8, 36px);
+}
+
+.bk-logos .bk-name {
+  display: none;
+}
+
+.bk-logos .bk-team {
+  justify-content: center;
+  gap: 0.35rem;
+  height: 26px;
+}
+
+.bk-logos .bk-team img,
+.bk-logos .bk-logo-gap {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+}
+
+/* SEC teams: gold seed instead of gold name. */
+.bk-logos .bk-team.sec .bk-seed {
+  background: var(--accent-gold);
+  color: var(--bg-main);
+}
