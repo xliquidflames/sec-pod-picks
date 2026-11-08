@@ -95,7 +95,7 @@ async function openFavoritePrompt(sport) {
   overlay.innerHTML = `
     <div class="team-sched-modal fav-prompt-modal" role="dialog" aria-modal="true" aria-labelledby="favPromptTitle">
       <div class="team-sched-header">
-        <div class="team-sched-title" id="favPromptTitle">Pick your ${info.label} team</div>
+        <div class="team-sched-title" id="favPromptTitle">Who is your favorite ${info.label} team?</div>
         <button type="button" class="team-sched-close" onclick="snoozeFavoritePrompt('${sport}')" aria-label="Close">&times;</button>
       </div>
       <div class="fav-prompt-body">
