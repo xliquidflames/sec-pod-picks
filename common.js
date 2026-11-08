@@ -53,7 +53,133 @@ function addAccountBar(nav) {
   currentAccount().then(account => {
     signedInAccount = account;
     renderAccountBar();
+    askForFavorite(account);
   });
+}
+
+// ---- Favorite team prompt ----
+// On a leaderboard page, a signed-in player with no favorite for that
+// page's sport gets a pop-up to pick one. "Not now" waits a week.
+const FAV_PROMPT_SPORTS = {
+  cfb: { label: "college football", secFirst: true, urls: [
+    "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80",
+    "https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?group=80"] },
+  nfl: { label: "NFL", secFirst: false, urls: [
+    "https://site.api.espn.com/apis/v2/sports/football/nfl/standings",
+    "https://site.web.api.espn.com/apis/v2/sports/football/nfl/standings"] },
+  hoops: { label: "college basketball", secFirst: true, urls: [
+    "https://site.api.espn.com/apis/v2/sports/basketball/mens-college-basketball/standings",
+    "https://site.web.api.espn.com/apis/v2/sports/basketball/mens-college-basketball/standings"] }
+};
+const FAV_PROMPT_WAIT_MS = 7 * 24 * 60 * 60 * 1000;
+let favPromptGroups = [];
+
+function askForFavorite(account) {
+  const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  if (!/^(index|nflindex|hoopsindex)\.html$/.test(page)) return;
+  const sport = pageSport();
+  if (!account || !account.name || (account.favorites && account.favorites[sport])) return;
+  try {
+    const snoozed = Number(localStorage.getItem(`favPromptSnooze_${sport}`) || 0);
+    if (Date.now() - snoozed < FAV_PROMPT_WAIT_MS) return;
+  } catch (e) {}
+  openFavoritePrompt(sport);
+}
+
+async function openFavoritePrompt(sport) {
+  const info = FAV_PROMPT_SPORTS[sport];
+  const overlay = document.createElement("div");
+  overlay.id = "favPromptOverlay";
+  overlay.className = "team-sched-overlay";
+  overlay.style.display = "flex";
+  overlay.innerHTML = `
+    <div class="team-sched-modal fav-prompt-modal" role="dialog" aria-modal="true" aria-labelledby="favPromptTitle">
+      <div class="team-sched-header">
+        <div class="team-sched-title" id="favPromptTitle">Pick your ${info.label} team</div>
+        <button type="button" class="team-sched-close" onclick="snoozeFavoritePrompt('${sport}')" aria-label="Close">&times;</button>
+      </div>
+      <div class="fav-prompt-body">
+        <p class="fav-prompt-text">Your team's logo shows next to your name, and you'll count toward your fan base in the Fanbase Showdown.</p>
+        <div id="favPromptTeams"><div class="signin-note">Loading teams...</div></div>
+        <div class="fav-prompt-status" id="favPromptStatus"></div>
+        <div class="fav-prompt-actions">
+          <button type="button" class="btn-ctrl" onclick="snoozeFavoritePrompt('${sport}')">Not now</button>
+          <a class="details-link" href="account.html">All my teams &rarr;</a>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  let data = null;
+  for (const url of info.urls) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) { data = await res.json(); break; }
+    } catch (e) {}
+  }
+  const box = document.getElementById("favPromptTeams");
+  if (!data) {
+    box.innerHTML = `<div class="signin-note">Couldn't load the teams right now. You can pick one any time on your <a href="account.html">account page</a>.</div>`;
+    return;
+  }
+  const under = (node, out = []) => {
+    ((node.standings && node.standings.entries) || []).forEach(e => e.team && out.push(e.team));
+    (node.children || []).forEach(c => under(c, out));
+    return out;
+  };
+  const plain = n => (n || "").replace(/[^\p{L}\p{N} .'&()-]/gu, "").trim().slice(0, 40);
+  const toTeam = t => ({
+    id: String(t.id),
+    name: plain(t.shortDisplayName || t.location || t.displayName),
+    logo: (t.logos && t.logos[0] && t.logos[0].href) || (sport === "nfl" ? "" : `https://a.espncdn.com/i/teamlogos/ncaa/500/${t.id}.png`)
+  });
+  const tops = data.children && data.children.length ? data.children : [data];
+  favPromptGroups = tops.map(c => ({
+    name: c.name || c.abbreviation || "Teams",
+    isSec: info.secFirst && (c.abbreviation === "SEC" || /southeastern/i.test(c.name || "")),
+    teams: under(c).map(toTeam).filter(t => t.id && /^https:\/\/a\.espncdn\.com\//.test(t.logo)).sort((a, b) => a.name.localeCompare(b.name))
+  })).filter(g => g.teams.length).sort((a, b) => (b.isSec - a.isSec) || a.name.localeCompare(b.name));
+
+  const button = t => `<button type="button" class="fav-team" onclick="saveFavoriteFromPrompt('${sport}', '${t.id}')"><img src="${escapeHtml(t.logo)}" alt="" loading="lazy" /><span>${escapeHtml(t.name)}</span></button>`;
+  const group = g => `<div class="fav-conf">${escapeHtml(g.name)}</div><div class="fav-grid">${g.teams.map(button).join("")}</div>`;
+  const sec = favPromptGroups.filter(g => g.isSec);
+  const rest = favPromptGroups.filter(g => !g.isSec);
+  box.innerHTML = sec.length
+    ? `${sec.map(group).join("")}
+       <button type="button" class="details-link fav-more" onclick="this.nextElementSibling.classList.toggle('open'); this.innerHTML = this.nextElementSibling.classList.contains('open') ? 'Other conferences &#9652;' : 'Other conferences &#9662;';">Other conferences &#9662;</button>
+       <div class="fav-others">${rest.map(group).join("")}</div>`
+    : favPromptGroups.map(group).join("");
+}
+
+function closeFavoritePrompt() {
+  const overlay = document.getElementById("favPromptOverlay");
+  if (overlay) overlay.remove();
+}
+
+function snoozeFavoritePrompt(sport) {
+  try { localStorage.setItem(`favPromptSnooze_${sport}`, String(Date.now())); } catch (e) {}
+  closeFavoritePrompt();
+}
+
+async function saveFavoriteFromPrompt(sport, id) {
+  const team = favPromptGroups.flatMap(g => g.teams).find(t => t.id === id);
+  if (!team) return;
+  const status = document.getElementById("favPromptStatus");
+  status.style.color = "var(--text-muted)";
+  status.textContent = "Saving...";
+  const { data, error } = await supabaseClient.rpc("set_favorite", { p_sport: sport, p_team: team });
+  if (error) {
+    status.style.color = "var(--danger)";
+    status.textContent = error.message;
+    return;
+  }
+  signedInAccount = { ...signedInAccount, favorites: data || {} };
+  renderAccountBar();
+  const me = (signedInAccount.name || "").toLowerCase();
+  playerFavorites[me] = { ...(playerFavorites[me] || {}), [sport]: team };
+  status.style.color = "var(--success)";
+  status.textContent = `${team.name} saved!`;
+  setTimeout(closeFavoritePrompt, 900);
 }
 
 function renderAccountBar() {
