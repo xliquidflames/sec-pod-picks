@@ -4021,3 +4021,32 @@ a.btn-submit.bk-cta {
 .bk-team img {
   filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.25));
 }
+
+/* ---- Favorite team pop-up (leaderboard pages) ---- */
+.fav-prompt-modal {
+  max-width: 520px;
+}
+
+.fav-prompt-body {
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.fav-prompt-text {
+  margin: 0 0 0.8rem;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.fav-prompt-status {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.fav-prompt-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.8rem;
+}
