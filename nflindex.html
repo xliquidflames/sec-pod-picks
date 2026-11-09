@@ -6,9 +6,9 @@
   <title>NFL Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=63"></script>
+  <script src="common.js?v=64"></script>
   <script src="nfl.js?v=6"></script>
-  <link rel="stylesheet" href="styles.css?v=71" />
+  <link rel="stylesheet" href="styles.css?v=72" />
 </head>
 <body>
 
@@ -84,6 +84,11 @@
           <h2 class="section-title" id="weekScheduleTitle">Week 1 Schedule</h2>
         </div>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Here is this week's schedule, lines, and scores. Highlighted rows are games currently in progress.</p>
+        <!-- Your Team: the signed-in player's favorite, filled by renderMyTeam. -->
+        <div id="myTeamSection" class="hub-my-team nfl-my-team" style="display: none;">
+          <div class="hub-sub-title">Your Team</div>
+          <div id="myTeamBox" class="my-team-card"></div>
+        </div>
         <div id="scheduleList">
           <div style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">Loading schedule...</div>
         </div>
@@ -307,6 +312,9 @@
       };
     }
 
+    // Once the account loads (common.js), show their team.
+    function onAccountReady() { renderMyTeam(); }
+
     function renderSchedule(games) {
       const container = document.getElementById("scheduleList");
       if (!container) return;
@@ -325,7 +333,7 @@
 
         return `
           ${divider ? `<div class="day-divider" style="color: ${divider.color};">${divider.label} ${divider.dateStr}</div>` : ''}
-          <div class="schedule-row ${isLive ? 'live-row' : ''}">
+          <div class="schedule-row ${isLive ? 'live-row' : ''}" data-teams="${[g.teamA, g.teamB].map(normalizeTeam).join("|")}">
             <div>
               ${g.isFinal ? `
                 <div class="final-label">Final</div>
@@ -470,6 +478,7 @@
 
       const games = weekSchedules[activeWeek] || [];
       renderSchedule(games);
+      renderMyTeam();
 
       const rows = allWeekRows.filter(r => r.week_number === activeWeek);
       setText("entryPill", `${rows.length} Entries`);

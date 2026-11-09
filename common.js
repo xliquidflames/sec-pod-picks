@@ -58,6 +58,132 @@ function addAccountBar(nav) {
   });
 }
 
+// ---- Your Team ----
+// For a signed-in player with a favorite in this page's sport: record,
+// last game, next game (or the live score), and their team's games on the
+// page get a gold edge. Pages call renderMyTeam() after drawing their games.
+const MY_TEAM_FEEDS = {
+  cfb: id => `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${id}/schedule?season=2026`,
+  nfl: id => `https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${id}/schedule?season=2026`,
+  hoops: id => `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/${id}/schedule?season=2027&seasontype=2`
+};
+const myTeamCache = {};
+
+async function renderMyTeam() {
+  const section = document.getElementById("myTeamSection");
+  const box = document.getElementById("myTeamBox");
+  const sport = pageSport();
+  const team = signedInAccount && signedInAccount.favorites && signedInAccount.favorites[sport];
+  document.querySelectorAll(".fav-game").forEach(el => el.classList.remove("fav-game"));
+  if (!team || !team.id) {
+    if (section) section.style.display = "none";
+    return;
+  }
+  const mine = normalizeTeam(team.name);
+  document.querySelectorAll("[data-teams]").forEach(el => {
+    if (el.dataset.teams.split("|").includes(mine)) el.classList.add("fav-game");
+  });
+  if (!section || !box) return;
+  section.style.display = "";
+
+  const key = `${sport}:${team.id}`;
+  if (!myTeamCache[key]) {
+    try {
+      const res = await fetch(MY_TEAM_FEEDS[sport](team.id));
+      if (!res.ok) throw new Error("bad response");
+      myTeamCache[key] = await res.json();
+    } catch (e) {
+      box.innerHTML = `<div class="team-sched-note">Couldn't load ${escapeHtml(team.name)}'s games right now.</div>`;
+      return;
+    }
+  }
+  const data = myTeamCache[key];
+  const score = v => v === null || v === undefined ? "" : typeof v === "object" ? String(v.displayValue ?? v.value ?? "") : String(v);
+  const logoOf = t => (t.logos && t.logos[0] && t.logos[0].href) || t.logo || "";
+
+  // Each game from this team's side.
+  const games = (data.events || []).map(ev => {
+    const comp = (ev.competitions || [])[0] || {};
+    const sides = comp.competitors || [];
+    const me = sides.find(c => String((c.team && c.team.id) || c.id) === String(team.id));
+    const opp = sides.find(c => c !== me);
+    if (!me || !opp) return null;
+    const oppTeam = opp.team || {};
+    const status = (comp.status && comp.status.type) || {};
+    const rank = c => { const r = c.curatedRank && c.curatedRank.current; return r && r <= 25 ? `#${r} ` : ""; };
+    const media = ((comp.broadcasts || [])[0] || {}).media;
+    return {
+      date: new Date(ev.date),
+      timeSet: comp.timeValid !== false,
+      prefix: comp.neutralSite ? "vs" : me.homeAway === "away" ? "@" : "vs",
+      opp: `${rank(opp)}${oppTeam.shortDisplayName || oppTeam.displayName || "TBD"}`,
+      oppLogo: logoOf(oppTeam),
+      myRank: rank(me),
+      done: status.completed === true,
+      live: status.state === "in",
+      detail: status.shortDetail || status.detail || "",
+      won: me.winner === true,
+      lost: opp.winner === true,
+      myScore: score(me.score),
+      oppScore: score(opp.score),
+      tv: media ? media.shortName || "" : "",
+      id: String(ev.id)
+    };
+  }).filter(Boolean).sort((a, b) => a.date - b.date);
+
+  const last = [...games].reverse().find(g => g.done);
+  const live = games.find(g => g.live);
+  const next = games.find(g => !g.done && !g.live);
+  const oppHtml = g => `${g.oppLogo ? `<img src="${escapeHtml(g.oppLogo)}" alt="" onerror="this.style.display='none'">` : ""}<span>${g.prefix} ${escapeHtml(g.opp)}</span>`;
+
+  // The line, if the game is in a week the page has loaded.
+  const lineFor = g => {
+    const hit = Object.values(weekSchedules).flat().find(x => x && String(x.eventId || x.matchupKey) === g.id);
+    return hit && hit.rawOdds ? hit.rawOdds : "";
+  };
+
+  const rows = [];
+  if (live) {
+    rows.push(`<div class="my-team-row live"><span class="my-team-tag">Live</span>
+      <span class="my-team-opp">${oppHtml(live)}</span>
+      <span class="my-team-result">${live.myScore}-${live.oppScore} · ${escapeHtml(live.detail)}</span></div>`);
+  }
+  if (last) {
+    const result = last.won ? "W" : last.lost ? "L" : "T";
+    rows.push(`<div class="my-team-row"><span class="my-team-tag">Last</span>
+      <span class="my-team-opp">${oppHtml(last)}</span>
+      <span class="my-team-result ${last.won ? "win" : last.lost ? "loss" : ""}">${result} ${last.myScore}-${last.oppScore}</span></div>`);
+  }
+  if (next) {
+    const day = next.date.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" });
+    const time = next.timeSet && !(next.date.getHours() === 0 && next.date.getMinutes() === 0)
+      ? next.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZoneName: "short" }) : "Time TBD";
+    const extra = [time, next.tv, lineFor(next)].filter(Boolean).join(" · ");
+    rows.push(`<div class="my-team-row"><span class="my-team-tag">Next</span>
+      <span class="my-team-opp">${oppHtml(next)}</span>
+      <span class="my-team-result">${day}</span></div>
+      <div class="my-team-extra">${escapeHtml(extra)}</div>`);
+  } else if (!live) {
+    rows.push(`<div class="my-team-extra">No more games on the schedule.</div>`);
+  }
+
+  const t = data.team || {};
+  const meta = [t.recordSummary, t.standingSummary].filter(Boolean).join(" · ");
+  const rankNow = (live || next || last || {}).myRank || "";
+  const scheduleButton = typeof openTeamSchedule === "function"
+    ? `<button type="button" class="btn-ctrl my-team-btn" onclick="openTeamSchedule('${team.id}', '${escapeHtml(team.name).replace(/'/g, "&#39;")}', '${escapeHtml(team.logo || "")}')">Full Schedule</button>` : "";
+  box.innerHTML = `
+    <div class="my-team-head">
+      ${team.logo ? `<img class="my-team-logo" src="${escapeHtml(team.logo)}" alt="">` : ""}
+      <div>
+        <div class="my-team-name">${escapeHtml(rankNow)}${escapeHtml(team.name)}</div>
+        <div class="my-team-meta">${escapeHtml(meta)}</div>
+      </div>
+    </div>
+    ${rows.join("")}
+    ${scheduleButton}`;
+}
+
 // ---- Favorite team prompt ----
 // On a leaderboard page, a signed-in player with no favorite for that
 // page's sport gets a pop-up to pick one. "Not now" waits a week.

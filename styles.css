@@ -4188,8 +4188,14 @@ a.btn-submit.bk-cta {
   margin-top: 0.5rem;
 }
 
-/* Their team's game in the grid: a gold edge on the matchup. */
-.host-grid-table tr.fav-game-row > td.matchup-cell {
+/* Their team's games: a gold edge. */
+.host-grid-table tr.fav-game > td.matchup-cell {
+  box-shadow: inset 3px 0 0 var(--accent-gold);
+}
+
+.schedule-row.fav-game,
+.hoops-game.fav-game {
+  border-color: var(--accent-gold);
   box-shadow: inset 3px 0 0 var(--accent-gold);
 }
 
@@ -4198,4 +4204,9 @@ a.btn-submit.bk-cta {
   margin-left: 0;
   color: var(--text-main);
   border-color: var(--accent-gold);
+}
+
+/* NFL: Your Team sits at the top of the schedule card. */
+.nfl-my-team {
+  margin: 0 0 1rem;
 }

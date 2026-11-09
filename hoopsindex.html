@@ -7,9 +7,9 @@
   <title data-site-text="{name} Hoops Pick'em">That SEC Podcast Hoops Pick'em</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=63"></script>
+  <script src="common.js?v=64"></script>
   <script src="hoops.js?v=3"></script>
-  <link rel="stylesheet" href="styles.css?v=71" />
+  <link rel="stylesheet" href="styles.css?v=72" />
   <style>
     /* This week's games, two to a row, under a divider for each day. */
     .hoops-games {
@@ -118,6 +118,11 @@
         <div class="hub-action-row" style="margin-top: 0.6rem;">
           <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
           <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
+        </div>
+        <!-- Your Team: the signed-in player's favorite, filled by renderMyTeam. -->
+        <div id="myTeamSection" class="hub-my-team" style="display: none;">
+          <div class="hub-sub-title">Your Team</div>
+          <div id="myTeamBox" class="my-team-card"></div>
         </div>
         <div class="hoops-games" id="hostGridWrapper" style="margin-top: 0.6rem;">
           <div class="hoops-empty">Loading games...</div>
@@ -595,6 +600,9 @@
       return result;
     }
 
+    // Once the account loads (common.js), show their team.
+    function onAccountReady() { renderMyTeam(); }
+
     // Week Info Hub: this week's games, two to a row, under a divider for
     // each new day.
     function renderGamesGrid(games) {
@@ -609,7 +617,7 @@
         const live = liveMap[g.matchupKey] || liveMap[g.id];
         return `
           ${divider ? `<div class="hoops-day">${divider}</div>` : ""}
-          <div class="hoops-game matchup-cell ${live ? "live-game-row" : ""}">
+          <div class="hoops-game matchup-cell ${live ? "live-game-row" : ""}" data-teams="${[g.teamA, g.teamB].map(normalizeTeam).join("|")}">
             ${g.matchupLabel}
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ""}
             ${detailsLink(g)}
@@ -884,6 +892,7 @@
 
       setText("entryPill", `${cousinRows.length} Entries`);
       renderGamesGrid(games);
+      renderMyTeam();
       renderCousinList(games, cousinRows, isLockActiveThisWeek);
       renderPerTeamView(games, cousinRows);
       renderWeekStats(games, cousinRows, isLockActiveThisWeek);
