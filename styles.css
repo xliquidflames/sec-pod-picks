@@ -4050,3 +4050,40 @@ a.btn-submit.bk-cta {
   align-items: center;
   margin-top: 0.8rem;
 }
+
+/* NFL schedule: a finished game shows FINAL on top and each team's score
+   big under it. The loser's score is dimmed. */
+.final-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-gold);
+  margin-bottom: 0.3rem;
+}
+
+.final-matchup {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.final-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 7rem;
+}
+
+.final-score {
+  font-size: 1.9rem;
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--text-main);
+  opacity: 0.45;
+}
+
+.final-side.won .final-score {
+  opacity: 1;
+}
