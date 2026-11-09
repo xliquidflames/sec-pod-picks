@@ -4192,3 +4192,10 @@ a.btn-submit.bk-cta {
 .host-grid-table tr.fav-game-row > td.matchup-cell {
   box-shadow: inset 3px 0 0 var(--accent-gold);
 }
+
+/* Season record chip at the top of an opened card. */
+.card-badges .season-chip {
+  margin-left: 0;
+  color: var(--text-main);
+  border-color: var(--accent-gold);
+}

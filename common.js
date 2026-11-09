@@ -399,7 +399,9 @@ const playerBadgesHtml = name => favoriteLogoHtml(playerFavorites[(name || "").t
 // Top of an opened card: weeks won and how far back, kept off the
 // collapsed row so the list stays clean.
 function cardBadgesHtml(name, extra = "") {
-  const inner = championChipsHtml(name) + extra;
+  const season = seasonRecords[(name || "").toLowerCase()];
+  const seasonChip = season && season.c + season.i > 0 ? `<span class="path-chip season-chip">Season ${season.c}-${season.i}</span>` : "";
+  const inner = seasonChip + championChipsHtml(name) + extra;
   return inner ? `<div class="card-badges">${inner}</div>` : "";
 }
 
@@ -911,7 +913,13 @@ function pinMyCard() {
 
 // Season podium: most correct picks, then fewest losses. An identical record
 // is a shared spot, shown as a tie. totals: [{ user_name, correct, incorrect }].
+// Each player's season record, kept from the podium's totals for the
+// opened cards. lower-case name -> { c, i }
+let seasonRecords = {};
+
 function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
+  seasonRecords = {};
+  totals.forEach(t => { seasonRecords[(t.user_name || "").toLowerCase()] = { c: t.correct, i: t.incorrect }; });
   const top5Container = document.getElementById("top5CousinsList");
   const decisionLog = document.getElementById("tiebreakerDecisionLog");
 
