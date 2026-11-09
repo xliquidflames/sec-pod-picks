@@ -7,9 +7,9 @@
   <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=43"></script>
-  <script src="common.js?v=61"></script>
-  <script src="sec.js?v=46"></script>
-  <link rel="stylesheet" href="styles.css?v=68" />
+  <script src="common.js?v=62"></script>
+  <script src="sec.js?v=47"></script>
+  <link rel="stylesheet" href="styles.css?v=70" />
 </head>
 <body>
 
@@ -104,6 +104,11 @@
             </div>
           </div>
           <div id="rankingsPanel" class="rankings-panel" style="display: none;"></div>
+        </div>
+        <!-- Your Team: the signed-in player's favorite, filled by renderMyTeam. -->
+        <div id="myTeamSection" class="hub-my-team" style="display: none;">
+          <div class="hub-sub-title">Your Team</div>
+          <div id="myTeamBox" class="my-team-card"></div>
         </div>
         <div class="hub-sub-title hub-games-title" id="weekGamesTitle">Week 1 Games</div>
         <div class="hub-action-row hub-split" style="margin-top: 0.4rem;">
@@ -783,6 +788,7 @@
         const classCousins = majorityPick ? getPickClass(majorityPick.team, g, activeWeek) : "";
 
         const tr = document.createElement("tr");
+        tr.dataset.teams = [g.teamA, g.teamB].map(normalizeTeam).join("|");
         if (liveMap[g.matchupKey] || liveMap[g.id]) tr.classList.add("live-game-row");
         tr.innerHTML = `
           <td class="matchup-cell">
@@ -1178,6 +1184,9 @@
       box.innerHTML = `<div class="pulse-grid">${homer}${toss}${chalk}</div>`;
     }
 
+    // Once the account loads (common.js), show their team.
+    function onAccountReady() { renderMyTeam(); }
+
     // The season's year: games from August on belong to that year's season.
     function seasonYear() {
       const d = new Date();
@@ -1202,6 +1211,7 @@
       renderWeekCards(games, cousinRows);
       renderFanStats("seasonFanStats", allWeekRows.filter(r => !r.is_host), true);
       setText("fanShowdownTitle", `${seasonYear()} Fanbase Showdown`);
+      renderMyTeam();
       computeSeasonTotals();
     }
 

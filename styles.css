@@ -4087,3 +4087,108 @@ a.btn-submit.bk-cta {
 .final-side.won .final-score {
   opacity: 1;
 }
+
+/* ---- Your Team (Info Hub) ---- */
+.hub-my-team {
+  margin-top: 1.1rem;
+}
+
+.my-team-card {
+  margin-top: 0.4rem;
+  padding: 0.7rem 0.8rem;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.my-team-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.my-team-logo {
+  width: 2.4rem;
+  height: 2.4rem;
+  object-fit: contain;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.25));
+}
+
+.my-team-name {
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--text-main);
+}
+
+.my-team-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.my-team-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.my-team-row.live {
+  color: var(--accent-gold);
+}
+
+.my-team-tag {
+  flex: 0 0 2.6rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-gold);
+}
+
+.my-team-opp {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.my-team-opp img {
+  width: 1.2rem;
+  height: 1.2rem;
+  object-fit: contain;
+}
+
+.my-team-opp span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-team-result {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.my-team-result.win { color: var(--success); }
+.my-team-result.loss { color: var(--danger); }
+
+.my-team-extra {
+  padding: 0 0 0.35rem 3.1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.my-team-btn {
+  margin-top: 0.5rem;
+}
+
+/* Their team's game in the grid: a gold edge on the matchup. */
+.host-grid-table tr.fav-game-row > td.matchup-cell {
+  box-shadow: inset 3px 0 0 var(--accent-gold);
+}

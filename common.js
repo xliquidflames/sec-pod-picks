@@ -54,6 +54,7 @@ function addAccountBar(nav) {
     signedInAccount = account;
     renderAccountBar();
     askForFavorite(account);
+    if (typeof onAccountReady === "function") onAccountReady(account);
   });
 }
 
@@ -175,6 +176,7 @@ async function saveFavoriteFromPrompt(sport, id) {
   }
   signedInAccount = { ...signedInAccount, favorites: data || {} };
   renderAccountBar();
+  if (typeof onAccountReady === "function") onAccountReady(signedInAccount);
   const me = (signedInAccount.name || "").toLowerCase();
   playerFavorites[me] = { ...(playerFavorites[me] || {}), [sport]: team };
   status.style.color = "var(--success)";
