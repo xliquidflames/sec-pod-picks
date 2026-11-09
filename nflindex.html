@@ -217,7 +217,7 @@
               logoB: nflLogoHtml(home.team),
               kickoff,
               rawOdds,
-              detail: isFinal ? venue : isLive ? `${time} | ${venue}` : `${time} | ${rawOdds || "Line: TBD"} | ${venue}`,
+              detail: isFinal ? "" : isLive ? `${time} | ${venue}` : `${time} | ${rawOdds || "Line: TBD"} | ${venue}`,
               winner,
               isLive,
               isFinal,
@@ -343,7 +343,7 @@
               : `<div class="schedule-matchup nfl-matchup">${g.logoA}${g.teamA} <span class="nfl-vs">@</span> ${g.logoB}${g.teamB}</div>`}
               ${g.detail ? `<span class="schedule-detail">${g.detail}</span>` : ''}
             </div>
-            ${winner ? `<div class="schedule-winner">${winner}</div>` : ''}
+            ${winner && !g.isFinal ? `<div class="schedule-winner">${winner}</div>` : ''}
           </div>
         `;
       }).join("");
