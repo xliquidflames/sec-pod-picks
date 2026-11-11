@@ -428,17 +428,13 @@ async function renderCfpRankings(body) {
   cells.push(`<div class="bk-cell bk-link" style="grid-column: 6; grid-row: 1 / span 8;"><span class="bk-join"></span></div>`);
   cells.push(`<div class="bk-cell bk-final" style="grid-row: 1 / span 8;"><div class="bk-trophy">&#127942;</div>${game(slot(null), slot(null))}</div>`);
 
-  // Everyone else in the committee's top 25, under the bracket.
-  const rest = bracket.ranked.filter(t => !bracket.seeds.includes(t)).map(t => `<tr>
-      <td class="top25-rank">${t.rank}</td>
-      <td class="top25-cell">
-        <span class="top25-team ${isSecTeam(t.name) ? "sec" : ""}">
-          ${t.logo ? `<img src="${t.logo}" alt="" onerror="this.style.display='none'">` : ""}
-          <span>${shortenPickDisplay(t.name)}</span>
-        </span>
-      </td>
-      <td class="top25-record">${t.record}</td>
-    </tr>`).join("");
+  // Everyone else in the committee's top 25, under the bracket: logo
+  // tiles with the rank on the corner, like the TV graphic.
+  const rest = bracket.ranked.filter(t => !bracket.seeds.includes(t)).map(t => `
+    <div class="rank-tile ${isSecTeam(t.name) ? "sec" : ""}" title="${escapeHtml(t.name)}${t.record ? ` · ${t.record}` : ""}">
+      <span class="rank-tile-num">${t.rank}</span>
+      ${t.logo ? `<img src="${t.logo}" alt="${escapeHtml(t.name)}" data-grown="1">` : `<span class="rank-tile-name">${escapeHtml(shortenPickDisplay(t.name))}</span>`}
+    </div>`).join("");
 
   const outChip = (t, label) => t ? `<div class="bk-out"><span>${label}</span><strong>${shortenPickDisplay(t.name)}</strong></div>` : "";
   body.innerHTML = `
@@ -452,7 +448,7 @@ async function renderCfpRankings(body) {
       ? "The five highest-ranked conference leaders get in, plus the next seven highest-ranked teams. Seeds follow the rankings."
       : "Conference standings didn't load, so this is simply the top 12. The real field also guarantees spots for five conference champions."}</div>
     ${rest ? `<div class="hub-sub-title bk-rest-title">Rest of the Top 25</div>
-    <table class="top25-table cfp-table"><tbody>${rest}</tbody></table>` : ""}`;
+    <div class="rank-tiles">${rest}</div>` : ""}`;
 }
 
 // Rankings tabs in the Week Info Hub. Tapping the open tab closes it.

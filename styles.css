@@ -4230,3 +4230,55 @@ img.logo-tile {
 .bk-rest-title {
   margin: 1.1rem 0 0.4rem;
 }
+
+/* Rest of the Top 25 as logo tiles, five to a row, rank on the corner. */
+.rank-tiles {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.7rem 0.55rem;
+  padding: 0.4rem 0.2rem 0.2rem;
+}
+
+.rank-tile {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rank-tile img {
+  width: 100%;
+  height: 100%;
+}
+
+.rank-tile-num {
+  position: absolute;
+  top: -0.35rem;
+  left: -0.35rem;
+  z-index: 1;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.2rem;
+  border-radius: 5px;
+  background: var(--bg-main);
+  border: 1px solid var(--accent-gold);
+  color: var(--text-main);
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rank-tile.sec .rank-tile-num {
+  background: var(--accent-gold);
+  color: var(--bg-main);
+}
+
+.rank-tile-name {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-main);
+}
