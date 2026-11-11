@@ -1235,6 +1235,7 @@ const TEAM_LIST_URLS = {
   nfl: ["https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams"]
 };
 const TEAM_COLOR_DAYS = 7;
+const LOGO_TILE_SCALE = 1.15;
 const tileColors = { ncaa: null, nfl: null };
 const tileColorLoads = {};
 
@@ -1320,9 +1321,16 @@ async function tileLogo(img) {
     return;
   }
   const original = img.getAttribute("src");
+  // Tiles are 15% bigger than the logo was, with the logo inset 12%.
   const sizeIt = () => {
-    const w = img.getBoundingClientRect().width || parseFloat(getComputedStyle(img).width) || 0;
-    if (w) img.style.padding = `${Math.max(1, Math.round(w * 0.12))}px`;
+    let w = parseFloat(getComputedStyle(img).width) || img.getBoundingClientRect().width || 0;
+    if (!w) return;
+    if (!img.dataset.grown) {
+      w = Math.round(w * LOGO_TILE_SCALE);
+      img.style.width = img.style.height = `${w}px`;
+      img.dataset.grown = "1";
+    }
+    img.style.padding = `${Math.max(1, Math.round(w * 0.12))}px`;
   };
   img.dataset.tile = "done";
   img.classList.add("logo-tile");
