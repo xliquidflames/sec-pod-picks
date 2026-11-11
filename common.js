@@ -1270,6 +1270,39 @@ function loadTeamColors(league) {
   return tileColorLoads[league];
 }
 
+// Team colors also come from any ESPN data the page loads (scoreboards,
+// schedules), in case the team lists don't. league -> { id: [color, alt] }
+const harvestedColors = { ncaa: {}, nfl: {} };
+function harvestColors(obj, league, depth = 0) {
+  if (!obj || typeof obj !== "object" || depth > 9) return 0;
+  let added = 0;
+  if (obj.id && /^[0-9a-f]{6}$/i.test(obj.color || "")) {
+    const entry = [obj.color, obj.alternateColor || ""];
+    if (!harvestedColors[league][obj.id]) { harvestedColors[league][obj.id] = entry; added++; }
+    if (obj.abbreviation) harvestedColors[league][obj.abbreviation.toLowerCase()] = harvestedColors[league][obj.abbreviation.toLowerCase()] || entry;
+  }
+  for (const v of Array.isArray(obj) ? obj : Object.values(obj)) {
+    if (v && typeof v === "object") added += harvestColors(v, league, depth + 1);
+  }
+  return added;
+}
+const pageFetch = window.fetch.bind(window);
+window.fetch = async (...args) => {
+  const res = await pageFetch(...args);
+  try {
+    const url = String((args[0] && args[0].url) || args[0] || "");
+    if (/espn\.com\/apis\//.test(url) && res.ok) {
+      res.clone().json().then(data => {
+        if (harvestColors(data, /\/nfl\//.test(url) ? "nfl" : "ncaa")) {
+          // Try again on logos that had no color yet.
+          document.querySelectorAll('img[data-tile="none"]').forEach(img => { delete img.dataset.tile; tileLogo(img); });
+        }
+      }).catch(() => {});
+    }
+  } catch (e) {}
+  return res;
+};
+
 // Dark-ish, saturated enough to sit behind a white logo.
 const usableColor = hex => /^[0-9a-f]{6}$/i.test(hex || "") && hex.toLowerCase() !== "ffffff" && hex.toLowerCase() !== "000000" ? hex : "";
 
@@ -1280,7 +1313,7 @@ async function tileLogo(img) {
   img.dataset.tile = "pending";
   const [, league, key] = match;
   const colors = await loadTeamColors(league.toLowerCase());
-  const entry = colors[key.toLowerCase()];
+  const entry = colors[key.toLowerCase()] || harvestedColors[league.toLowerCase()][key.toLowerCase()];
   const color = entry && (usableColor(entry[0]) || usableColor(entry[1]) || entry[0]);
   if (!color) {
     img.dataset.tile = "none";
@@ -1311,11 +1344,29 @@ function tileLogosIn(root) {
   root.querySelectorAll("img").forEach(tileLogo);
 }
 
+// Add ?tiles=debug to a page's address to see what the tiles found.
+function showTileDebug() {
+  const imgs = [...document.querySelectorAll("img")];
+  const espn = imgs.filter(i => /espncdn/.test(i.getAttribute("src") || "") || i.dataset.tile);
+  const count = v => espn.filter(i => i.dataset.tile === v).length;
+  const box = document.createElement("pre");
+  box.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#000;color:#0f0;font-size:11px;padding:8px;white-space:pre-wrap;max-height:45vh;overflow:auto;border:1px solid #0f0";
+  box.textContent = [
+    `logos: ${espn.length}  tiled: ${count("done")}  no color: ${count("none")}  waiting: ${count("pending")}  untouched: ${espn.filter(i => !i.dataset.tile).length}`,
+    `team list colors: ncaa ${Object.keys(tileColors.ncaa || {}).length}, nfl ${Object.keys(tileColors.nfl || {}).length}`,
+    `page data colors: ncaa ${Object.keys(harvestedColors.ncaa).length}, nfl ${Object.keys(harvestedColors.nfl).length}`,
+    "sample logo addresses:",
+    ...espn.slice(0, 4).map(i => i.getAttribute("src"))
+  ].join("\n");
+  document.body.appendChild(box);
+}
+
 // Not on the graphics page: its canvases draw their own logos.
 if (!/graphics\.html$/i.test(location.pathname)) {
   document.addEventListener("DOMContentLoaded", () => {
     tileLogosIn(document.body);
     new MutationObserver(list => list.forEach(m => m.addedNodes.forEach(tileLogosIn)))
       .observe(document.body, { childList: true, subtree: true });
+    if (/[?&]tiles=debug/.test(location.search)) setTimeout(showTileDebug, 8000);
   });
 }
