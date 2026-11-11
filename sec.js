@@ -385,7 +385,7 @@ async function projectBracket() {
     field.splice(field.indexOf(drop), 1);
   }
   const out = ranked.filter(t => !field.includes(t)).slice(0, 2);
-  return { seeds: field, out, autos, usedLeaders: leaders.length > 0, title: poll.headline || poll.name || "" };
+  return { seeds: field, out, autos, ranked, usedLeaders: leaders.length > 0, title: poll.headline || poll.name || "" };
 }
 
 async function renderCfpRankings(body) {
@@ -428,6 +428,18 @@ async function renderCfpRankings(body) {
   cells.push(`<div class="bk-cell bk-link" style="grid-column: 6; grid-row: 1 / span 8;"><span class="bk-join"></span></div>`);
   cells.push(`<div class="bk-cell bk-final" style="grid-row: 1 / span 8;"><div class="bk-trophy">&#127942;</div>${game(slot(null), slot(null))}</div>`);
 
+  // Everyone else in the committee's top 25, under the bracket.
+  const rest = bracket.ranked.filter(t => !bracket.seeds.includes(t)).map(t => `<tr>
+      <td class="top25-rank">${t.rank}</td>
+      <td class="top25-cell">
+        <span class="top25-team ${isSecTeam(t.name) ? "sec" : ""}">
+          ${t.logo ? `<img src="${t.logo}" alt="" onerror="this.style.display='none'">` : ""}
+          <span>${shortenPickDisplay(t.name)}</span>
+        </span>
+      </td>
+      <td class="top25-record">${t.record}</td>
+    </tr>`).join("");
+
   const outChip = (t, label) => t ? `<div class="bk-out"><span>${label}</span><strong>${shortenPickDisplay(t.name)}</strong></div>` : "";
   body.innerHTML = `
     <div class="rankings-caption">Projected bracket from the ${escapeHtml(bracket.title || "committee's rankings")}</div>
@@ -438,7 +450,9 @@ async function renderCfpRankings(body) {
     <div class="bk-outs">${outChip(bracket.out[0], "First team out")}${outChip(bracket.out[1], "Second team out")}</div>
     <div class="bk-note">${bracket.usedLeaders
       ? "The five highest-ranked conference leaders get in, plus the next seven highest-ranked teams. Seeds follow the rankings."
-      : "Conference standings didn't load, so this is simply the top 12. The real field also guarantees spots for five conference champions."}</div>`;
+      : "Conference standings didn't load, so this is simply the top 12. The real field also guarantees spots for five conference champions."}</div>
+    ${rest ? `<div class="hub-sub-title bk-rest-title">Rest of the Top 25</div>
+    <table class="top25-table cfp-table"><tbody>${rest}</tbody></table>` : ""}`;
 }
 
 // Rankings tabs in the Week Info Hub. Tapping the open tab closes it.

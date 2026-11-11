@@ -4225,3 +4225,8 @@ img.logo-tile {
 img.logo-tile {
   aspect-ratio: 1 / 1;
 }
+
+/* "Rest of the Top 25" under the playoff bracket. */
+.bk-rest-title {
+  margin: 1.1rem 0 0.4rem;
+}
