@@ -7,7 +7,7 @@
   <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=43"></script>
-  <script src="common.js?v=64"></script>
+  <script src="common.js?v=65"></script>
   <script src="sec.js?v=48"></script>
   <link rel="stylesheet" href="styles.css?v=72" />
 </head>
@@ -1387,6 +1387,9 @@
     // The current week runs until midnight after its last kickoff (no
     // game-length buffer, which could push a late Saturday kickoff past midnight).
     startLeaderboard(lastKickoff => nextDayStart(lastKickoff));
+
+    // The playoff bracket starts open in the Info Hub.
+    showRankTab("cfp");
   </script>
 </body>
 </html>
