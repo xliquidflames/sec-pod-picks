@@ -4237,3 +4237,8 @@ img.logo-tile {
   grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
   gap: 0.5rem;
 }
+
+.rank-tiles .bk-game {
+  border: none;
+  background: none;
+}
