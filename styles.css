@@ -4210,3 +4210,18 @@ a.btn-submit.bk-cta {
 .nfl-my-team {
   margin: 0 0 1rem;
 }
+
+/* ---- Logo tiles ----
+   Team logos as rounded squares in the team's color (common.js sets the
+   color and padding). Replaces the white glow. */
+img.logo-tile {
+  box-sizing: border-box;
+  object-fit: contain;
+  border-radius: 18%;
+  filter: none !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+img.logo-tile {
+  aspect-ratio: 1 / 1;
+}

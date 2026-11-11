@@ -1023,8 +1023,8 @@ function updateSubmitButton(weekNum, page) {
   }
 }
 
-// Moves the signed-in player's card to the top of the week's list, with a
-// little space below it. Their rank badge still shows where they stand.
+// Moves the signed-in player's card to the top of the week's list, open,
+// with a little space below it. Their rank badge still shows where they stand.
 function pinMyCard() {
   let name = "";
   try { name = localStorage.getItem("secPickEmUserName") || ""; } catch (e) {}
@@ -1035,6 +1035,9 @@ function pinMyCard() {
   if (!card || list.children.length < 2) return;
   card.classList.add("pinned-me");
   list.prepend(card);
+  // Their own card starts open; everyone else's stays closed.
+  const body = card.querySelector(".cousin-picks-body");
+  if (body) body.classList.add("open");
 }
 
 // Season podium: most correct picks, then fewest losses. An identical record
@@ -1217,4 +1220,102 @@ function resetSubmitButton() {
   const submitBtn = document.getElementById("submitBtn");
   submitBtn.disabled = false;
   submitBtn.textContent = submitBtn.dataset.label || "Submit Ballot";
+}
+
+// ---- Logo tiles ----
+// Every ESPN team logo on the page becomes a rounded square in the team's
+// color with the white version of its logo, like the CFP rankings graphic.
+// Team colors come from ESPN's team lists, saved on the device for a week.
+const LOGO_RE = /^https:\/\/a\.espncdn\.com\/i\/teamlogos\/(ncaa|nfl)\/500(?:-dark)?\/(?:scoreboard\/)?([a-z0-9]+)\.png/i;
+const TEAM_LIST_URLS = {
+  ncaa: [
+    "https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?groups=80&limit=300",
+    "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=400"
+  ],
+  nfl: ["https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams"]
+};
+const TEAM_COLOR_DAYS = 7;
+const tileColors = { ncaa: null, nfl: null };
+const tileColorLoads = {};
+
+// league -> { idOrAbbr: [color, alternateColor] }
+function loadTeamColors(league) {
+  if (tileColors[league]) return Promise.resolve(tileColors[league]);
+  if (tileColorLoads[league]) return tileColorLoads[league];
+  tileColorLoads[league] = (async () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`teamColors_${league}`) || "null");
+      if (saved && Date.now() - saved.at < TEAM_COLOR_DAYS * 864e5) return (tileColors[league] = saved.colors);
+    } catch (e) {}
+    const colors = {};
+    for (const url of TEAM_LIST_URLS[league]) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const teams = (((data.sports || [])[0] || {}).leagues || [])[0];
+        ((teams && teams.teams) || []).forEach(({ team }) => {
+          if (!team || !team.color) return;
+          const entry = [team.color, team.alternateColor || ""];
+          if (team.id && !colors[team.id]) colors[team.id] = entry;
+          if (team.abbreviation) colors[team.abbreviation.toLowerCase()] = colors[team.abbreviation.toLowerCase()] || entry;
+        });
+      } catch (e) {}
+    }
+    if (Object.keys(colors).length) {
+      try { localStorage.setItem(`teamColors_${league}`, JSON.stringify({ at: Date.now(), colors })); } catch (e) {}
+    }
+    return (tileColors[league] = colors);
+  })();
+  return tileColorLoads[league];
+}
+
+// Dark-ish, saturated enough to sit behind a white logo.
+const usableColor = hex => /^[0-9a-f]{6}$/i.test(hex || "") && hex.toLowerCase() !== "ffffff" && hex.toLowerCase() !== "000000" ? hex : "";
+
+async function tileLogo(img) {
+  if (img.dataset.tile) return;
+  const match = (img.getAttribute("src") || "").match(LOGO_RE);
+  if (!match) return;
+  img.dataset.tile = "pending";
+  const [, league, key] = match;
+  const colors = await loadTeamColors(league.toLowerCase());
+  const entry = colors[key.toLowerCase()];
+  const color = entry && (usableColor(entry[0]) || usableColor(entry[1]) || entry[0]);
+  if (!color) {
+    img.dataset.tile = "none";
+    return;
+  }
+  const original = img.getAttribute("src");
+  const sizeIt = () => {
+    const w = img.getBoundingClientRect().width || parseFloat(getComputedStyle(img).width) || 0;
+    if (w) img.style.padding = `${Math.max(1, Math.round(w * 0.12))}px`;
+  };
+  img.dataset.tile = "done";
+  img.classList.add("logo-tile");
+  img.style.backgroundColor = `#${color}`;
+  img.onerror = () => {
+    // No white version: the normal logo on a light tile instead.
+    img.onerror = null;
+    img.style.backgroundColor = "#f1f5f9";
+    img.src = original;
+  };
+  img.src = `https://a.espncdn.com/i/teamlogos/${league.toLowerCase()}/500-dark/${key}.png`;
+  sizeIt();
+  if (!img.style.padding) img.addEventListener("load", sizeIt, { once: true });
+}
+
+function tileLogosIn(root) {
+  if (!root || !root.querySelectorAll) return;
+  if (root.tagName === "IMG") tileLogo(root);
+  root.querySelectorAll("img").forEach(tileLogo);
+}
+
+// Not on the graphics page: its canvases draw their own logos.
+if (!/graphics\.html$/i.test(location.pathname)) {
+  document.addEventListener("DOMContentLoaded", () => {
+    tileLogosIn(document.body);
+    new MutationObserver(list => list.forEach(m => m.addedNodes.forEach(tileLogosIn)))
+      .observe(document.body, { childList: true, subtree: true });
+  });
 }
