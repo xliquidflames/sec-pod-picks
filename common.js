@@ -1046,26 +1046,6 @@ function pinMyCard() {
 // opened cards. lower-case name -> { c, i }
 let seasonRecords = {};
 
-// Steps fit their names, but 1st always stands tallest, then 2nd, then 3rd.
-function sizePodiumSteps(root) {
-  const fit = () => {
-    const step = metal => root.querySelector(`.pod-${metal} .pod-step`);
-    const steps = ["gold", "silver", "bronze"].map(step);
-    if (!steps[0]) return;
-    steps.forEach(el => { if (el) el.style.height = "auto"; });
-    const need = steps.map(el => (el ? el.offsetHeight : 0));
-    if (!need[0]) return;
-    const bronze = Math.max(need[2], 70);
-    const silver = Math.max(need[1], bronze + 22);
-    const gold = Math.max(need[0], silver + 22);
-    [gold, silver, bronze].forEach((h, i) => { if (steps[i]) steps[i].style.height = `${h}px`; });
-  };
-  fit();
-  // Again once logos have their size.
-  setTimeout(fit, 400);
-  setTimeout(fit, 1500);
-}
-
 function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
   seasonRecords = {};
   totals.forEach(t => { seasonRecords[(t.user_name || "").toLowerCase()] = { c: t.correct, i: t.incorrect }; });
@@ -1089,34 +1069,20 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
     .sort((a, b) => (b.correct - a.correct) || (a.incorrect - b.incorrect))
     .slice(0, 3);
 
-  // A real podium: 2nd, 1st, 3rd left to right, each a trophy in its
-  // metal with the names on it, standing on a step with the record.
-  const metals = ["gold", "silver", "bronze"];
-  const trophy = metal => `
-    <svg class="pod-trophy" viewBox="0 0 64 64" aria-hidden="true">
-      <path class="pod-metal" d="M18 6h28v14c0 9-6 16-14 16s-14-7-14-16z"/>
-      <path class="pod-handle" d="M18 11h-8c0 8 4 13 10 14M46 11h8c0 8-4 13-10 14"/>
-      <rect class="pod-metal" x="28" y="35" width="8" height="9"/>
-      <rect class="pod-metal" x="20" y="44" width="24" height="5" rx="1"/>
-      <rect class="pod-base" x="16" y="49" width="32" height="9" rx="2"/>
-      <path d="M24 10v10c0 5 2 9 5 11" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="2.5" stroke-linecap="round"/>
-    </svg>`;
-  const spot = (tier, idx) => {
-    if (!tier) return `<div class="pod-spot pod-${metals[idx]} empty"></div>`;
+  const podiumRankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
+
+  // One row per place: the badge, everyone at that record, then the record.
+  top5Container.innerHTML = podiumTiers.map((tier, idx) => {
     const names = [...tier.members].sort((a, b) => a.user_name.localeCompare(b.user_name))
-      .map(m => `<span class="pod-name">${podiumLogoHtml(m.user_name)}<span>${m.user_name}</span></span>`).join("");
+      .map(m => `<span class="podium-name"><strong>${m.user_name}</strong>${podiumLogoHtml(m.user_name)}</span>`).join("");
     return `
-      <div class="pod-spot pod-${metals[idx]}">
-        ${trophy(metals[idx])}
-        <div class="pod-step">
-          <span class="pod-place">${idx + 1}</span>
-          <span class="pod-record">${tier.correct}-${tier.incorrect}</span>
-          <div class="pod-names">${names}</div>
-        </div>
-      </div>`;
-  };
-  top5Container.innerHTML = `<div class="podium">${spot(podiumTiers[1], 1)}${spot(podiumTiers[0], 0)}${spot(podiumTiers[2], 2)}</div>`;
-  sizePodiumSteps(top5Container);
+      <div class="top3-item podium-row">
+        <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">${idx + 1}</span>
+        <div class="podium-names">${names}</div>
+        <span class="podium-record">${tier.correct}-${tier.incorrect}</span>
+      </div>
+    `;
+  }).join("");
 
   if (decisionLog) {
     const placeLabels = ["1st Place", "2nd Place", "3rd Place"];

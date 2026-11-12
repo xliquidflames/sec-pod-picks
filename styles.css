@@ -4243,97 +4243,35 @@ img.logo-tile {
   background: none;
 }
 
-/* ---- Season podium: trophies on tiered steps ---- */
-.podium {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  align-items: end;
-  gap: 0.3rem;
-  padding-top: 0.5rem;
-}
-
-.pod-spot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 0;
-}
-
-.pod-gold   { --metal: #fbbf24; --metal-dark: #b8860b; }
-.pod-silver { --metal: #d7dde5; --metal-dark: #8a96a6; }
-.pod-bronze { --metal: #d98b4a; --metal-dark: #8b4f22; }
-
-.pod-trophy {
-  width: 54px;
-  height: 54px;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
-}
-
-.pod-gold .pod-trophy {
-  width: 68px;
-  height: 68px;
-}
-
-.pod-metal { fill: var(--metal); }
-.pod-handle { fill: none; stroke: var(--metal); stroke-width: 4; stroke-linecap: round; }
-.pod-base { fill: var(--metal-dark); }
-
-.pod-names {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  width: 100%;
-  margin-top: 0.45rem;
-  padding: 0 0.15rem 0.5rem;
-}
-
-/* Logo on top, name under it on one line. */
-.pod-name {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.1rem;
-  width: 100%;
-  font-size: 0.68rem;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.pod-name > span {
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.pod-name img {
-  width: 18px;
-  height: 18px;
-}
-
-.pod-step {
-  width: 100%;
-  margin-top: 0.35rem;
-  border-radius: 8px 8px 0 0;
-  background: linear-gradient(180deg, var(--metal) 0%, var(--metal-dark) 100%);
-  display: flex;
-  flex-direction: column;
+/* Season podium rows: every name at that place on the badge's line. */
+.podium-row {
   align-items: center;
   justify-content: flex-start;
-  padding-top: 0.35rem;
-  color: #0f172a;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  gap: 0;
 }
 
-.pod-place {
-  font-size: 1.35rem;
-  font-weight: 900;
-  line-height: 1;
+.podium-names {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.85rem;
 }
 
-.pod-record {
-  font-size: 0.8rem;
+.podium-name {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.podium-record {
+  flex-shrink: 0;
+  margin-left: 0.5rem;
   font-weight: 800;
-  margin-top: 0.15rem;
+  color: var(--accent-gold);
+}
+
+.podium-row .rank-badge {
+  flex-shrink: 0;
 }
