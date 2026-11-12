@@ -520,6 +520,7 @@ function championWeeksHtml(name) {
 const podiumLogoHtml = name => favoriteLogoHtml(playerFavorites[(name || "").toLowerCase()]);
 
 // Logo and titles after a player's name on a card.
+// Site rule: a player's favorite-team logo always goes before their name.
 const playerBadgesHtml = name => favoriteLogoHtml(playerFavorites[(name || "").toLowerCase()]) + championChipsHtml(name);
 
 // Top of an opened card: weeks won and how far back, kept off the
@@ -588,7 +589,7 @@ function renderChampionLine(weekNum) {
   const names = championsByWeek[week];
   line.innerHTML = `<div class="pulse-label">&#127942; ${weekName(week)} ${names.length > 1 ? "Champions" : "Champion"}</div>
     <div class="pulse-stat">${championRecords[week] || ""}</div>
-    <div class="champion-line-names">${names.map(n => `<span>${escapeHtml(n)}${podiumLogoHtml(n)}</span>`).join("")}</div>`;
+    <div class="champion-line-names">${names.map(n => `<span>${podiumLogoHtml(n)}${escapeHtml(n)}</span>`).join("")}</div>`;
   line.style.display = "";
 }
 
@@ -1074,7 +1075,7 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
   // One row per place: the badge, everyone at that record, then the record.
   top5Container.innerHTML = podiumTiers.map((tier, idx) => {
     const names = [...tier.members].sort((a, b) => a.user_name.localeCompare(b.user_name))
-      .map(m => `<span class="podium-name"><strong>${m.user_name}</strong>${podiumLogoHtml(m.user_name)}</span>`).join("");
+      .map(m => `<span class="podium-name">${podiumLogoHtml(m.user_name)}<strong>${m.user_name}</strong></span>`).join("");
     return `
       <div class="top3-item podium-row">
         <span class="rank-badge ${podiumRankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">${idx + 1}</span>

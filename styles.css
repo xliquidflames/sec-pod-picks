@@ -227,7 +227,7 @@ header {
 .tier-names-grid .fav-logo {
   width: 1.1rem;
   height: 1.1rem;
-  margin: 0 0 0 0.3rem;
+  margin: 0 0.3rem 0 0;
   vertical-align: middle;
 }
 
@@ -3379,7 +3379,8 @@ a.btn-submit.bk-cta {
   height: 1.27rem;
   object-fit: contain;
   vertical-align: -0.25rem;
-  margin: 0 0.15rem 0 0.3rem;
+  /* Logos sit to the left of names everywhere. */
+  margin: 0 0.3rem 0 0;
   filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.25));
 }
 
