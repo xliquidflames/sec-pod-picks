@@ -4248,7 +4248,7 @@ img.logo-tile {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   align-items: end;
-  gap: 0.4rem;
+  gap: 0.3rem;
   padding-top: 0.5rem;
 }
 
@@ -4259,9 +4259,9 @@ img.logo-tile {
   min-width: 0;
 }
 
-.pod-gold   { --metal: #fbbf24; --metal-dark: #b8860b; --step: 92px; }
-.pod-silver { --metal: #d7dde5; --metal-dark: #8a96a6; --step: 66px; }
-.pod-bronze { --metal: #d98b4a; --metal-dark: #8b4f22; --step: 46px; }
+.pod-gold   { --metal: #fbbf24; --metal-dark: #b8860b; }
+.pod-silver { --metal: #d7dde5; --metal-dark: #8a96a6; }
+.pod-bronze { --metal: #d98b4a; --metal-dark: #8b4f22; }
 
 .pod-trophy {
   width: 54px;
@@ -4282,35 +4282,39 @@ img.logo-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  margin: 0.3rem 0 0.45rem;
-  max-width: 100%;
+  gap: 0.35rem;
+  width: 100%;
+  margin-top: 0.45rem;
+  padding: 0 0.15rem 0.5rem;
 }
 
+/* Logo on top, name under it on one line. */
 .pod-name {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  max-width: 100%;
-  font-size: 0.78rem;
-  font-weight: 700;
+  gap: 0.1rem;
+  width: 100%;
+  font-size: 0.68rem;
+  font-weight: 800;
   line-height: 1.2;
-  text-align: center;
-  overflow-wrap: anywhere;
 }
 
-.pod-gold .pod-name {
-  font-size: 0.88rem;
+.pod-name > span {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pod-name img {
-  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
 }
 
 .pod-step {
   width: 100%;
-  height: var(--step);
+  margin-top: 0.35rem;
   border-radius: 8px 8px 0 0;
   background: linear-gradient(180deg, var(--metal) 0%, var(--metal-dark) 100%);
   display: flex;
