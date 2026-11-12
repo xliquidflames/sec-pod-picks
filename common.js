@@ -1235,7 +1235,10 @@ const TEAM_LIST_URLS = {
   nfl: ["https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams"]
 };
 const TEAM_COLOR_DAYS = 7;
-const LOGO_TILE_SCALE = 1.15;
+// Square team-color tiles behind logos. Off: logos show with the glow.
+const LOGO_TILES_ON = false;
+// Every ESPN team logo is drawn this much bigger than its spot's size.
+const LOGO_TILE_SCALE = 1.25;
 const tileColors = { ncaa: null, nfl: null };
 const tileColorLoads = {};
 
@@ -1307,7 +1310,23 @@ window.fetch = async (...args) => {
 // Dark-ish, saturated enough to sit behind a white logo.
 const usableColor = hex => /^[0-9a-f]{6}$/i.test(hex || "") && hex.toLowerCase() !== "ffffff" && hex.toLowerCase() !== "000000" ? hex : "";
 
+// Tiles off: just make the logo bigger and leave the glow.
+function growLogo(img) {
+  if (img.dataset.grown || !LOGO_RE.test(img.getAttribute("src") || "")) return;
+  const grow = () => {
+    const w = parseFloat(getComputedStyle(img).width) || img.getBoundingClientRect().width || 0;
+    if (!w || img.dataset.grown) return;
+    const size = `${Math.round(w * LOGO_TILE_SCALE)}px`;
+    img.style.width = img.style.height = size;
+    if (getComputedStyle(img.parentElement).display.includes("flex")) img.style.flexBasis = size;
+    img.dataset.grown = "1";
+  };
+  grow();
+  if (!img.dataset.grown) img.addEventListener("load", grow, { once: true });
+}
+
 async function tileLogo(img) {
+  if (!LOGO_TILES_ON) return growLogo(img);
   if (img.dataset.tile) return;
   const match = (img.getAttribute("src") || "").match(LOGO_RE);
   if (!match) return;
@@ -1375,6 +1394,6 @@ if (!/graphics\.html$/i.test(location.pathname)) {
     tileLogosIn(document.body);
     new MutationObserver(list => list.forEach(m => m.addedNodes.forEach(tileLogosIn)))
       .observe(document.body, { childList: true, subtree: true });
-    if (/[?&]tiles=debug/.test(location.search)) setTimeout(showTileDebug, 8000);
+    if (LOGO_TILES_ON && /[?&]tiles=debug/.test(location.search)) setTimeout(showTileDebug, 8000);
   });
 }
