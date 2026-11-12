@@ -4287,38 +4287,3 @@ img.logo-tile {
   border-radius: 8px;
   background: #000;
 }
-
-/* Phones: the big section cards drop their own background and side
-   padding, so their contents sit on the page and use the full width. */
-@media (max-width: 640px) {
-  body {
-    padding-left: 0.6rem;
-    padding-right: 0.6rem;
-  }
-
-  .site-nav {
-    margin-left: -0.6rem;
-    margin-right: -0.6rem;
-    padding-left: 0.6rem;
-    padding-right: 0.6rem;
-  }
-
-  .elevated-card,
-  .season-standings-card {
-    background: transparent;
-    box-shadow: none;
-    border-radius: 0;
-    padding: 0.5rem 0 1rem;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  /* The schedule graphic runs edge to edge in its card. */
-  .my-team-graphic {
-    width: calc(100% + 1.6rem);
-    max-width: none;
-    margin-left: -0.8rem;
-    margin-right: -0.8rem;
-    border-radius: 0;
-  }
-}
