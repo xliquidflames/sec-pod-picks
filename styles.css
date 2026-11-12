@@ -4192,15 +4192,12 @@ a.btn-submit.bk-cta {
   margin-top: 0.5rem;
 }
 
-/* Their team's games: a gold edge. */
-.host-grid-table tr.fav-game > td.matchup-cell {
-  box-shadow: inset 3px 0 0 var(--accent-gold);
-}
-
+/* Their team's games: a stripe on the left in the team's two colors
+   (common.js sets --fav-1 and --fav-2). The gold box is only for live games. */
+.host-grid-table tr.fav-game > td.matchup-cell,
 .schedule-row.fav-game,
 .hoops-game.fav-game {
-  border-color: var(--accent-gold);
-  box-shadow: inset 3px 0 0 var(--accent-gold);
+  box-shadow: inset 4px 0 0 var(--fav-1, var(--accent-gold)), inset 8px 0 0 var(--fav-2, var(--accent-gold));
 }
 
 /* Season record chip at the top of an opened card. */

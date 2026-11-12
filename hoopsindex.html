@@ -7,9 +7,9 @@
   <title data-site-text="{name} Hoops Pick'em">That SEC Podcast Hoops Pick'em</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=77"></script>
+  <script src="common.js?v=78"></script>
   <script src="hoops.js?v=3"></script>
-  <link rel="stylesheet" href="styles.css?v=89" />
+  <link rel="stylesheet" href="styles.css?v=90" />
   <style>
     /* This week's games, two to a row, under a divider for each day. */
     .hoops-games {
@@ -369,12 +369,16 @@
 
           // One short line under the logos: kickoff time before the game,
           // otherwise each team's score under its logo with the status between.
+          // Only real halftime. ESPN's detail also says "2nd Half" during
+          // the second half and "End of 2nd Half" before the final.
+          const halftime = st => (st.type && st.type.name) === "STATUS_HALFTIME" ||
+            /^halftime$/i.test(((st.type && (st.type.shortDetail || st.type.detail)) || "").trim());
           let detail = "TBD";
           if (isFinal || isLive) {
             const st = comp.status || {};
             const status = isFinal
               ? ((st.period || 0) > 2 ? "F/OT" : "Final")
-              : (/half/i.test((st.type && st.type.detail) || "") ? "Half" : ((st.period || 0) > 2 ? "OT" : `${st.period || 1}H`));
+              : halftime(st) ? "Half" : ((st.period || 0) > 2 ? "OT" : `${st.period || 1}H`);
             const scoreSpan = c => `<span class="matchup-score ${c.winner === true ? "won" : ""}">${c.score !== undefined ? c.score : ""}</span>`;
             detail = `<span class="matchup-score-row">${scoreSpan(away)}<span class="matchup-status">${status}</span>${scoreSpan(home)}</span>`;
           } else if (comp.date) {

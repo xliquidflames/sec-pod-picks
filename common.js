@@ -69,6 +69,30 @@ const MY_TEAM_FEEDS = {
 };
 const myTeamCache = {};
 
+// Their team's games get a stripe on the left in the team's two colors,
+// set here as --fav-1 and --fav-2 (gold until the colors load). A second
+// color that's missing, near white or near black repeats the first.
+async function setFavColors(sport, id, t) {
+  let main = t.color, alt = t.alternateColor;
+  if (!main || !alt) {
+    try {
+      const list = await loadTeamColors(sport === "nfl" ? "nfl" : "ncaa");
+      const c = list && list[id];
+      if (c) { main = main || c[0]; alt = alt || c[1]; }
+    } catch (e) {}
+  }
+  if (!/^[0-9a-f]{6}$/i.test(main || "")) return;
+  const light = hex => {
+    const n = parseInt(hex, 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  };
+  const usable = /^[0-9a-f]{6}$/i.test(alt || "") && alt.toLowerCase() !== main.toLowerCase() &&
+    light(alt) < 0.9 && light(alt) > 0.08;
+  const root = document.documentElement.style;
+  root.setProperty("--fav-1", `#${main}`);
+  root.setProperty("--fav-2", `#${usable ? alt : main}`);
+}
+
 async function renderMyTeam() {
   const section = document.getElementById("myTeamSection");
   const box = document.getElementById("myTeamBox");
@@ -98,6 +122,7 @@ async function renderMyTeam() {
     }
   }
   const data = myTeamCache[key];
+  setFavColors(sport, team.id, data.team || {});
   const score = v => v === null || v === undefined ? "" : typeof v === "object" ? String(v.displayValue ?? v.value ?? "") : String(v);
   const logoOf = t => (t.logos && t.logos[0] && t.logos[0].href) || t.logo || "";
 
