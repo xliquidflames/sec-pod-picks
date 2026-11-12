@@ -7,9 +7,11 @@
   <title data-site-text="{name} Pick'em Headquarters">That SEC Podcast Pick'em Headquarters</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=43"></script>
-  <script src="common.js?v=75"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&display=swap" rel="stylesheet" />
+  <script src="schedule-graphic.js?v=1"></script>
+  <script src="common.js?v=76"></script>
   <script src="sec.js?v=51"></script>
-  <link rel="stylesheet" href="styles.css?v=81" />
+  <link rel="stylesheet" href="styles.css?v=82" />
 </head>
 <body>
 
@@ -92,7 +94,6 @@
           <h2 class="section-title" id="weekHostTitle">Week 1 Info Hub</h2>
           <span id="hostGridArrow" class="host-toggle-badge">&#9662;</span>
         </div>
-        <div class="week-pod-links" id="weekPodLinks" style="display: none;"></div>
         <!-- Rankings: tap a tab to open it, tap it again to close. -->
         <div class="hub-rankings">
           <div class="hub-rankings-bar">
@@ -588,7 +589,6 @@
 
       document.getElementById("weekHostTitle").textContent = `${weekName(weekNum)} Info Hub`;
       document.getElementById("weekGamesTitle").textContent = `${weekName(weekNum)} Games`;
-      fillWeekPodLinks(document.getElementById("weekPodLinks"), weekNum);
       document.getElementById("weekCousinsTitle").textContent = `The ${possessive(SITE.players.many)} ${weekName(weekNum)} Picks`;
 
       updateSubmitButton(weekNum, "makepicks.html");

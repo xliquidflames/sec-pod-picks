@@ -4276,3 +4276,14 @@ img.logo-tile {
 .podium-row .rank-badge {
   flex-shrink: 0;
 }
+
+/* Your Team: the Team Schedule graphic, full card width. */
+.my-team-graphic {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  margin-top: 0.75rem;
+  border-radius: 8px;
+  background: #000;
+}

@@ -172,6 +172,16 @@ async function renderMyTeam() {
   const rankNow = (live || next || last || {}).myRank || "";
   const scheduleButton = typeof openTeamSchedule === "function"
     ? `<button type="button" class="btn-ctrl my-team-btn" onclick="openTeamSchedule('${team.id}', '${escapeHtml(team.name).replace(/'/g, "&#39;")}', '${escapeHtml(team.logo || "")}')">Full Schedule</button>` : "";
+  // SEC football: the Team Schedule graphic in place of Last, Next and
+  // the Full Schedule button (a live score still shows above it).
+  const graphic = sport === "cfb" && typeof drawTeamScheduleGraphic === "function";
+  if (graphic) {
+    rows.length = 0;
+    if (live) rows.push(`<div class="my-team-row live"><span class="my-team-tag">Live</span>
+      <span class="my-team-opp">${oppHtml(live)}</span>
+      <span class="my-team-result">${live.myScore}-${live.oppScore} · ${escapeHtml(live.detail)}</span></div>`);
+    rows.push(`<canvas class="my-team-graphic" width="1920" height="1080"></canvas>`);
+  }
   box.innerHTML = `
     <div class="my-team-head">
       ${team.logo ? `<img class="my-team-logo" src="${escapeHtml(team.logo)}" alt="">` : ""}
@@ -181,7 +191,16 @@ async function renderMyTeam() {
       </div>
     </div>
     ${rows.join("")}
-    ${scheduleButton}`;
+    ${graphic ? "" : scheduleButton}`;
+  if (graphic) {
+    const canvas = box.querySelector(".my-team-graphic");
+    const drawn = await drawTeamScheduleGraphic(canvas, team.id, data).catch(() => false);
+    // Not one of the 16 SEC teams: back to the plain rows.
+    if (!drawn) {
+      canvas.remove();
+      box.insertAdjacentHTML("beforeend", scheduleButton);
+    }
+  }
 }
 
 // ---- Favorite team prompt ----
