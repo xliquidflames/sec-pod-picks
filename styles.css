@@ -320,6 +320,8 @@ header {
 
 .week-dropdown {
   flex: 1;
+  /* Long week names (postseason) can't push the Next button off screen. */
+  min-width: 0;
   background: var(--bg-card);
   border: 1px solid var(--accent-gold);
   color: var(--accent-gold);
@@ -4289,13 +4291,21 @@ img.logo-tile {
   background: #000;
 }
 
-/* Your Team: season stat ranks and player leaders. */
+/* Your Team: stat ranks on the left, player leaders beside them. */
 .my-team-stats {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 0.9rem;
+  align-items: start;
   margin-top: 0.8rem;
 }
 
+.my-team-col {
+  min-width: 0;
+}
+
 .my-team-sub {
-  margin: 0.7rem 0 0.4rem;
+  margin: 0 0 0.4rem;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -4303,28 +4313,26 @@ img.logo-tile {
   color: var(--accent-gold);
 }
 
-.my-team-sub span {
-  margin-left: 0.3rem;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--text-muted);
-}
-
 .my-stat-grid {
   display: grid;
-  grid-template-columns: 1fr 4.2rem 4.2rem;
+  grid-template-columns: auto 2.5rem 2.5rem;
   align-items: center;
-  gap: 0.35rem 0.5rem;
+  gap: 0.35rem 0.3rem;
+}
+
+.my-stat-grid .stat-rank {
+  font-size: 0.72rem;
 }
 
 .my-stat-label {
-  font-size: 0.82rem;
+  padding-right: 0.15rem;
+  font-size: 0.75rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .my-stat-head {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 800;
   text-align: center;
   text-transform: uppercase;
@@ -4332,31 +4340,34 @@ img.logo-tile {
 }
 
 .my-leader {
-  display: grid;
-  grid-template-columns: 4.6rem 1fr;
-  column-gap: 0.5rem;
-  padding: 0.35rem 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem 0;
   border-top: 1px solid var(--border-color);
-  font-size: 0.82rem;
+  line-height: 1.2;
 }
 
 .my-leader-cat {
-  grid-row: span 2;
-  align-self: center;
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   font-weight: 800;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
 .my-leader-name {
+  font-size: 0.78rem;
   font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.my-leader-stat span {
+  white-space: nowrap;
 }
 
 .my-leader-stat {
-  font-size: 0.75rem;
-  color: var(--accent-gold);
+  font-size: 0.7rem;
   font-weight: 700;
+  color: var(--accent-gold);
 }
 
 /* Rest of the Top 25 stays at the old small size. */

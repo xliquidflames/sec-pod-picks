@@ -1369,8 +1369,8 @@ async function fillMyTeamStats(box, team) {
     const pill = key => mine[key] ? `<span class="stat-rank ${tier(mine[key], key)}">#${mine[key]}</span>` : `<span class="stat-rank none">-</span>`;
     const cells = STAT_MATCHUPS.filter(([off, def]) => mine[off] || mine[def]).map(([off, def, label]) =>
       `<span class="my-stat-label">${label}</span>${pill(off)}${pill(def)}`).join("");
-    if (cells) parts.push(`<div class="my-team-sub">Team Stats <span>national rank</span></div>
-      <div class="my-stat-grid"><span></span><span class="my-stat-head">Offense</span><span class="my-stat-head">Defense</span>${cells}</div>`);
+    if (cells) parts.push(`<div class="my-team-col"><div class="my-team-sub">Team Stats</div>
+      <div class="my-stat-grid"><span></span><span class="my-stat-head">Off</span><span class="my-stat-head">Def</span>${cells}</div></div>`);
   }
 
   if (leadersRes.status === "fulfilled") {
@@ -1382,10 +1382,10 @@ async function fillMyTeamStats(box, team) {
       return `<div class="my-leader">
         <span class="my-leader-cat">${label}</span>
         <span class="my-leader-name">${escapeHtml(v.name)}</span>
-        <span class="my-leader-stat">${[main(v), ...more].join(" · ")}</span>
+        <span class="my-leader-stat">${[main(v), ...more].map(x => `<span>${x}</span>`).join(" · ")}</span>
       </div>`;
     }).join("");
-    if (rows) parts.push(`<div class="my-team-sub">Leaders</div>${rows}`);
+    if (rows) parts.push(`<div class="my-team-col"><div class="my-team-sub">Leaders</div>${rows}</div>`);
   }
 
   if (parts.length) holder.innerHTML = parts.join("");
