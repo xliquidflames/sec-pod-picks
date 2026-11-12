@@ -4293,15 +4293,21 @@ img.logo-tile {
 
 /* Your Team: stat ranks on the left, player leaders beside them. */
 .my-team-stats {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
+  /* Leaders sit as far right as they fit, still left-aligned inside. */
+  justify-content: space-between;
   gap: 0 0.9rem;
-  align-items: start;
+  align-items: flex-start;
   margin-top: 0.8rem;
 }
 
 .my-team-col {
+  flex: 0 1 auto;
   min-width: 0;
+}
+
+.my-team-col:first-child {
+  flex: none;
 }
 
 .my-team-sub {
