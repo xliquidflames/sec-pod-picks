@@ -1078,7 +1078,8 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
   top5Container.innerHTML = podiumTiers.map((tier, idx) => {
     const isTie = tier.members.length > 1;
     const rep = tier.members[0];
-    const label = isTie ? `${tier.members.length}-way tie` : rep.user_name;
+    // Ties: the names underneath say it, so no label.
+    const label = isTie ? "" : rep.user_name;
     const gridId = `tierNames_${idx}`;
     return `
       <div class="top3-item" style="flex-direction: column; align-items: stretch;">
