@@ -201,6 +201,8 @@ async function renderMyTeam() {
       box.insertAdjacentHTML("beforeend", scheduleButton);
     }
   }
+  // Season stat ranks and player leaders, where the page has them.
+  if (typeof fillMyTeamStats === "function") fillMyTeamStats(box, data.team || {});
 }
 
 // ---- Favorite team prompt ----

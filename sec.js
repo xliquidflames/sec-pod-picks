@@ -1324,6 +1324,74 @@ async function fillStatRanks(body, teamA, teamB) {
   }
 }
 
+// ---- Your Team: season stat ranks and player leaders ----
+// Ranks come from the "teamstats" function above; leaders from the
+// "leaders" function (one CFBD call for the whole SEC, saved 12 hours).
+let leadersPromise = null;
+function loadLeaders() {
+  if (!leadersPromise) {
+    leadersPromise = supabaseClient.functions.invoke("leaders", { body: { year: 2026 } })
+      .then(({ data, error }) => {
+        if (error || !data || !data.teams) throw error || new Error("no leaders");
+        return data;
+      });
+    leadersPromise.catch(() => { leadersPromise = null; });
+  }
+  return leadersPromise;
+}
+
+const LEADER_ROWS = [
+  ["passing", "Passing", v => `${v.value.toLocaleString()} yds`, { TD: "TD", INT: "INT" }],
+  ["rushing", "Rushing", v => `${v.value.toLocaleString()} yds`, { TD: "TD", CAR: "car" }],
+  ["receiving", "Receiving", v => `${v.value.toLocaleString()} yds`, { TD: "TD", REC: "rec" }],
+  ["tackles", "Tackles", v => `${v.value}`, { TFL: "TFL" }],
+  ["sacks", "Sacks", v => `${v.value}`, {}],
+  ["interceptions", "INTs", v => `${v.value}`, {}]
+];
+
+async function fillMyTeamStats(box, team) {
+  const name = seriesName(team);
+  if (!box || !name) return;
+  const holder = document.createElement("div");
+  holder.className = "my-team-stats";
+  box.appendChild(holder);
+  const [ranksRes, leadersRes] = await Promise.allSettled([loadTeamStats(), loadLeaders()]);
+  const parts = [];
+
+  if (ranksRes.status === "fulfilled") {
+    const { ranks, counts } = ranksRes.value;
+    const mine = ranks[name] || {};
+    const tier = (rank, key) => {
+      const share = rank / (counts[key] || 134);
+      return share <= 1 / 3 ? "good" : share <= 2 / 3 ? "ok" : "bad";
+    };
+    // One row per stat, offense rank then defense rank.
+    const pill = key => mine[key] ? `<span class="stat-rank ${tier(mine[key], key)}">#${mine[key]}</span>` : `<span class="stat-rank none">-</span>`;
+    const cells = STAT_MATCHUPS.filter(([off, def]) => mine[off] || mine[def]).map(([off, def, label]) =>
+      `<span class="my-stat-label">${label}</span>${pill(off)}${pill(def)}`).join("");
+    if (cells) parts.push(`<div class="my-team-sub">Team Stats <span>national rank</span></div>
+      <div class="my-stat-grid"><span></span><span class="my-stat-head">Offense</span><span class="my-stat-head">Defense</span>${cells}</div>`);
+  }
+
+  if (leadersRes.status === "fulfilled") {
+    const mine = leadersRes.value.teams[name] || {};
+    const rows = LEADER_ROWS.filter(([key]) => mine[key]).map(([key, label, main, extras]) => {
+      const v = mine[key];
+      const more = Object.entries(extras).filter(([s]) => v.extra && v.extra[s] !== undefined)
+        .map(([s, word]) => `${v.extra[s]} ${word}`);
+      return `<div class="my-leader">
+        <span class="my-leader-cat">${label}</span>
+        <span class="my-leader-name">${escapeHtml(v.name)}</span>
+        <span class="my-leader-stat">${[main(v), ...more].join(" · ")}</span>
+      </div>`;
+    }).join("");
+    if (rows) parts.push(`<div class="my-team-sub">Leaders</div>${rows}`);
+  }
+
+  if (parts.length) holder.innerHTML = parts.join("");
+  else holder.remove();
+}
+
 // The offense-vs-defense version, kept in case it's wanted again. Not used:
 // to switch, call this instead of fillStatRanks in renderGameDetails.
 // Two halves, one for each team's possessions, the away team always on the

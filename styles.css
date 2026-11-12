@@ -4287,3 +4287,73 @@ img.logo-tile {
   border-radius: 8px;
   background: #000;
 }
+
+/* Your Team: season stat ranks and player leaders. */
+.my-team-stats {
+  margin-top: 0.8rem;
+}
+
+.my-team-sub {
+  margin: 0.7rem 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+}
+
+.my-team-sub span {
+  margin-left: 0.3rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+}
+
+.my-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 4.2rem 4.2rem;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.my-stat-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.my-stat-head {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.my-leader {
+  display: grid;
+  grid-template-columns: 4.6rem 1fr;
+  column-gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.82rem;
+}
+
+.my-leader-cat {
+  grid-row: span 2;
+  align-self: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.my-leader-name {
+  font-weight: 700;
+}
+
+.my-leader-stat {
+  font-size: 0.75rem;
+  color: var(--accent-gold);
+  font-weight: 700;
+}
