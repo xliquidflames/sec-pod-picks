@@ -3755,8 +3755,9 @@ a.btn-submit.bk-cta {
   margin-top: 1.1rem;
 }
 
+/* Rankings, Your Team, Week N Games: 2pt under the Info Hub title. */
 .hub-sub-title {
-  font-size: 0.75rem;
+  font-size: 1rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -4356,4 +4357,9 @@ img.logo-tile {
   font-size: 0.75rem;
   color: var(--accent-gold);
   font-weight: 700;
+}
+
+/* Rest of the Top 25 stays at the old small size. */
+.hub-sub-title.bk-rest-title {
+  font-size: 0.75rem;
 }
