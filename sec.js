@@ -1359,8 +1359,7 @@ const LEADER_ROWS = [
   ["rushing", "Rushing", v => `${v.value.toLocaleString()} yds`, { TD: "TD", CAR: "car" }],
   ["receiving", "Receiving", v => `${v.value.toLocaleString()} yds`, { TD: "TD", REC: "rec" }],
   ["tackles", "Tackles", v => `${v.value}`, { TFL: "TFL" }],
-  ["sacks", "Sacks", v => `${v.value}`, {}],
-  ["interceptions", "INTs", v => `${v.value}`, {}]
+  ["sacks", "Sacks", v => `${v.value}`, {}]
 ];
 
 async function fillMyTeamStats(box, team) {
