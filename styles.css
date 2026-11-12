@@ -4242,3 +4242,94 @@ img.logo-tile {
   border: none;
   background: none;
 }
+
+/* ---- Season podium: trophies on tiered steps ---- */
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: end;
+  gap: 0.4rem;
+  padding-top: 0.5rem;
+}
+
+.pod-spot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.pod-gold   { --metal: #fbbf24; --metal-dark: #b8860b; --step: 92px; }
+.pod-silver { --metal: #d7dde5; --metal-dark: #8a96a6; --step: 66px; }
+.pod-bronze { --metal: #d98b4a; --metal-dark: #8b4f22; --step: 46px; }
+
+.pod-trophy {
+  width: 54px;
+  height: 54px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+}
+
+.pod-gold .pod-trophy {
+  width: 68px;
+  height: 68px;
+}
+
+.pod-metal { fill: var(--metal); }
+.pod-handle { fill: none; stroke: var(--metal); stroke-width: 4; stroke-linecap: round; }
+.pod-base { fill: var(--metal-dark); }
+
+.pod-names {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  margin: 0.3rem 0 0.45rem;
+  max-width: 100%;
+}
+
+.pod-name {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.pod-gold .pod-name {
+  font-size: 0.88rem;
+}
+
+.pod-name img {
+  flex-shrink: 0;
+}
+
+.pod-step {
+  width: 100%;
+  height: var(--step);
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, var(--metal) 0%, var(--metal-dark) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 0.35rem;
+  color: #0f172a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.pod-place {
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.pod-record {
+  font-size: 0.8rem;
+  font-weight: 800;
+  margin-top: 0.15rem;
+}
