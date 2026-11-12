@@ -1340,6 +1340,20 @@ function loadLeaders() {
   return leadersPromise;
 }
 
+// Your Team's stat rows: offense rank, defense rank. A stat the
+// "teamstats" function doesn't send is skipped.
+const MY_TEAM_STATS = [
+  ["scoringOffense", "scoringDefense", "Scoring"],
+  ["totalOffense", "totalDefense", "Total Yards"],
+  ["passingOffense", "passingDefense", "Passing"],
+  ["rushingOffense", "rushingDefense", "Rushing"],
+  ["firstDownOffense", "firstDownDefense", "1st Downs"],
+  ["thirdDownOffense", "thirdDownDefense", "3rd Down"],
+  ["fourthDownOffense", "fourthDownDefense", "4th Down"],
+  ["turnoverOffense", "turnoverDefense", "Turnovers"],
+  ["sackOffense", "sackDefense", "Sacks"]
+];
+
 const LEADER_ROWS = [
   ["passing", "Passing", v => `${v.value.toLocaleString()} yds`, { TD: "TD", INT: "INT" }],
   ["rushing", "Rushing", v => `${v.value.toLocaleString()} yds`, { TD: "TD", CAR: "car" }],
@@ -1367,7 +1381,7 @@ async function fillMyTeamStats(box, team) {
     };
     // One row per stat, offense rank then defense rank.
     const pill = key => mine[key] ? `<span class="stat-rank ${tier(mine[key], key)}">#${mine[key]}</span>` : `<span class="stat-rank none">-</span>`;
-    const cells = STAT_MATCHUPS.filter(([off, def]) => mine[off] || mine[def]).map(([off, def, label]) =>
+    const cells = MY_TEAM_STATS.filter(([off, def]) => mine[off] || mine[def]).map(([off, def, label]) =>
       `<span class="my-stat-label">${label}</span>${pill(off)}${pill(def)}`).join("");
     if (cells) parts.push(`<div class="my-team-col"><div class="my-team-sub">Team Stats</div>
       <div class="my-stat-grid"><span></span><span class="my-stat-head">Off</span><span class="my-stat-head">Def</span>${cells}</div></div>`);
