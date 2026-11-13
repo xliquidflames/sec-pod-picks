@@ -42,11 +42,44 @@
       text-align: center;
     }
     /* Done: faded. Today: its own banner and lit-up cards. Live: gold box. */
-    .hoops-game.is-done {
-      opacity: 0.55;
+    /* Finished games: one compact row each, like the picks lists. */
+    .hoops-done-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.6rem;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.85rem;
+      cursor: pointer;
     }
-    .hoops-day.past {
-      opacity: 0.6;
+    .hoops-done-row .done-side {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+    .hoops-done-row .done-name {
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hoops-done-row .done-score {
+      margin-left: 0.35rem;
+      font-weight: 800;
+    }
+    .hoops-done-row .done-score.won {
+      color: var(--accent-gold);
+    }
+    .hoops-done-row .done-at {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+    .hoops-done-row.fav-game {
+      box-shadow: inset 4px 0 0 var(--fav-1, var(--accent-gold)), inset 8px 0 0 var(--fav-2, var(--accent-gold));
+      padding-left: 0.9rem;
     }
     .hoops-day.today {
       margin: 0.5rem 0 0.15rem;
@@ -649,8 +682,25 @@
         const isToday = dayOf(g) === todayKey;
         const when = g.isFinal ? "is-done" : isToday ? "is-today" : (dayOf(g) && dayOf(g) < todayKey ? "is-done" : "is-upcoming");
         const dayClass = isToday ? "today" : (dayOf(g) && dayOf(g) < todayKey ? "past" : "");
+        const dividerHtml = divider ? `<div class="hoops-day ${dayClass}">${isToday ? `Today · ${divider}` : divider}</div>` : "";
+        // Finished games shrink to one row: logo, team, score @ logo, team, score.
+        if (g.isFinal) {
+          const won = (mine, theirs) => mine !== null && theirs !== null && mine > theirs ? "won" : "";
+          const side = (name, logo, score, other) => `<span class="done-side">
+              ${logo ? `<img class="fav-logo" src="${logo}" alt="">` : ""}
+              <span class="done-name">${escapeHtml(shortenPickDisplay(name))}</span>
+              <span class="done-score ${won(score, other)}">${score !== null ? score : ""}</span>
+            </span>`;
+          const open = g.eventId ? ` onclick="openGameDetails('${g.eventId}', '${`${shortenPickDisplay(g.awayName)} @ ${shortenPickDisplay(g.homeName)}`.replace(/'/g, "\\'")}')"` : "";
+          return `${dividerHtml}
+          <div class="hoops-done-row" data-teams="${[g.teamA, g.teamB].map(normalizeTeam).join("|")}"${open}>
+            ${side(g.awayName, g.awayLogo, g.awayScore, g.homeScore)}
+            <span class="done-at">@</span>
+            ${side(g.homeName, g.homeLogo, g.homeScore, g.awayScore)}
+          </div>`;
+        }
         return `
-          ${divider ? `<div class="hoops-day ${dayClass}">${isToday ? `Today · ${divider}` : divider}</div>` : ""}
+          ${dividerHtml}
           <div class="hoops-game matchup-cell ${when} ${live ? "live-game-row" : ""}" data-teams="${[g.teamA, g.teamB].map(normalizeTeam).join("|")}">
             ${g.matchupLabel}
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ""}
