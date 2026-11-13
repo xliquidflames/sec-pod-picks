@@ -54,13 +54,18 @@
       font-size: 0.85rem;
       cursor: pointer;
     }
+    /* Centered on the @: away team leans in from the left, home from the right. */
     .hoops-done-row .done-side {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
       min-width: 0;
     }
+    .hoops-done-row .done-side:last-child {
+      justify-content: flex-start;
+    }
     .hoops-done-row .done-name {
-      flex: 1;
+      flex: 0 1 auto;
       min-width: 0;
       white-space: nowrap;
       overflow: hidden;
