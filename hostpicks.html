@@ -5,83 +5,80 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-site-text="Host Portal - {name}">Host Portal - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=41"></script>
-  <script src="common.js?v=57"></script>
-  <script src="sec.js?v=43"></script>
-  <link rel="stylesheet" href="styles.css?v=46" />
+  <script src="config.js?v=43"></script>
+  <script src="common.js?v=78"></script>
+  <script src="sec.js?v=55"></script>
+  <link rel="stylesheet" href="styles.css?v=91" />
 </head>
 <body>
 
-  <div class="container narrow">
+  <div class="container narrow hp-page">
     <header>
       <a href="index.html" class="back-link">&larr; Back to Leaderboard</a>
       <h1>HOST PICKS PORTAL</h1>
-      <p class="sub-header" id="portalSubHeading">Week 1 Picks, Scores & Lock Submission</p>
+      <p class="sub-header" id="portalSubHeading">Week 1 Picks, Scores & Lock</p>
     </header>
 
     <div class="card">
-      <div class="controls-grid">
-        <div class="control-group">
-          <label for="weekSelect">Select Week:</label>
-          <select class="form-field" id="weekSelect" onchange="onWeekChange()">
-            <!-- Filled from sec.js. -->
-          </select>
-        </div>
-
-        <div class="control-group">
-          <label for="hostSelect">Submitting As:</label>
-          <select class="form-field" id="hostSelect" onchange="onHostChange()">
-            <!-- Filled from the hosts in config.js. -->
-          </select>
-        </div>
+      <div class="control-group">
+        <label for="weekSelect">Select Week:</label>
+        <select class="form-field" id="weekSelect" onchange="onWeekChange()">
+          <!-- Filled from sec.js. -->
+        </select>
       </div>
 
-      <div class="name-reminder" id="hostAccount" style="margin-bottom: 1rem;">Checking your sign-in...</div>
+      <div class="name-reminder" id="hostAccount" style="margin: 0.75rem 0 1rem;">Checking your sign-in...</div>
 
       <div id="gamesContainer">
         <div style="text-align: center; color: var(--text-muted); padding: 2rem 0;">Loading schedule...</div>
       </div>
-
-      <button type="button" class="btn-submit" id="saveHostBtn" onclick="saveHostSelections()">Save Host Picks</button>
-      <div id="statusAlert" class="status-alert"></div>
     </div>
   </div>
 
+  <!-- Always on screen: one Save for all three hosts, and how it went. -->
+  <div class="hp-savebar">
+    <div id="statusAlert" class="status-alert hp-status"></div>
+    <button type="button" class="btn-submit hp-save" id="saveHostBtn" onclick="saveAllHosts()">Save</button>
+  </div>
+
   <script>
-    document.getElementById("hostSelect").innerHTML =
-      SITE.hosts.map(h => `<option value="${h}">${h}</option>`).join("");
-
+    // Each game lists every host with a score box under each team and a
+    // lock star. The higher score is that host's pick.
+    const HOSTS = SITE.hosts;
     let currentSchedule = [];
-    let hostPicks = {};
-    let hostScores = {};
-    let currentLockMatchupKey = null;
+    // host -> { picks: saved entry plus edits, scores, lock, dirty }
+    let hostState = {};
     let restoring = false;  // true while filling in saved data, so it isn't counted as a new change
-    let unsaved = false;
 
-    // Every tap and score is kept on this phone until it's saved, so going
-    // back or closing the tab doesn't lose it.
-    function draftKey() {
-      return `hostDraft:${document.getElementById("hostSelect").value}:${document.getElementById("weekSelect").value}`;
-    }
-    function saveDraft() {
+    const weekNum = () => parseInt(document.getElementById("weekSelect").value, 10);
+    const hostSlug = host => host.replace(/[^a-z0-9]/gi, "_");
+
+    // Every score and lock is kept on this phone until it's saved, so going
+    // back or closing the tab doesn't lose it. Same keys as before.
+    const draftKey = host => `hostDraft:${host}:${weekNum()}`;
+    function saveDraft(host) {
       if (restoring) return;
-      unsaved = true;
+      const st = hostState[host];
+      st.dirty = true;
       const picks = {};
-      Object.keys(hostPicks).forEach(k => { if (!NON_PICK_KEYS.includes(k)) picks[k] = hostPicks[k]; });
+      currentSchedule.forEach(g => { if (st.picks[g.matchupKey]) picks[g.matchupKey] = st.picks[g.matchupKey]; });
       try {
-        localStorage.setItem(draftKey(), JSON.stringify({ picks, scores: hostScores, lock: currentLockMatchupKey }));
+        localStorage.setItem(draftKey(host), JSON.stringify({ picks, scores: st.scores, lock: st.lock }));
       } catch (_) {}
+      setStatus("var(--accent-gold)", "Not saved yet.");
     }
-    function clearDraft() {
-      unsaved = false;
-      try { localStorage.removeItem(draftKey()); } catch (_) {}
+    function clearDraft(host) {
+      hostState[host].dirty = false;
+      try { localStorage.removeItem(draftKey(host)); } catch (_) {}
     }
-    function loadDraft() {
-      try { return JSON.parse(localStorage.getItem(draftKey()) || "null"); } catch (_) { return null; }
+    function loadDraft(host) {
+      try { return JSON.parse(localStorage.getItem(draftKey(host)) || "null"); } catch (_) { return null; }
     }
     window.addEventListener("beforeunload", e => {
-      if (unsaved) { e.preventDefault(); e.returnValue = ""; }
+      if (HOSTS.some(h => hostState[h] && hostState[h].dirty)) { e.preventDefault(); e.returnValue = ""; }
     });
+
+    const logoOf = t => (t && ((t.logos && t.logos[0] && t.logos[0].href) || t.logo)) || "";
 
     async function fetchEspnSchedule(week) {
       try {
@@ -99,18 +96,7 @@
           // saved picks and predicted scores all use this order.
           const [teamA, teamB] = isSecTeam(homeName) ? [homeName, awayName] : [awayName, homeName];
 
-          const isFinal = comp.status && comp.status.type && comp.status.type.completed;
-          const odds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "Line: TBD";
-          const venue = venueText(comp);
-
-          let time = "TBD";
           let kickoff = new Date(8640000000000000);
-          if (isFinal) {
-            time = `Final: ${away.team.abbreviation || awayName} ${away.score} - ${home.team.abbreviation || homeName} ${home.score}`;
-          } else if (comp.date) {
-            time = new Date(comp.date).toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " +
-                   new Date(comp.date).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZoneName: "short" });
-          }
           if (comp.date) {
             const kd = new Date(comp.date);
             if (!isNaN(kd.getTime())) kickoff = kd;
@@ -121,9 +107,10 @@
             teamA,
             teamB,
             kickoff,
-            detail: isFinal ? `${time} | ${venue}` : `${time} | ${odds} | ${venue}`,
             awayName,
-            homeName
+            homeName,
+            awayLogo: logoOf(away.team),
+            homeLogo: logoOf(home.team)
           };
         });
 
@@ -137,234 +124,216 @@
     }
 
     async function loadSchedule() {
-      const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
-      document.getElementById("portalSubHeading").textContent = `${weekName(weekNum)} Picks, Scores${isLockWeek(weekNum) ? " & Lock" : ""}`;
-      currentSchedule = await fetchEspnSchedule(weekNum);
+      const week = weekNum();
+      document.getElementById("portalSubHeading").textContent = `${weekName(week)} Picks, Scores${isLockWeek(week) ? " & Lock" : ""}`;
+      hostState = {};
+      HOSTS.forEach(h => { hostState[h] = { picks: {}, scores: {}, lock: null, dirty: false }; });
+      setStatus("", "");
+      currentSchedule = await fetchEspnSchedule(week);
       renderCards();
       await fetchExistingHostData();
     }
 
     function renderCards() {
       const container = document.getElementById("gamesContainer");
-      const lockWeek = isLockWeek(parseInt(document.getElementById("weekSelect").value, 10));
+      const lockWeek = isLockWeek(weekNum());
       if (currentSchedule.length === 0) {
         container.innerHTML = `<div style="text-align: center; color: var(--danger); padding: 1.5rem 0;">No scheduled games found for this week.</div>`;
         return;
       }
 
-      container.innerHTML = "";
-      currentSchedule.forEach(game => {
-        const card = document.createElement("div");
-        card.className = "game-card";
-        card.id = `card_${game.matchupKey}`;
-
-        const pickBtn = (side, team) => `
-            <button type="button" class="btn-pick" id="btn_${game.matchupKey}_${side}" data-team="${team}" onclick="selectTeam('${game.matchupKey}', '${team}')">
-              ${shortenPickDisplay(team)}
-            </button>`;
-        const scoreBox = (side, team) => `
-            <div class="score-group">
-              <span class="score-label">${team} Score</span>
-              <input type="number" min="0" max="99" class="score-field" id="score_${game.matchupKey}_${side}" placeholder="--" oninput="onScoreInput('${game.matchupKey}', '${game.teamA}', '${game.teamB}')" />
-            </div>`;
-
+      container.innerHTML = currentSchedule.map(game => {
         // Shown in real "Away @ Home" order; ids and saved data stay A/B.
         const teamAIsHome = normalizeTeam(game.teamA) === normalizeTeam(game.homeName);
         const [left, right] = teamAIsHome ? ["B", "A"] : ["A", "B"];
         const teamOf = side => side === "A" ? game.teamA : game.teamB;
+        const logoFor = side => {
+          const name = teamOf(side);
+          const logo = normalizeTeam(name) === normalizeTeam(game.homeName) ? game.homeLogo : game.awayLogo;
+          return `<div class="hp-team">
+            ${logo ? `<img class="hp-logo" src="${logo}" alt="">` : ""}
+            <span class="hp-team-name">${shortenPickDisplay(name)}</span>
+          </div>`;
+        };
+        const box = (host, side) => `<input type="number" inputmode="numeric" min="0" max="99" class="score-field hp-score"
+            id="score_${hostSlug(host)}_${game.matchupKey}_${side}" placeholder="--"
+            oninput="onScoreInput('${host}', '${game.matchupKey}')" />`;
+        const rows = HOSTS.map(host => `
+          <span class="hp-host">${host}</span>
+          ${box(host, left)}
+          ${box(host, right)}
+          ${lockWeek ? `<button type="button" class="hp-lock" id="lock_${hostSlug(host)}_${game.matchupKey}"
+              title="${host}'s lock" onclick="toggleLock('${host}', '${game.matchupKey}')">★</button>` : "<span></span>"}`).join("");
 
-        card.innerHTML = `
-          <div class="game-header-row">
-            <span class="game-title"><strong>GAME ${game.id}</strong></span>
-            ${lockWeek ? `<button type="button" class="btn-lock-toggle" id="lock_btn_${game.matchupKey}" onclick="toggleLock('${game.matchupKey}')">
-              Lock of Week
-            </button>` : ""}
-          </div>
-          <div class="pick-grid">
-            ${pickBtn(left, teamOf(left))}
-            <span class="pick-grid-at">@</span>
-            ${pickBtn(right, teamOf(right))}
-          </div>
-          ${game.detail ? `<span class="game-detail">${game.detail}</span>` : ""}
-          <div class="score-inputs-grid">
-            ${scoreBox(left, teamOf(left))}
-            ${scoreBox(right, teamOf(right))}
-          </div>
-        `;
-        container.appendChild(card);
+        return `
+          <div class="hp-game" id="card_${game.matchupKey}">
+            <div class="hp-grid">
+              <span></span>
+              ${logoFor(left)}
+              ${logoFor(right)}
+              <span class="hp-lock-head">${lockWeek ? "Lock" : ""}</span>
+              ${rows}
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    // The higher score is the pick; the winning box is highlighted.
+    function onScoreInput(host, matchupKey) {
+      const st = hostState[host];
+      const g = currentSchedule.find(x => x.matchupKey === matchupKey);
+      const inpA = document.getElementById(`score_${hostSlug(host)}_${matchupKey}_A`);
+      const inpB = document.getElementById(`score_${hostSlug(host)}_${matchupKey}_B`);
+      st.scores[matchupKey] = { ...st.scores[matchupKey], teamA: inpA.value, teamB: inpB.value };
+      const a = parseInt(inpA.value, 10), b = parseInt(inpB.value, 10);
+      if (!isNaN(a) && !isNaN(b) && a !== b) st.picks[matchupKey] = a > b ? g.teamA : g.teamB;
+      markWinner(host, matchupKey);
+      saveDraft(host);
+    }
+
+    function markWinner(host, matchupKey) {
+      const g = currentSchedule.find(x => x.matchupKey === matchupKey);
+      const pick = hostState[host].picks[matchupKey];
+      ["A", "B"].forEach(side => {
+        const inp = document.getElementById(`score_${hostSlug(host)}_${matchupKey}_${side}`);
+        if (inp) inp.classList.toggle("picked", !!pick && normalizeTeam(pick) === normalizeTeam(side === "A" ? g.teamA : g.teamB));
       });
     }
 
-    function selectTeam(matchupKey, teamName) {
-      hostPicks[matchupKey] = teamName;
-      markPick(matchupKey, btnA => btnA.dataset.team === teamName);
-      saveDraft();
+    // One lock per host per week; tapping another game moves it.
+    function toggleLock(host, matchupKey) {
+      const st = hostState[host];
+      st.lock = st.lock === matchupKey ? null : matchupKey;
+      refreshLocks(host);
+      saveDraft(host);
     }
 
-    // Typing both scores picks the team with the higher one.
-    function onScoreInput(matchupKey, teamA, teamB) {
-      const valA = document.getElementById(`score_${matchupKey}_A`).value;
-      const valB = document.getElementById(`score_${matchupKey}_B`).value;
-      hostScores[matchupKey] = { ...hostScores[matchupKey], teamA: valA, teamB: valB };
-
-      const numA = parseInt(valA, 10);
-      const numB = parseInt(valB, 10);
-      if (!isNaN(numA) && !isNaN(numB)) {
-        if (numA > numB) selectTeam(matchupKey, teamA);
-        else if (numB > numA) selectTeam(matchupKey, teamB);
-      }
-      saveDraft();
+    function refreshLocks(host) {
+      currentSchedule.forEach(g => {
+        const btn = document.getElementById(`lock_${hostSlug(host)}_${g.matchupKey}`);
+        if (btn) btn.classList.toggle("active", hostState[host].lock === g.matchupKey);
+      });
     }
 
-    function toggleLock(matchupKey) {
-      currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
-      refreshLockVisuals();
-      saveDraft();
+    // Unsaved entries stay on this phone as drafts, so switching weeks is safe.
+    function onWeekChange() { loadSchedule(); }
+
+    function fillScores(host, matchupKey, sc) {
+      if (!sc) return;
+      const inpA = document.getElementById(`score_${hostSlug(host)}_${matchupKey}_A`);
+      const inpB = document.getElementById(`score_${hostSlug(host)}_${matchupKey}_B`);
+      if (inpA && sc.teamA !== undefined) inpA.value = sc.teamA;
+      if (inpB && sc.teamB !== undefined) inpB.value = sc.teamB;
     }
 
-    function refreshLockVisuals() {
-      refreshLockButtons(currentSchedule, currentLockMatchupKey, "Lock of Week");
-    }
-
-    function resetHostState() {
-      hostPicks = {};
-      hostScores = {};
-      currentLockMatchupKey = null;
-      unsaved = false;
-      document.getElementById("statusAlert").textContent = "";
-    }
-
-    function onWeekChange() {
-      resetHostState();
-      loadSchedule();
-    }
-
-    function onHostChange() {
-      resetHostState();
-      document.querySelectorAll(".btn-pick").forEach(btn => btn.classList.remove("selected"));
-      document.querySelectorAll(".score-field").forEach(inp => inp.value = "");
-      refreshLockVisuals();
-      fetchExistingHostData();
-    }
-
-    // Loads this host's saved picks for the week. Older entries may be keyed
+    // Loads every host's saved entry for the week. Older entries may be keyed
     // by game number or team names instead of ESPN's event id.
     async function fetchExistingHostData() {
-      const hostName = document.getElementById("hostSelect").value;
-      const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
-
+      const week = weekNum();
       restoring = true;
+      let rows = [];
       try {
         const { data, error } = await supabaseClient
           .from(PICKS_TABLE)
           .select("*")
-          .eq("week_number", weekNum)
-          .eq("user_name", hostName)
-          .maybeSingle();
+          .eq("week_number", week)
+          .in("user_name", HOSTS);
         if (error) throw error;
-        if (!data || !data.picks) return;
-
-        const raw = typeof data.picks === "object" ? data.picks : JSON.parse(data.picks);
-        hostPicks = { ...raw };
-        hostScores = raw.scores || {};
-
-        currentSchedule.forEach(g => {
-          const aNorm = normalizeTeam(g.teamA);
-          const bNorm = normalizeTeam(g.teamB);
-
-          let team = hostPicks[g.matchupKey] || hostPicks[g.id] || hostPicks[String(g.id)];
-          if (!team) {
-            const matchKey = Object.keys(hostPicks).find(k => {
-              if (NON_PICK_KEYS.includes(k)) return false;
-              const vNorm = normalizeTeam(hostPicks[k]);
-              return vNorm === aNorm || vNorm === bNorm;
-            });
-            if (matchKey) team = hostPicks[matchKey];
-          }
-          if (team) selectTeam(g.matchupKey, team);
-
-          const gScore = hostScores[g.matchupKey] || hostScores[g.id] || hostScores[String(g.id)];
-          if (gScore) {
-            const inpA = document.getElementById(`score_${g.matchupKey}_A`);
-            const inpB = document.getElementById(`score_${g.matchupKey}_B`);
-            if (inpA && gScore.teamA !== undefined) inpA.value = gScore.teamA;
-            if (inpB && gScore.teamB !== undefined) inpB.value = gScore.teamB;
-          }
-        });
-
-        if (hostPicks.lock_matchup_key) {
-          currentLockMatchupKey = hostPicks.lock_matchup_key;
-          refreshLockVisuals();
-        } else if (hostPicks.lock_game_id) {
-          const foundGame = currentSchedule.find(g => g.id === parseInt(hostPicks.lock_game_id, 10));
-          if (foundGame) {
-            currentLockMatchupKey = foundGame.matchupKey;
-            refreshLockVisuals();
-          }
-        }
+        rows = data || [];
       } catch (e) {
         console.error("Error fetching host data:", e);
-      } finally {
-        restoring = false;
-        restoreDraft();
+        setStatus("var(--danger)", "Couldn't load saved host picks.");
+      }
+
+      HOSTS.forEach(host => {
+        const st = hostState[host];
+        const row = rows.find(r => r.user_name === host && r.picks);
+        if (row) {
+          const raw = typeof row.picks === "object" ? row.picks : JSON.parse(row.picks);
+          st.picks = { ...raw };
+          st.scores = { ...(raw.scores || {}) };
+
+          currentSchedule.forEach(g => {
+            const aNorm = normalizeTeam(g.teamA);
+            const bNorm = normalizeTeam(g.teamB);
+            let team = raw[g.matchupKey] || raw[g.id] || raw[String(g.id)];
+            if (!team) {
+              const matchKey = Object.keys(raw).find(k => {
+                if (NON_PICK_KEYS.includes(k)) return false;
+                const vNorm = normalizeTeam(raw[k]);
+                return vNorm === aNorm || vNorm === bNorm;
+              });
+              if (matchKey) team = raw[matchKey];
+            }
+            if (team) st.picks[g.matchupKey] = team;
+            const sc = st.scores[g.matchupKey] || st.scores[g.id] || st.scores[String(g.id)];
+            if (sc) { st.scores[g.matchupKey] = sc; fillScores(host, g.matchupKey, sc); }
+          });
+
+          if (raw.lock_matchup_key) st.lock = raw.lock_matchup_key;
+          else if (raw.lock_game_id) {
+            const found = currentSchedule.find(g => g.id === parseInt(raw.lock_game_id, 10));
+            if (found) st.lock = found.matchupKey;
+          }
+        }
+        restoreDraft(host);
+        currentSchedule.forEach(g => markWinner(host, g.matchupKey));
+        refreshLocks(host);
+      });
+      restoring = false;
+      if (HOSTS.some(h => hostState[h].dirty)) {
+        setStatus("var(--accent-gold)", "Restored entries that weren't saved yet. Tap Save to keep them.");
       }
     }
 
     // Puts back anything entered on this phone but not saved yet.
-    function restoreDraft() {
-      const draft = loadDraft();
+    function restoreDraft(host) {
+      const draft = loadDraft(host);
       if (!draft) return;
-      restoring = true;
+      const st = hostState[host];
       currentSchedule.forEach(g => {
         const team = draft.picks && draft.picks[g.matchupKey];
-        if (team) selectTeam(g.matchupKey, team);
+        if (team) st.picks[g.matchupKey] = team;
         const sc = draft.scores && draft.scores[g.matchupKey];
         if (sc) {
-          hostScores[g.matchupKey] = { ...hostScores[g.matchupKey], ...sc };
-          const inpA = document.getElementById(`score_${g.matchupKey}_A`);
-          const inpB = document.getElementById(`score_${g.matchupKey}_B`);
-          if (inpA && sc.teamA !== undefined) inpA.value = sc.teamA;
-          if (inpB && sc.teamB !== undefined) inpB.value = sc.teamB;
+          st.scores[g.matchupKey] = { ...st.scores[g.matchupKey], ...sc };
+          fillScores(host, g.matchupKey, st.scores[g.matchupKey]);
         }
       });
-      currentLockMatchupKey = draft.lock || null;
-      refreshLockVisuals();
-      restoring = false;
-      unsaved = true;
-      setStatus("var(--accent-gold)", "Restored entries that weren't saved yet. Tap Save to keep them.");
+      st.lock = draft.lock || null;
+      st.dirty = true;
     }
 
-    // Saving again for the same host and week overwrites the earlier entry.
-    async function saveHostSelections() {
-      const hostName = document.getElementById("hostSelect").value;
-      const weekNum = parseInt(document.getElementById("weekSelect").value, 10);
-
-      currentSchedule.forEach(g => {
-        const inpA = document.getElementById(`score_${g.matchupKey}_A`);
-        const inpB = document.getElementById(`score_${g.matchupKey}_B`);
-        if (inpA && inpB && inpA.value !== "" && inpB.value !== "") {
-          hostScores[g.matchupKey] = { ...hostScores[g.matchupKey], teamA: inpA.value, teamB: inpB.value };
-        }
-      });
-
-      hostPicks.lock_matchup_key = isLockWeek(weekNum) ? currentLockMatchupKey : null;
-      hostPicks.scores = hostScores;
-
+    // Saves every host with changes. Saving again overwrites that host's
+    // entry for the week.
+    async function saveAllHosts() {
+      const week = weekNum();
+      const toSave = HOSTS.filter(h => hostState[h] && hostState[h].dirty);
+      if (!toSave.length) {
+        setStatus("var(--success)", "Everything's already saved.");
+        return;
+      }
+      const btn = document.getElementById("saveHostBtn");
+      btn.disabled = true;
       setStatus("var(--text-muted)", "Saving...");
 
-      // The database checks that this account may save host picks.
-      try {
-        const { error } = await supabaseClient.rpc("save_host_picks", {
-          p_name: hostName, p_week: weekNum, p_picks: hostPicks
-        });
-        if (error) throw error;
-
-        clearDraft();
-        const picked = currentSchedule.filter(g => hostPicks[g.matchupKey]).length;
-        setStatus("var(--success)", `Saved ${picked} of ${currentSchedule.length} picks for ${hostName}, ${weekName(weekNum)}.`);
-      } catch (err) {
-        setStatus("var(--danger)", `Error: ${err.message}`);
+      const done = [], failed = [];
+      for (const host of toSave) {
+        const st = hostState[host];
+        const picks = { ...st.picks, scores: st.scores, lock_matchup_key: isLockWeek(week) ? st.lock : null };
+        // The database checks that this account may save host picks.
+        try {
+          const { error } = await supabaseClient.rpc("save_host_picks", { p_name: host, p_week: week, p_picks: picks });
+          if (error) throw error;
+          clearDraft(host);
+          done.push(`${host} ${currentSchedule.filter(g => st.picks[g.matchupKey]).length}/${currentSchedule.length}`);
+        } catch (err) {
+          failed.push(`${host}: ${err.message}`);
+        }
       }
+      btn.disabled = false;
+      if (failed.length) setStatus("var(--danger)", `Error. ${failed.join(" · ")}${done.length ? ` (Saved ${done.join(", ")})` : ""}`);
+      else setStatus("var(--success)", `Saved ${weekName(week)}: ${done.join(", ")}`);
     }
 
     // Hosts move to the next week on the Monday after its last game ends

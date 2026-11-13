@@ -4377,3 +4377,124 @@ img.logo-tile {
 .hub-sub-title.bk-rest-title {
   font-size: 0.75rem;
 }
+
+/* ---- Host Picks portal: every host in each game's box ---- */
+.hp-page {
+  padding-bottom: 6rem;
+}
+
+.hp-game {
+  margin-bottom: 0.9rem;
+  padding: 0.8rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card-alt);
+}
+
+.hp-grid {
+  display: grid;
+  grid-template-columns: 3.6rem 1fr 1fr 2.2rem;
+  align-items: center;
+  gap: 0.45rem 0.5rem;
+}
+
+.hp-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.hp-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.hp-team-name {
+  max-width: 100%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hp-host {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.hp-lock-head {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.hp-score {
+  width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.2rem;
+  font-size: 1.05rem;
+}
+
+/* The higher score is the host's pick. */
+.hp-score.picked {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 1px var(--accent-gold);
+}
+
+.hp-lock {
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hp-lock.active {
+  border-color: var(--accent-gold);
+  background: var(--accent-gold);
+  color: var(--bg-main);
+}
+
+/* Save bar pinned to the bottom of the screen. */
+.hp-savebar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
+  background: var(--bg-main);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.hp-status {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.hp-save {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+  padding: 0.7rem 1.6rem;
+}
