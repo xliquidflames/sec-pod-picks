@@ -41,8 +41,30 @@
       background: var(--bg-card-alt);
       text-align: center;
     }
+    /* Done: faded. Today: its own banner and lit-up cards. Live: gold box. */
+    .hoops-game.is-done {
+      opacity: 0.55;
+    }
+    .hoops-day.past {
+      opacity: 0.6;
+    }
+    .hoops-day.today {
+      margin: 0.5rem 0 0.15rem;
+      padding: 0.5rem 0;
+      border-radius: 8px;
+      background: var(--accent-gold);
+      color: var(--bg-main);
+      font-size: 0.95rem;
+      letter-spacing: 1px;
+    }
+    .hoops-game.is-today {
+      border-color: rgba(251, 191, 36, 0.55);
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.14), rgba(251, 191, 36, 0.04)), var(--bg-card-alt);
+    }
     .hoops-game.live-game-row {
-      border-color: var(--accent-gold);
+      border: 2px solid var(--accent-gold);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+      opacity: 1;
     }
     .hoops-empty {
       grid-column: 1 / -1;
@@ -616,12 +638,20 @@
         return;
       }
       const liveMap = liveGames[activeWeek] || {};
+      // Done games fade back, today's games stand out, live games get the
+      // gold box on top of that.
+      const midnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const todayKey = midnight(new Date());
+      const dayOf = g => hasRealKickoff(g) ? midnight(g.kickoff) : null;
       grid.innerHTML = games.map((g, idx) => {
         const divider = dayDividerLabel(games, idx);
-        const live = liveMap[g.matchupKey] || liveMap[g.id];
+        const live = g.isLive || liveMap[g.matchupKey] || liveMap[g.id];
+        const isToday = dayOf(g) === todayKey;
+        const when = g.isFinal ? "is-done" : isToday ? "is-today" : (dayOf(g) && dayOf(g) < todayKey ? "is-done" : "is-upcoming");
+        const dayClass = isToday ? "today" : (dayOf(g) && dayOf(g) < todayKey ? "past" : "");
         return `
-          ${divider ? `<div class="hoops-day">${divider}</div>` : ""}
-          <div class="hoops-game matchup-cell ${live ? "live-game-row" : ""}" data-teams="${[g.teamA, g.teamB].map(normalizeTeam).join("|")}">
+          ${divider ? `<div class="hoops-day ${dayClass}">${isToday ? `Today · ${divider}` : divider}</div>` : ""}
+          <div class="hoops-game matchup-cell ${when} ${live ? "live-game-row" : ""}" data-teams="${[g.teamA, g.teamB].map(normalizeTeam).join("|")}">
             ${g.matchupLabel}
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ""}
             ${detailsLink(g)}
