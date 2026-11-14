@@ -249,7 +249,8 @@ let favPromptGroups = [];
 
 function askForFavorite(account) {
   const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
-  if (!/^(index|nflindex|hoopsindex)\.html$/.test(page)) return;
+  // Leaderboards and picks pages (most people go straight to picks).
+  if (!/^(index|nflindex|hoopsindex|makepicks|nflmakepicks|hoopsmakepicks)\.html$/.test(page)) return;
   const sport = pageSport();
   if (!account || !account.name || (account.favorites && account.favorites[sport])) return;
   try {
