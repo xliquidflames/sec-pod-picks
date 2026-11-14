@@ -6,7 +6,7 @@
   <title data-site-text="Make Picks - {name}">Make Picks - That SEC Podcast</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
-  <script src="common.js?v=79"></script>
+  <script src="common.js?v=80"></script>
   <script src="sec.js?v=43"></script>
   <link rel="stylesheet" href="styles.css?v=65" />
 </head>
@@ -150,7 +150,10 @@
 
           // A game locks once it has started, not just when it's over.
           const type = comp.status && comp.status.type;
-          const isFinal = !!((type && type.completed) || (type && type.state === "in") || (type && type.state === "post"));
+          // Also once it's 3 minutes past the scheduled kickoff, even if ESPN
+          // hasn't marked it started yet; later picks wouldn't count.
+          const isFinal = !!((type && type.completed) || (type && type.state === "in") || (type && type.state === "post")) ||
+            pastPickCutoff(kickoff);
 
           const teamA = nameOf(a), teamB = nameOf(b);
           return {
@@ -383,7 +386,7 @@
       if (!username) return setStatus("var(--danger)", "Please enter your handle or name.");
 
       // Games already started can't be picked, so they aren't required.
-      const pickableGames = currentSchedule.filter(g => !g.isFinal);
+      const pickableGames = currentSchedule.filter(g => !g.isFinal && !pastPickCutoff(g.kickoff));
       if (pickableGames.length === 0) {
         return setStatus("var(--danger)", "Every game this week has already started or been played — there's nothing left to submit picks for.");
       }

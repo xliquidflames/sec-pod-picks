@@ -881,10 +881,17 @@ function getPickClass(userPick, game, week) {
   return normalizeTeam(userPick) === normalizeTeam(winner) ? "pick-correct" : "pick-incorrect";
 }
 
-// A listener's pick on a game that kicked off more than 15 minutes before
+// A listener's pick on a game that kicked off more than 3 minutes before
 // they submitted doesn't count. The page won't offer those games, but this
 // catches entries sent around it. The database stamps each entry's time.
-const LATE_PICK_GRACE_MS = 15 * 60 * 1000;
+const LATE_PICK_GRACE_MS = 3 * 60 * 1000;
+// Entries sent before the change (Nov 14, 2026, 10 AM Eastern) keep the old
+// 15 minutes, so past weeks' standings don't move.
+const OLD_GRACE_UNTIL = Date.parse("2026-11-14T15:00:00Z");
+const graceFor = at => at < OLD_GRACE_UNTIL ? 15 * 60 * 1000 : LATE_PICK_GRACE_MS;
+// True once a game is past that cutoff (scheduled kickoff plus 3 minutes).
+const pastPickCutoff = kickoff => kickoff instanceof Date && kickoff.getFullYear() < 9999 &&
+  Date.now() - kickoff.getTime() > LATE_PICK_GRACE_MS;
 
 function dropLatePicks(row) {
   if (row.is_host || !row.created_at) return;
@@ -894,7 +901,7 @@ function dropLatePicks(row) {
   let changed = false;
   (weekSchedules[row.week_number] || []).forEach(game => {
     const kick = game.kickoff instanceof Date ? game.kickoff.getTime() : NaN;
-    if (isNaN(kick) || game.kickoff.getFullYear() >= 9999 || at - kick <= LATE_PICK_GRACE_MS) return;
+    if (isNaN(kick) || game.kickoff.getFullYear() >= 9999 || at - kick <= graceFor(at)) return;
     if (isLockMatch(picks, game)) { delete picks.lock_matchup_key; delete picks.lock_game_id; changed = true; }
     let pick;
     while ((pick = getMatchedUserPick(picks, game))) {
@@ -909,13 +916,13 @@ function dropLatePicks(row) {
 
 // ---- Changing picks ----
 // Every submission is kept. For each game, the pick that counts is the
-// latest one sent before kickoff (plus the grace period), so a change can't
+// latest one sent before kickoff (plus the 3-minute grace period), so a change can't
 // reach a game that has started. Only entries from a signed-in account can
 // change picks; older duplicate entries without one are ignored, as before.
 const entryTime = r => new Date(r.created_at).getTime();
 const kickedOffBefore = (at, game) => {
   const kick = game && game.kickoff instanceof Date ? game.kickoff.getTime() : NaN;
-  return !isNaN(kick) && game.kickoff.getFullYear() < 9999 && at - kick > LATE_PICK_GRACE_MS;
+  return !isNaN(kick) && game.kickoff.getFullYear() < 9999 && at - kick > graceFor(at);
 };
 
 // rows: one person's entries for one week. Returns one row with the picks
