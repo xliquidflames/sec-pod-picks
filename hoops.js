@@ -77,12 +77,27 @@ function scheduleEventAsScoreboard(ev) {
   };
 }
 
+// Tournament games whose other team isn't decided yet ("TBD", "Winner of
+// ...") stay hidden until ESPN fills in both teams. Then they show up and
+// can be picked.
+const isRealTeam = c => {
+  const t = c && c.team;
+  if (!t || !t.id || Number(t.id) <= 0) return false;
+  const name = `${t.displayName || ""} ${t.shortDisplayName || ""} ${t.name || ""}`;
+  return !/\b(tbd|tba|to be determined|winner|loser)\b/i.test(name);
+};
+const bothTeamsSet = ev => {
+  const comp = ev && ev.competitions && ev.competitions[0];
+  return !!(comp && comp.competitors && comp.competitors.length === 2 && comp.competitors.every(isRealTeam));
+};
+
 async function fetchEspnRaw(week) {
   if (espnRawCache[week]) return espnRawCache[week];
   try {
     const res = await fetch(scoreboardUrl(week));
     if (res.ok) {
       const data = await res.json();
+      if (data && data.events) data.events = data.events.filter(bothTeamsSet);
       if (data && data.events && data.events.length) {
         const header = res.headers.get("date");
         return (espnRawCache[week] = { data, currentTime: header ? new Date(header) : new Date() });
@@ -96,7 +111,8 @@ async function fetchEspnRaw(week) {
     const { start, end } = weekRange(week);
     const inWeek = events
       .filter(ev => { const d = new Date(ev.date); return d >= start && d <= end; })
-      .map(scheduleEventAsScoreboard);
+      .map(scheduleEventAsScoreboard)
+      .filter(bothTeamsSet);
     return (espnRawCache[week] = { data: { events: inWeek }, currentTime });
   } catch (err) {
     console.error(`ESPN schedules failed for week ${week}:`, err);

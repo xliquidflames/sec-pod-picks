@@ -980,12 +980,29 @@ function applySavedPicks(saved, games, choose, toggleLock) {
     const team = n && n === normalizeTeam(g.teamA) ? g.teamA : n && n === normalizeTeam(g.teamB) ? g.teamB : null;
     if (team) choose(g.matchupKey, team);
   });
+  // Open games with no saved pick were added after they last picked
+  // (tournament games, for one). Tag them so they're easy to find.
+  const added = games.filter(g => !g.isFinal && !getMatchedUserPick(saved.picks, g));
+  added.forEach(g => {
+    const head = document.querySelector(`#card_${g.matchupKey} .game-header-row`);
+    if (head && !head.querySelector(".new-game-tag")) {
+      head.querySelector(".game-title").insertAdjacentHTML("beforeend", ` <span class="new-game-tag">New</span>`);
+      document.getElementById(`card_${g.matchupKey}`).classList.add("is-new-game");
+    }
+  });
   if (saved.lockKey && !saved.lockStarted) toggleLock(saved.lockKey);
   if (saved.lockStarted) document.querySelectorAll(".btn-lock-toggle").forEach(b => { b.style.display = "none"; });
   const btn = document.getElementById("submitBtn");
   if (btn) { btn.dataset.label = "Update Picks"; btn.textContent = "Update Picks"; }
   const lockNote = saved.lockStarted ? " Your Lock of the Week has kicked off, so it stays." : "";
-  setStatus("var(--text-muted)", `These are your saved picks. Change any game that hasn't kicked off and tap Update Picks.${lockNote}`);
+  if (added.length) {
+    const n = added.length;
+    setStatus("var(--accent-gold)", `${n} new game${n === 1 ? " was" : "s were"} added since your last picks, marked New. Pick ${n === 1 ? "it" : "them"} and tap Update Picks.${lockNote}`);
+    const first = document.getElementById(`card_${added[0].matchupKey}`);
+    if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+  } else {
+    setStatus("var(--text-muted)", `These are your saved picks. Change any game that hasn't kicked off and tap Update Picks.${lockNote}`);
+  }
 }
 
 // All rows, a page at a time (the database sends at most 1,000 per request).

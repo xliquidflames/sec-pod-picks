@@ -4498,3 +4498,22 @@ img.logo-tile {
   margin: 0;
   padding: 0.7rem 1.6rem;
 }
+
+/* Picks page: a game added after the player's last picks. */
+.new-game-tag {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent-gold);
+  color: var(--bg-main);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.game-card.is-new-game {
+  border-color: var(--accent-gold);
+}
