@@ -4560,3 +4560,14 @@ img.logo-tile {
   font-size: 0.72rem;
   color: var(--text-muted);
 }
+
+/* After ticking: green when saved, red if it failed. */
+.tourney-remind-note.ok {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.tourney-remind-note.err {
+  color: var(--danger);
+  font-weight: 700;
+}

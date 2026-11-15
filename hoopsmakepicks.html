@@ -8,7 +8,7 @@
   <script src="config.js?v=41"></script>
   <script src="common.js?v=81"></script>
   <script src="hoops.js?v=4"></script>
-  <link rel="stylesheet" href="styles.css?v=93" />
+  <link rel="stylesheet" href="styles.css?v=94" />
 </head>
 <body>
 
@@ -365,10 +365,18 @@
         if (box.checked) myReminders.add(id); else myReminders.delete(id);
         // The same team can be in more than one card: keep them all in step.
         document.querySelectorAll(`.tourney-remind input[data-remind-id="${id}"]`).forEach(b => { b.checked = box.checked; });
-        if (note) note.textContent = box.checked ? `You're set. We'll email ${myEmail || "you"} when ${name}'s next game is set.` : `Reminders for ${name} are off.`;
+        if (note) {
+          note.textContent = box.checked ? `You're set. We'll email ${myEmail || "you"} when ${name}'s next game is set.` : `Reminders for ${name} are off.`;
+          note.classList.toggle("ok", box.checked);
+          note.classList.remove("err");
+        }
       } catch (e) {
         box.checked = !box.checked;
-        if (note) note.textContent = `Couldn't save that: ${e.message}`;
+        if (note) {
+          note.textContent = `Couldn't save that: ${e.message}`;
+          note.classList.remove("ok");
+          note.classList.add("err");
+        }
       } finally {
         box.disabled = false;
       }
