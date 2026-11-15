@@ -42,6 +42,45 @@
       text-align: center;
     }
     /* Done: faded. Today: its own banner and lit-up cards. Live: gold box. */
+    /* Collapsible days: the header is a button with a count and +/-. */
+    .hoops-day.day-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      margin: 0.3rem 0 0;
+      padding: 0.55rem 0.8rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: transparent;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .hoops-day .day-count {
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: none;
+    }
+    .hoops-day .day-sign {
+      margin-left: auto;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .day-games {
+      grid-column: 1 / -1;
+    }
+    .day-games[hidden] {
+      display: none;
+    }
+    .hoops-done-row .upcoming-time {
+      grid-column: 1 / -1;
+      margin-top: -0.15rem;
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
     /* Finished games: one compact row each, like the picks lists. */
     .hoops-done-row {
       grid-column: 1 / -1;
@@ -61,7 +100,7 @@
       justify-content: flex-end;
       min-width: 0;
     }
-    .hoops-done-row .done-side:last-child {
+    .hoops-done-row .done-side:nth-child(3) {
       justify-content: flex-start;
     }
     .hoops-done-row .done-name {
@@ -676,42 +715,96 @@
         return;
       }
       const liveMap = liveGames[activeWeek] || {};
-      // Done games fade back, today's games stand out, live games get the
-      // gold box on top of that.
+      // Finished days fold up behind a +. Today stays full size, with live
+      // games in the gold box. Later days are slim rows, open by default.
       const midnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
       const todayKey = midnight(new Date());
       const dayOf = g => hasRealKickoff(g) ? midnight(g.kickoff) : null;
-      grid.innerHTML = games.map((g, idx) => {
-        const divider = dayDividerLabel(games, idx);
+      const days = [];
+      games.forEach((g, idx) => {
+        const key = dayOf(g);
+        const last = days[days.length - 1];
+        if (last && last.key === key) last.games.push(g);
+        else days.push({ key, label: dayDividerLabel(games, idx), games: [g] });
+      });
+
+      const rowAttrs = g => {
+        const open = g.eventId ? ` onclick="openGameDetails('${g.eventId}', '${`${shortenPickDisplay(g.awayName)} @ ${shortenPickDisplay(g.homeName)}`.replace(/'/g, "\\'")}')"` : "";
+        return `data-teams="${[g.teamA, g.teamB].map(normalizeTeam).join("|")}"${open}`;
+      };
+      const side = (name, logo, score, other) => {
+        const won = score !== null && other !== null && score > other ? "won" : "";
+        return `<span class="done-side">
+            ${logo ? `<img class="fav-logo" src="${logo}" alt="">` : ""}
+            <span class="done-name">${escapeHtml(shortenPickDisplay(name))}</span>
+            ${score !== null && score !== undefined ? `<span class="done-score ${won}">${score}</span>` : ""}
+          </span>`;
+      };
+      // Finished: logo, team, score @ logo, team, score.
+      const doneRow = g => `
+        <div class="hoops-done-row" ${rowAttrs(g)}>
+          ${side(g.awayName, g.awayLogo, g.awayScore, g.homeScore)}
+          <span class="done-at">@</span>
+          ${side(g.homeName, g.homeLogo, g.homeScore, g.awayScore)}
+        </div>`;
+      // Coming up: the same slim row, with the tip-off time under it.
+      const timeOf = g => hasRealKickoff(g)
+        ? g.kickoff.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).replace(":00", "")
+        : "TBD";
+      const upcomingRow = g => `
+        <div class="hoops-done-row is-upcoming-row" ${rowAttrs(g)}>
+          ${side(g.awayName, g.awayLogo, null, null)}
+          <span class="done-at">@</span>
+          ${side(g.homeName, g.homeLogo, null, null)}
+          <span class="upcoming-time">${timeOf(g)}</span>
+        </div>`;
+      const card = g => {
         const live = g.isLive || liveMap[g.matchupKey] || liveMap[g.id];
-        const isToday = dayOf(g) === todayKey;
-        const when = g.isFinal ? "is-done" : isToday ? "is-today" : (dayOf(g) && dayOf(g) < todayKey ? "is-done" : "is-upcoming");
-        const dayClass = isToday ? "today" : (dayOf(g) && dayOf(g) < todayKey ? "past" : "");
-        const dividerHtml = divider ? `<div class="hoops-day ${dayClass}">${isToday ? `Today · ${divider}` : divider}</div>` : "";
-        // Finished games shrink to one row: logo, team, score @ logo, team, score.
-        if (g.isFinal) {
-          const won = (mine, theirs) => mine !== null && theirs !== null && mine > theirs ? "won" : "";
-          const side = (name, logo, score, other) => `<span class="done-side">
-              ${logo ? `<img class="fav-logo" src="${logo}" alt="">` : ""}
-              <span class="done-name">${escapeHtml(shortenPickDisplay(name))}</span>
-              <span class="done-score ${won(score, other)}">${score !== null ? score : ""}</span>
-            </span>`;
-          const open = g.eventId ? ` onclick="openGameDetails('${g.eventId}', '${`${shortenPickDisplay(g.awayName)} @ ${shortenPickDisplay(g.homeName)}`.replace(/'/g, "\\'")}')"` : "";
-          return `${dividerHtml}
-          <div class="hoops-done-row" data-teams="${[g.teamA, g.teamB].map(normalizeTeam).join("|")}"${open}>
-            ${side(g.awayName, g.awayLogo, g.awayScore, g.homeScore)}
-            <span class="done-at">@</span>
-            ${side(g.homeName, g.homeLogo, g.homeScore, g.awayScore)}
-          </div>`;
-        }
         return `
-          ${dividerHtml}
-          <div class="hoops-game matchup-cell ${when} ${live ? "live-game-row" : ""}" data-teams="${[g.teamA, g.teamB].map(normalizeTeam).join("|")}">
+          <div class="hoops-game matchup-cell is-today ${live ? "live-game-row" : ""}" data-teams="${[g.teamA, g.teamB].map(normalizeTeam).join("|")}">
             ${g.matchupLabel}
             ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ""}
             ${detailsLink(g)}
           </div>`;
+      };
+
+      grid.innerHTML = days.map(day => {
+        const isToday = day.key === todayKey;
+        const past = day.key !== null && day.key < todayKey;
+        const future = day.key !== null && day.key > todayKey;
+        const allDone = day.games.every(g => g.isFinal);
+
+        if (isToday) {
+          return `<div class="hoops-day today">Today · ${day.label}</div>
+            ${day.games.map(g => g.isFinal ? doneRow(g) : card(g)).join("")}`;
+        }
+        if ((past && allDone) || future) {
+          const id = String(day.key);
+          if (!(id in openGameDays)) openGameDays[id] = future;
+          const open = openGameDays[id];
+          const count = `${day.games.length} game${day.games.length === 1 ? "" : "s"}`;
+          return `<button type="button" class="hoops-day day-toggle" onclick="toggleGameDay('${id}')">
+              <span>${day.label}</span><span class="day-count">${count}</span><span class="day-sign">${open ? "−" : "+"}</span>
+            </button>
+            <div class="day-games" data-day="${id}" ${open ? "" : "hidden"}>
+              ${day.games.map(g => g.isFinal ? doneRow(g) : upcomingRow(g)).join("")}
+            </div>`;
+        }
+        // A past day with a game still unfinished, or games with no date yet.
+        return `<div class="hoops-day">${day.label || "Date TBD"}</div>
+          ${day.games.map(g => g.isFinal ? doneRow(g) : card(g)).join("")}`;
       }).join("");
+    }
+
+    // Which collapsible days are open, kept while the page is open.
+    const openGameDays = {};
+    function toggleGameDay(id) {
+      openGameDays[id] = !openGameDays[id];
+      const box = document.querySelector(`.day-games[data-day="${id}"]`);
+      if (box) box.hidden = !openGameDays[id];
+      const btn = box && box.previousElementSibling;
+      const sign = btn && btn.querySelector(".day-sign");
+      if (sign) sign.textContent = openGameDays[id] ? "−" : "+";
     }
 
     // Each cousin's season so far: record by week, Lock of the Week record,
