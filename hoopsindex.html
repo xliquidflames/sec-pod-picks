@@ -715,8 +715,8 @@
         return;
       }
       const liveMap = liveGames[activeWeek] || {};
-      // Finished days fold up behind a +. Today stays full size, with live
-      // games in the gold box. Later days are slim rows, open by default.
+      // Finished days fold up behind a +. Every game today is a full card, live
+      // ones in the gold box. Later days are slim rows, open by default.
       const midnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
       const todayKey = midnight(new Date());
       const dayOf = g => hasRealKickoff(g) ? midnight(g.kickoff) : null;
@@ -775,8 +775,9 @@
         const allDone = day.games.every(g => g.isFinal);
 
         if (isToday) {
+          // Every game today gets the full card, finished ones included.
           return `<div class="hoops-day today">Today · ${day.label}</div>
-            ${day.games.map(g => g.isFinal ? doneRow(g) : card(g)).join("")}`;
+            ${day.games.map(card).join("")}`;
         }
         if ((past && allDone) || future) {
           const id = String(day.key);
