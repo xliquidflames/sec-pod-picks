@@ -833,8 +833,14 @@ function getMatchedUserPick(picks, game) {
   const direct = picks[game.id] || picks[String(game.id)];
   if (direct && typeof direct === "string" && isThisGame(direct)) return direct;
 
+  // Last resort for old entries: any pick naming one of this game's teams.
+  // Skip picks keyed by an ESPN event id: those belong to that exact game.
+  // Otherwise a team that plays twice in a week (common in hoops) has its
+  // second-game pick read as a pick for the first game, which then gets
+  // thrown out as late or graded twice.
+  const isEventId = k => /^\d{6,}$/.test(k);
   const matchKey = Object.keys(picks).find(k =>
-    !NON_PICK_KEYS.includes(k) && picks[k] && typeof picks[k] === "string" && isThisGame(picks[k]));
+    !NON_PICK_KEYS.includes(k) && !isEventId(k) && picks[k] && typeof picks[k] === "string" && isThisGame(picks[k]));
   return matchKey ? picks[matchKey] : null;
 }
 
