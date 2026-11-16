@@ -567,8 +567,36 @@
       document.getElementById("weekCousinsTitle").textContent = `The ${possessive(SITE.players.many)} Week ${weekNum} Picks`;
 
       updateSubmitButton(weekNum, "hoopsmakepicks.html");
+      pointToNextWeek(weekNum);
 
       await renderActiveWeek();
+    }
+
+    // ---- Next week's picks ----
+    // Hoops weeks run into each other (and tournament games get set a day
+    // ahead), so next week's picks open early: going ahead to next week with
+    // the arrows shows its picks button, and once every game this week has
+    // tipped, this week's button points to next week instead.
+    const NEXT_WEEK_PAGE = "hoopsmakepicks.html";
+    const hasGamesLeft = w => (weekSchedules[w] || []).some(g => hasRealKickoff(g) && g.kickoff > new Date());
+    const nextWeekOpen = w => w === CURRENT_OPEN_WEEK + 1 && hasGamesLeft(w);
+    {
+      const basePicksOpen = picksOpen;
+      picksOpen = w => basePicksOpen(w) || nextWeekOpen(w);
+    }
+
+    function pointToNextWeek(weekNum) {
+      const next = CURRENT_OPEN_WEEK + 1;
+      if (weekNum !== CURRENT_OPEN_WEEK || hasGamesLeft(weekNum) || !nextWeekOpen(next)) return;
+      const ctaBtn = document.getElementById("ctaBtn");
+      ctaBtn.style.display = "flex";
+      ctaBtn.innerHTML = `<span>Make ${weekName(next)} Picks &rarr;</span>`;
+      ctaBtn.href = `${NEXT_WEEK_PAGE}?week=${next}`;
+      supabaseClient.auth.getSession().then(({ data }) => {
+        if (data && data.session) return;
+        ctaBtn.innerHTML = `<span>Sign In &amp; Make ${weekName(next)} Picks &rarr;</span>`;
+        ctaBtn.href = signInUrl(`${NEXT_WEEK_PAGE}?week=${next}`);
+      }).catch(() => {});
     }
 
     // ---- Path to first ----
