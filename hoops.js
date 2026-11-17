@@ -808,3 +808,163 @@ function gameSections(s, away, home, state, comp) {
   }
   return out;
 }
+
+// ---- Tournaments ----
+// Early-season events (Players Era, Maui, Battle 4 Atlantis...) shown as one
+// card each: every game in the event by day, SEC teams in gold, games whose
+// teams aren't decided yet shown as TBD. ESPN labels these games
+// "Event Name - Round", which is how they're grouped. The whole event is
+// pulled (not just SEC games) so the card shows the full field.
+const tourneyCache = {};
+
+// "Players Era 8 - Semifinal" -> ["Players Era 8", "Semifinal"]
+function splitTourneyLabel(headline) {
+  const parts = String(headline || "").split(/\s+-\s+/);
+  return [parts[0].trim(), parts.slice(1).join(" - ").trim()];
+}
+
+async function loadTournaments(week) {
+  if (tourneyCache[week]) return tourneyCache[week];
+  return (tourneyCache[week] = (async () => {
+    const { start, end } = weekRange(week);
+    let events = [];
+    try {
+      // Division I (group 50): every game, so the whole field shows.
+      const res = await fetch(`${ESPN_HOOPS}/scoreboard?groups=50&seasontype=2&dates=${ymd(start)}-${ymd(end)}&limit=1000`);
+      if (!res.ok) throw new Error(`ESPN ${res.status}`);
+      events = (await res.json()).events || [];
+    } catch (e) {
+      // Fall back to the SEC games already loaded for the week.
+      try { events = ((await fetchEspnRaw(week)).data.events) || []; } catch (_) { events = []; }
+    }
+
+    const byName = {};
+    events.forEach(ev => {
+      const comp = ev.competitions && ev.competitions[0];
+      const note = comp && comp.notes && comp.notes[0] && comp.notes[0].headline;
+      if (!note) return;
+      const [name, round] = splitTourneyLabel(note);
+      if (!name) return;
+      const side = c => {
+        const t = (c && c.team) || {};
+        const nm = cleanTeamName(t.shortDisplayName || t.displayName || t.name || "TBD");
+        const real = isRealTeam(c);
+        return {
+          name: real ? nm : "TBD",
+          logo: real ? ((t.logos && t.logos[0] && t.logos[0].href) || t.logo || "") : "",
+          score: c && c.score !== undefined && c.score !== "" ? String(c.score) : "",
+          winner: !!(c && c.winner),
+          sec: real && isSecTeam(nm)
+        };
+      };
+      const cs = (comp.competitors || []);
+      const away = side(cs.find(c => c.homeAway === "away") || cs[0]);
+      const home = side(cs.find(c => c.homeAway === "home") || cs[1]);
+      const st = (comp.status && comp.status.type) || {};
+      const venue = comp.venue && comp.venue.address;
+      (byName[name] ||= { name, games: [], place: "" }).games.push({
+        id: String(ev.id), round, away, home,
+        date: new Date(comp.date || ev.date),
+        state: st.state || "pre",
+        detail: st.shortDetail || ""
+      });
+      if (!byName[name].place && venue && venue.city) byName[name].place = [venue.city, venue.state].filter(Boolean).join(", ");
+    });
+
+    // Only events with an SEC team in them, soonest first.
+    return Object.values(byName)
+      .filter(t => t.games.some(g => g.away.sec || g.home.sec))
+      .map(t => ({ ...t, games: t.games.sort((a, b) => a.date - b.date) }))
+      .sort((a, b) => a.games[0].date - b.games[0].date);
+  })());
+}
+
+const tourneyDay = d => d.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" });
+const tourneySecTeams = t => [...new Set(t.games.flatMap(g => [g.away, g.home]).filter(s => s.sec).map(s => s.name))];
+
+function tourneyDates(t) {
+  const first = t.games[0].date, last = t.games[t.games.length - 1].date;
+  const md = d => d.toLocaleDateString([], { month: "short", day: "numeric" });
+  return first.toDateString() === last.toDateString() ? md(first) : `${md(first)} – ${last.getDate()}`;
+}
+
+// The games of one event, grouped by day.
+function tourneyBodyHtml(t) {
+  const team = (s, other, done) => `
+    <span class="tg-team ${s.sec ? "sec" : ""} ${s.name === "TBD" ? "tbd" : ""} ${done && s.winner ? "won" : ""}">
+      ${s.logo ? `<img class="fav-logo" src="${s.logo}" alt="">` : ""}<span class="tg-name">${escapeHtml(shortenPickDisplay(s.name))}</span>
+      ${s.score && done !== null ? `<span class="tg-score">${s.score}</span>` : ""}
+    </span>`;
+  const days = [];
+  t.games.forEach(g => {
+    const key = g.date.toDateString();
+    const last = days[days.length - 1];
+    if (last && last.key === key) last.games.push(g);
+    else days.push({ key, label: tourneyDay(g.date), games: [g] });
+  });
+  return days.map(day => `
+    <div class="tg-day">${day.label}</div>
+    ${day.games.map(g => {
+      const done = g.state === "post", live = g.state === "in";
+      const status = done ? "Final" : live ? escapeHtml(g.detail) : g.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).replace(":00", "");
+      return `
+        <div class="tg-game ${live ? "live" : ""} ${(g.away.sec || g.home.sec) ? "has-sec" : ""}">
+          <div class="tg-round">${escapeHtml(g.round || "Game")}<span class="tg-status">${status}</span></div>
+          <div class="tg-matchup">
+            ${team(g.away, g.home, done || live ? done : null)}
+            <span class="tg-vs">vs</span>
+            ${team(g.home, g.away, done || live ? done : null)}
+          </div>
+        </div>`;
+    }).join("")}`).join("");
+}
+
+// A collapsible card for the Info Hub.
+function tourneyCardHtml(t, open) {
+  const secs = tourneySecTeams(t);
+  return `
+    <details class="tourney-card" ${open ? "open" : ""}>
+      <summary>
+        <span class="tc-title">🏆 ${escapeHtml(t.name)}</span>
+        <span class="tc-meta">${escapeHtml([t.place, tourneyDates(t)].filter(Boolean).join(" · "))}</span>
+        <span class="tc-sec">${secs.map(n => escapeHtml(shortenPickDisplay(n))).join(", ")}</span>
+      </summary>
+      <div class="tc-body">${tourneyBodyHtml(t)}</div>
+    </details>`;
+}
+
+// Fills a box with this week's tournament cards (hidden when there are none).
+async function renderTournaments(week, section, list) {
+  const sec = document.getElementById(section), box = document.getElementById(list);
+  if (!sec || !box) return;
+  const tourneys = await loadTournaments(week).catch(() => []);
+  if (!tourneys.length) { sec.style.display = "none"; return; }
+  box.innerHTML = tourneys.map(t => tourneyCardHtml(t, false)).join("");
+  sec.style.display = "";
+}
+
+// The same card in a pop-up, from a tournament game's banner on the picks page.
+async function openTournament(name, week) {
+  let overlay = document.getElementById("tourneyOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "tourneyOverlay";
+    overlay.className = "team-sched-overlay";
+    overlay.onclick = e => { if (e.target === overlay) overlay.style.display = "none"; };
+    document.body.appendChild(overlay);
+  }
+  const shell = (body, meta = "") => `
+    <div class="team-sched-modal tourney-modal" role="dialog" aria-modal="true" aria-labelledby="tourneyTitle">
+      <div class="team-sched-header">
+        <div class="team-sched-title" id="tourneyTitle">🏆 ${escapeHtml(name)}${meta ? `<small>${escapeHtml(meta)}</small>` : ""}</div>
+        <button type="button" class="team-sched-close" onclick="document.getElementById('tourneyOverlay').style.display='none'" aria-label="Close">&times;</button>
+      </div>
+      <div class="team-sched-body">${body}</div>
+    </div>`;
+  overlay.innerHTML = shell(`<div class="tg-empty">Loading the bracket...</div>`);
+  overlay.style.display = "flex";
+  const t = (await loadTournaments(week).catch(() => [])).find(x => x.name === name);
+  overlay.innerHTML = t
+    ? shell(tourneyBodyHtml(t), [t.place, tourneyDates(t)].filter(Boolean).join(" · "))
+    : shell(`<div class="tg-empty">Couldn't load this tournament's games.</div>`);
+}

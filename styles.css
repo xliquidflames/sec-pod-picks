@@ -4571,3 +4571,193 @@ img.logo-tile {
   color: var(--danger);
   font-weight: 700;
 }
+
+/* ---- Tournaments: one card per event, games by day ---- */
+.hub-tourneys {
+  margin-top: 0.8rem;
+}
+
+.tourney-card {
+  margin-bottom: 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-card-alt);
+  overflow: hidden;
+}
+
+.tourney-card summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.1rem 0.6rem;
+  padding: 0.65rem 0.8rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.tourney-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.tourney-card summary::after {
+  content: "+";
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: var(--accent-gold);
+  font-weight: 900;
+  font-size: 1.1rem;
+}
+
+.tourney-card[open] summary::after {
+  content: "−";
+}
+
+.tourney-card[open] summary {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tc-title {
+  color: var(--accent-gold);
+  font-weight: 900;
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.tc-meta,
+.tc-sec {
+  grid-column: 1;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.tc-sec {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.tc-body {
+  padding: 0.2rem 0.8rem 0.6rem;
+}
+
+.tg-day {
+  margin: 0.6rem 0 0.25rem;
+  color: var(--accent-gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tg-game {
+  padding: 0.4rem 0.5rem;
+  margin-bottom: 0.3rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-main);
+}
+
+.tg-game.has-sec {
+  border-color: rgba(251, 191, 36, 0.45);
+}
+
+.tg-game.live {
+  border: 2px solid var(--accent-gold);
+}
+
+.tg-round {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tg-status {
+  color: var(--text-main);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.tg-matchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+}
+
+.tg-team {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.tg-team:first-child {
+  justify-content: flex-end;
+}
+
+.tg-name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tg-team.sec .tg-name {
+  color: var(--accent-gold);
+  font-weight: 800;
+}
+
+.tg-team.tbd .tg-name {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.tg-score {
+  margin-left: 0.35rem;
+  font-weight: 800;
+}
+
+.tg-team.won .tg-score {
+  color: var(--accent-gold);
+}
+
+.tg-vs {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.tg-empty {
+  padding: 1rem 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.tourney-modal {
+  max-width: 460px;
+}
+
+/* The picks page banner is a button that opens the event's card. */
+button.tourney-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tourney-banner-hint {
+  font-size: 0.65rem;
+  font-weight: 800;
+  opacity: 0.75;
+  text-transform: none;
+  letter-spacing: 0;
+}

@@ -8,8 +8,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
   <script src="common.js?v=81"></script>
-  <script src="hoops.js?v=4"></script>
-  <link rel="stylesheet" href="styles.css?v=92" />
+  <script src="hoops.js?v=5"></script>
+  <link rel="stylesheet" href="styles.css?v=95" />
   <style>
     /* This week's games, two to a row, under a divider for each day. */
     .hoops-games {
@@ -218,6 +218,11 @@
         <div id="myTeamSection" class="hub-my-team" style="display: none;">
           <div class="hub-sub-title">Your Team</div>
           <div id="myTeamBox" class="my-team-card"></div>
+        </div>
+        <!-- Tournaments this week with an SEC team (hoops.js renderTournaments). -->
+        <div id="tourneySection" class="hub-tourneys" style="display: none;">
+          <div class="hub-sub-title">Tournaments</div>
+          <div id="tourneyList"></div>
         </div>
         <div class="hoops-games" id="hostGridWrapper" style="margin-top: 0.6rem;">
           <div class="hoops-empty">Loading games...</div>
@@ -1099,6 +1104,7 @@
 
       setText("entryPill", `${cousinRows.length} Entries`);
       renderGamesGrid(games);
+      renderTournaments(activeWeek, "tourneySection", "tourneyList");
       renderMyTeam();
       renderCousinList(games, cousinRows, isLockActiveThisWeek);
       renderPerTeamView(games, cousinRows);

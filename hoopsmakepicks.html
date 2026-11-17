@@ -7,8 +7,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=41"></script>
   <script src="common.js?v=81"></script>
-  <script src="hoops.js?v=4"></script>
-  <link rel="stylesheet" href="styles.css?v=94" />
+  <script src="hoops.js?v=5"></script>
+  <link rel="stylesheet" href="styles.css?v=95" />
 </head>
 <body>
 
@@ -321,7 +321,10 @@
 
     function tourneyBanner(g) {
       if (!g.tourney) return "";
-      return `<div class="tourney-banner">🏆 ${escapeHtml(g.tourney.replace(/\s+-\s+/g, " · "))}</div>`;
+      // Tap for the whole event's games (hoops.js openTournament).
+      const [name] = splitTourneyLabel(g.tourney);
+      return `<button type="button" class="tourney-banner" data-tourney="${escapeHtml(name)}" onclick="openTournament(this.dataset.tourney, ${targetWeek})">
+        🏆 ${escapeHtml(g.tourney.replace(/\s+-\s+/g, " · "))}<span class="tourney-banner-hint">See bracket ›</span></button>`;
     }
 
     const lastRound = g => /\b(championship|final|third place|3rd place|\d+(st|nd|rd|th) place|fifth place|seventh place)\b/i.test(g.tourney);
