@@ -386,6 +386,33 @@
     .grid-cell-empty {
       color: var(--border-color);
     }
+
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      margin: 4px 0 8px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .chart-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chart-swatch {
+      width: 14px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .chart-summary {
+      margin-top: 6px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
   </style>
 </head>
 <body>
@@ -798,6 +825,82 @@
       return byWeek;
     }
 
+    // Week-by-week numbers for the participation chart: the same weeks the
+    // attendance reports use, which start once a week's first game kicks
+    // off, so the chart adds one point a week. A name counts once a week,
+    // ignoring capitalization.
+    function computeParticipationChart(rows, weeks) {
+      const key = r => (r.user_name || "").toLowerCase().trim();
+      const firstWeek = {};
+      rows.forEach(r => {
+        const k = key(r);
+        if (!(k in firstWeek) || r.week_number < firstWeek[k]) firstWeek[k] = r.week_number;
+      });
+      const playersIn = w => new Set(rows.filter(r => r.week_number === w).map(key));
+      return weeks.map(w => {
+        const now = playersIn(w), before = playersIn(w - 1);
+        return {
+          week: w,
+          players: now.size,
+          newPlayers: [...now].filter(k => firstWeek[k] === w).length,
+          skipped: w === 1 ? 0 : [...before].filter(k => !now.has(k)).length
+        };
+      });
+    }
+
+    // The chart itself, drawn as an SVG so the page needs no chart library.
+    const CHART_LINES = [
+      { key: "players", label: "Players", color: "#fbbf24" },
+      { key: "newPlayers", label: "New players", color: "#4ade80" },
+      { key: "skipped", label: "Skipped from last week", color: "#f87171" }
+    ];
+
+    function participationChartSvg(points) {
+      const W = 360, H = 230, left = 34, right = 12, top = 18, bottom = 30;
+      const plotW = W - left - right, plotH = H - top - bottom;
+      const maxVal = Math.max(1, ...points.flatMap(p => CHART_LINES.map(l => p[l.key])));
+      const step = maxVal <= 20 ? 5 : maxVal <= 60 ? 10 : maxVal <= 150 ? 25 : 50;
+      const yMax = Math.ceil(maxVal / step) * step;
+      const x = i => left + (points.length === 1 ? plotW / 2 : i * plotW / (points.length - 1));
+      const y = v => top + plotH - v / yMax * plotH;
+
+      let grid = "";
+      for (let v = 0; v <= yMax; v += step) {
+        grid += `<line x1="${left}" x2="${W - right}" y1="${y(v)}" y2="${y(v)}" stroke="#334155" stroke-width="1"/>`
+          + `<text x="${left - 6}" y="${y(v) + 3.5}" text-anchor="end" font-size="10" fill="#94a3b8">${v}</text>`;
+      }
+      // Every week label if they fit, otherwise every other one.
+      const every = points.length > 12 ? 2 : 1;
+      const xLabels = points.map((p, i) => i % every === 0 || i === points.length - 1
+        ? `<text x="${x(i)}" y="${H - bottom + 16}" text-anchor="middle" font-size="10" fill="#94a3b8">${p.week}</text>` : "").join("");
+
+      const lines = CHART_LINES.map(l => {
+        const pts = points.map((p, i) => `${x(i).toFixed(1)},${y(p[l.key]).toFixed(1)}`).join(" ");
+        const dots = points.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p[l.key]).toFixed(1)}" r="2.8" fill="${l.color}"><title>Week ${p.week} · ${l.label}: ${p[l.key]}</title></circle>`).join("");
+        return `<polyline points="${pts}" fill="none" stroke="${l.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+      }).join("");
+
+      // The players count above each point.
+      const labels = points.map((p, i) => `<text x="${x(i)}" y="${y(p.players) - 7}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fbbf24">${p.players}</text>`).join("");
+
+      return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Players, new players and skipped players by week">
+        ${grid}
+        <text x="${left + plotW / 2}" y="${H - 2}" text-anchor="middle" font-size="10" fill="#94a3b8">Week</text>
+        ${xLabels}${lines}${labels}
+      </svg>`;
+    }
+
+    function participationChartHtml(points) {
+      if (!points.length) return `<div class="empty-note">The chart starts once Week 1 is over.</div>`;
+      const legend = CHART_LINES.map(l => `<span class="chart-legend-item"><span class="chart-swatch" style="background:${l.color}"></span>${l.label}</span>`).join("");
+      const last = points[points.length - 1], first = points[0];
+      const change = first.players ? Math.round((last.players - first.players) / first.players * 100) : 0;
+      const summary = points.length > 1
+        ? `Week ${last.week}: ${last.players} players (${change >= 0 ? "+" : ""}${change}% since Week ${first.week}), ${last.newPlayers} new, ${last.skipped} skipped from the week before.`
+        : `Week ${last.week}: ${last.players} players.`;
+      return `<div class="chart-legend">${legend}</div>${participationChartSvg(points)}<div class="chart-summary">${summary}</div>`;
+    }
+
     function formatHours(h) {
       const abs = Math.abs(h).toFixed(1);
       return h >= 0 ? `${abs} hrs early` : `${abs} hrs LATE`;
@@ -832,6 +935,7 @@
       const timing = computeSubmissionTiming(cousinRows, firstKickoffByWeek);
       const trend = computeParticipationTrend(cousinRows);
       const newPlayers = computeNewPlayersByWeek(cousinRows);
+      const chart = computeParticipationChart(cousinRows, weeksToCheck);
 
       // "This week" for the pick-breakdown grid means whichever week is
       // actually open right now — the ESPN data for it is already cached
@@ -840,7 +944,7 @@
       const currentWeekRows = cousinRows.filter(r => r.week_number === openWeek);
       const pickBreakdown = computePickBreakdown(currentWeekRows, currentWeekGames);
 
-      return { openWeek, attendance, attendanceGrid, duplicates, timing, trend, newPlayers, pickBreakdown };
+      return { openWeek, attendance, attendanceGrid, duplicates, timing, trend, newPlayers, pickBreakdown, chart };
     }
 
     async function loadEverything() {
@@ -975,6 +1079,11 @@
           </tbody></table>`;
 
       container.innerHTML = [
+        `<div class="card">
+          <div class="section-title">Participation by Week</div>
+          <div class="section-desc">A week is added once its first game kicks off, so a new point appears each week.</div>
+          ${participationChartHtml(d.chart)}
+        </div>`,
         buildCollapsibleCard(
           "attendanceGridContent",
           "Attendance Grid",
