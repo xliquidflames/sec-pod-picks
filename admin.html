@@ -873,6 +873,76 @@
       return `<div class="chart-legend">${legend}</div>${participationChartSvg(points)}<div class="chart-summary">${summary}</div>`;
     }
 
+    // ---- Weekly Champions ----
+    // The leaderboard page already works out each finished week's champions
+    // (everyone tied for the most correct picks, the same as the trophies).
+    // Rather than copy all that grading here, the admin page opens the
+    // leaderboard out of sight and reads its answer, so the two can never
+    // disagree.
+    const CHAMPION_PAGES = { sec: "index.html", nfl: "nflindex.html" };
+    const CHAMPION_WAIT = 45000;
+    const championsPromise = {};
+
+    function loadChampions(sport) {
+      if (championsPromise[sport]) return championsPromise[sport];
+      championsPromise[sport] = new Promise(resolve => {
+        const frame = document.createElement("iframe");
+        frame.src = CHAMPION_PAGES[sport];
+        frame.setAttribute("aria-hidden", "true");
+        frame.tabIndex = -1;
+        frame.style.cssText = "position: absolute; width: 1px; height: 1px; left: -9999px; border: 0;";
+        document.body.appendChild(frame);
+        const started = Date.now();
+        const check = () => {
+          try {
+            // The leaderboard's own variables, read in its own window.
+            const read = code => frame.contentWindow.eval(code);
+            if (read("Object.keys(championsByWeek).length") > 0) {
+              const byWeek = read("JSON.parse(JSON.stringify(championsByWeek))");
+              const records = read("JSON.parse(JSON.stringify(championRecords))");
+              const labels = {};
+              Object.keys(byWeek).forEach(w => { labels[w] = read(`weekShort(${Number(w)})`); });
+              frame.remove();
+              return resolve({ byWeek, records, labels });
+            }
+          } catch (err) { /* still loading */ }
+          // No champions after the wait: none yet this season (or the page
+          // couldn't load).
+          if (Date.now() - started > CHAMPION_WAIT) { frame.remove(); return resolve(null); }
+          setTimeout(check, 500);
+        };
+        frame.addEventListener("load", () => setTimeout(check, 500));
+      });
+      return championsPromise[sport];
+    }
+
+    // Everyone who's won a week: most weeks first, then by name.
+    function championsHtml(data) {
+      if (!data) return `<div class="empty-note">No weekly champions yet.</div>`;
+      const byName = {};
+      Object.keys(data.byWeek).map(Number).sort((a, b) => a - b).forEach(w => {
+        data.byWeek[w].forEach(name => {
+          const key = name.toLowerCase();
+          (byName[key] ||= { name, weeks: [] }).weeks.push(w);
+        });
+      });
+      const list = Object.values(byName).sort((a, b) => b.weeks.length - a.weeks.length || a.name.localeCompare(b.name));
+      const weekText = w => {
+        const shared = data.byWeek[w].length > 1 ? ", tied" : "";
+        return `${data.labels[w] || `W${w}`} <span class="muted-cell">(${data.records[w] || ""}${shared})</span>`;
+      };
+      return `<table class="report-table"><thead><tr><th>Name</th><th>Weeks</th><th>Won</th></tr></thead><tbody>
+        ${list.map(c => `<tr><td>${c.name}</td><td>&#127942;&times;${c.weeks.length}</td><td>${c.weeks.map(weekText).join(", ")}</td></tr>`).join("")}
+      </tbody></table>`;
+    }
+
+    function fillChampions(sport) {
+      loadChampions(sport).then(data => {
+        const box = document.getElementById("championsBody");
+        if (box && activeSport === sport) box.innerHTML = championsHtml(data);
+      });
+    }
+
     function formatHours(h) {
       const abs = Math.abs(h).toFixed(1);
       return h >= 0 ? `${abs} hrs early` : `${abs} hrs LATE`;
@@ -1057,6 +1127,12 @@
           ${participationChartHtml(d.chart)}
         </div>`,
         buildCollapsibleCard(
+          "championsContent",
+          "Weekly Champions",
+          "Everyone who's won a week, most weeks first, with each week's winning record. Ties count as a win for each player, the same as the trophies on the site.",
+          `<div id="championsBody"><div class="empty-note">Loading champions...</div></div>`
+        ),
+        buildCollapsibleCard(
           "attendanceGridContent",
           "Attendance Grid",
           "Everyone's picking history at a glance — names sorted with the fullest attendance at the top, weeks across the top.",
@@ -1099,6 +1175,7 @@
           newPlayersHtml
         )
       ].join("");
+      fillChampions(activeSport);
     }
 
     async function runReadonlyQuery() {
