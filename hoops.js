@@ -654,6 +654,11 @@ async function renderGameDetails(body, eventId) {
 
   body.innerHTML = `
     ${gameInfoHtml(s, ev, sbComp, comp)}
+    <div class="series-box">
+      <div class="series-heading">Series History</div>
+      <div class="series-lines"><div class="series-line">Loading...</div></div>
+    </div>
+    <div class="stat-ranks" style="display: none;"></div>
     ${s ? "" : `<div class="team-sched-note">Couldn't load this game's details right now.</div>`}
     ${sections.join("")}`;
 
@@ -674,6 +679,8 @@ async function renderGameDetails(body, eventId) {
       col.querySelector(".sched-place").textContent = place || "";
     }, false, { compact: true, eventId });
   });
+  fillHoopsSeries(body, away.team, home.team, state === "post" ? (comp.date || ev.date || "") : "");
+  fillHoopsStatRanks(body, away.team, home.team);
 }
 
 // Where, when, TV and the betting line, from the summary or the scoreboard.
@@ -706,8 +713,209 @@ function gameInfoHtml(s, ev, sbComp, comp) {
   return `<div class="details-info">${rows.map(([k, v]) => `<div class="details-info-row"><span class="details-info-label">${k}</span><span>${v}</span></div>`).join("")}</div>`;
 }
 
-// The football pages preload series history here; basketball has none.
-function preloadDetails() {}
+// ---- Series History and Stat Rankings, from CollegeBasketballData.com ----
+// Two Supabase Edge Functions ask CBBD with the show's hidden key (the same
+// one football uses) and save the answers: "hoops-series" for each matchup
+// (30 days, refreshed once after the teams play) and "hoops-teamstats" for
+// every team's national ranks (12 hours). CBBD's games start with the
+// 2002-03 season, so the history is since then.
+
+// The spellings to try for a team. ESPN's "location" is usually the school
+// name CBBD uses ("Ole Miss", "Texas A&M"); the others are backups.
+function hoopsTeamNames(t) {
+  if (!t) return [];
+  // "Florida Gators" minus "Gators".
+  const school = t.displayName && t.name && t.displayName.endsWith(` ${t.name}`) ? t.displayName.slice(0, -t.name.length - 1) : "";
+  return [...new Set([t.location, school, t.shortDisplayName].filter(Boolean))].slice(0, 4);
+}
+
+// Same as the functions' matching: "Mississippi State" and "Miss St." match.
+const hoopsNorm = s => String(s || "").toLowerCase()
+  .replace(/&/g, " and ").replace(/\(.*?\)/g, " ")
+  .replace(/\bstate\b/g, "st").replace(/\bsaint\b/g, "st").replace(/\bmississippi\b/g, "miss")
+  .replace(/[^a-z0-9]/g, "");
+
+const hoopsSeriesCache = {};
+
+// The SEC team goes first: it's the one CBBD is asked about, and its games
+// are the ones searched for the other team.
+function loadHoopsSeries(namesA, namesB, finished) {
+  const secFirst = isSecTeam(namesB[0]) && !isSecTeam(namesA[0]);
+  const team1 = secFirst ? namesB : namesA, team2 = secFirst ? namesA : namesB;
+  const key = [team1[0], team2[0]].sort().join("|");
+  if (!hoopsSeriesCache[key]) {
+    hoopsSeriesCache[key] = supabaseClient.functions.invoke("hoops-series", { body: { team1, team2, finished: finished || "" } })
+      .then(({ data, error }) => {
+        if (error || !data || !Array.isArray(data.games)) throw error || new Error("no series data");
+        return data;
+      });
+    hoopsSeriesCache[key].catch(() => { delete hoopsSeriesCache[key]; });
+  }
+  return hoopsSeriesCache[key];
+}
+
+// Team colors for the bar, from ESPN. A color too dark to see on the card
+// uses the team's alternate color, and if the two teams still look alike
+// the second team switches too. (Same as football's.)
+const HOOPS_HEX = /^[0-9a-f]{6}$/i;
+const hoopsRgb = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+const hoopsColorGap = (c1, c2) => {
+  const [x, y] = [hoopsRgb(c1), hoopsRgb(c2)];
+  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+};
+function hoopsBarColors(teamA, teamB) {
+  const colors = t => [t && t.color, t && t.alternateColor].filter(c => c && HOOPS_HEX.test(c)).map(c => `#${c}`);
+  const tooDark = c => hoopsColorGap(c, "#162032") < 75 || hoopsRgb(c).reduce((sum, v) => sum + v, 0) < 120;
+  const pick = (options, avoid) => options.find(c => !tooDark(c) && !(avoid && hoopsColorGap(c, avoid) < 90));
+  const a = pick(colors(teamA)) || "#60a5fa";
+  const b = pick(colors(teamB), a) || (hoopsColorGap(a, "#fbbf24") < 90 ? "#f8fafc" : "#fbbf24");
+  return [a, b];
+}
+
+// Win counts for the bar, the last meeting and the current streak.
+function hoopsSeriesSummary(data, nameA, nameB) {
+  const played = data.games.slice().sort((x, y) => new Date(x.date) - new Date(y.date));
+  if (!played.length) return null;
+  const winner = g => g.homeScore > g.awayScore ? g.homeTeam : g.awayTeam;
+  const a = played.filter(g => winner(g) === nameA).length;
+  const b = played.length - a;
+
+  const latest = played[played.length - 1];
+  const lastWinner = winner(latest);
+  const hi = Math.max(latest.homeScore, latest.awayScore), lo = Math.min(latest.homeScore, latest.awayScore);
+  const when = new Date(latest.date);
+  const whenText = isNaN(when.getTime()) ? String(latest.season || "") : when.toLocaleDateString([], { month: "short", year: "numeric" });
+
+  let n = 0;
+  for (let i = played.length - 1; i >= 0 && winner(played[i]) === lastWinner; i--) n++;
+  return {
+    a, b,
+    meetings: String(played.length),
+    last: `${whenText} ${lastWinner} won ${hi}-${lo}`,
+    streak: n > 1 ? `${lastWinner} has won ${n} straight` : `${lastWinner} won the last one`
+  };
+}
+
+const HOOPS_SERIES_WAIT = 10000;
+
+async function fillHoopsSeries(body, teamA, teamB, finished) {
+  const box = body.querySelector(".series-box");
+  if (!box) return;
+  const namesA = hoopsTeamNames(teamA), namesB = hoopsTeamNames(teamB);
+  if (!namesA.length || !namesB.length) { box.remove(); return; }
+  const nameA = namesA[0], nameB = namesB[0];
+  const lines = () => box.querySelector(".series-lines");
+  const unavailable = () => { if (lines()) lines().innerHTML = `<div class="series-line">Series history unavailable right now.</div>`; };
+  // After 10 seconds with no answer, say so instead of "Loading..." forever.
+  const slow = setTimeout(() => { if (!box.querySelector(".series-bar")) unavailable(); }, HOOPS_SERIES_WAIT);
+  try {
+    const data = await loadHoopsSeries(namesA, namesB, finished);
+    clearTimeout(slow);
+    const sum = hoopsSeriesSummary(data, nameA, nameB);
+    if (!sum) { lines().innerHTML = `<div class="series-line">No meetings since the 2002-03 season</div>`; return; }
+
+    const [colorA, colorB] = hoopsBarColors(teamA, teamB);
+    const total = sum.a + sum.b;
+    const pct = n => `${(n / total * 100).toFixed(2)}%`;
+    const logo = t => { const l = teamLogoFrom(t); return l ? `<img src="${l}" alt="" onerror="this.style.display='none'">` : ""; };
+    const side = (t, wins, cls) => `<div class="series-side ${cls}">${logo(t)}<span class="series-wins">${wins}</span><span class="series-wins-label">${wins === 1 ? "Win" : "Wins"}</span></div>`;
+    const line = (label, value) => `<div class="series-line"><span class="series-label">${label}:</span> ${value}</div>`;
+
+    lines().innerHTML = `
+      <div class="series-counts">
+        ${side(teamA, sum.a, "left")}
+        ${side(teamB, sum.b, "right")}
+      </div>
+      <div class="series-bar" role="img" aria-label="${nameA} ${sum.a}, ${nameB} ${sum.b}">
+        <span style="width: ${pct(sum.a)}; background: ${colorA};"></span>
+        <span style="width: ${pct(sum.b)}; background: ${colorB};"></span>
+      </div>
+      <div class="series-note">Games since the 2002-03 season.</div>
+      ${line("Meetings", sum.meetings)}${line("Last", sum.last)}${line("Streak", sum.streak)}`;
+  } catch (err) {
+    clearTimeout(slow);
+    console.error("Series error:", err);
+    unavailable();
+  }
+}
+
+// One row per stat, the same stat for both teams, the way football does it.
+// Offense rows are light, defense rows dark.
+const HOOPS_STAT_ROWS = [
+  ["scoringOffense", "Scoring Offense", "off"], ["scoringDefense", "Scoring Defense", "def"],
+  ["fgOffense", "FG % Offense", "off"], ["fgDefense", "FG % Defense", "def"],
+  ["threeOffense", "3PT % Offense", "off"], ["threeDefense", "3PT % Defense", "def"],
+  ["reboundOffense", "Rebound Offense", "off"], ["reboundDefense", "Rebound Defense", "def"],
+  ["turnoverOffense", "Turnover Offense", "off"], ["turnoverDefense", "Turnover Defense", "def"]
+];
+
+// A small basketball, marking the better rank in each row. It borrows the
+// football icon's size class.
+const BASKETBALL_ICON = `<svg class="football-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.4" fill="#e8772e" stroke="#2a1608" stroke-width="1.2"/><path d="M1.6 12 H22.4 M12 1.6 V22.4 M5 4.6 Q9.6 12 5 19.4 M19 4.6 Q14.4 12 19 19.4" stroke="#2a1608" stroke-width="1.2" fill="none"/></svg>`;
+
+let hoopsStatsPromise = null;
+
+function loadHoopsStats() {
+  if (!hoopsStatsPromise) {
+    hoopsStatsPromise = supabaseClient.functions.invoke("hoops-teamstats", { body: { season: HOOPS_SEASON } })
+      .then(({ data, error }) => {
+        if (error || !data || !data.ranks) throw error || new Error("no team stats");
+        // Look teams up by any spelling.
+        data.byName = {};
+        Object.keys(data.ranks).forEach(name => { data.byName[hoopsNorm(name)] = data.ranks[name]; });
+        return data;
+      });
+    hoopsStatsPromise.catch(() => { hoopsStatsPromise = null; });
+  }
+  return hoopsStatsPromise;
+}
+
+// Stat ranks are one saved call for every team, so they load in the
+// background. Series history waits for a tap, to save CBBD calls.
+function preloadDetails() {
+  setTimeout(() => { loadHoopsStats().catch(() => {}); }, 500);
+}
+
+async function fillHoopsStatRanks(body, teamA, teamB) {
+  const box = body.querySelector(".stat-ranks");
+  if (!box || !teamA || !teamB) return;
+  try {
+    const { byName, counts } = await loadHoopsStats();
+    const ranksFor = t => { for (const n of hoopsTeamNames(t)) if (byName[hoopsNorm(n)]) return byName[hoopsNorm(n)]; return {}; };
+    const a = ranksFor(teamA), b = ranksFor(teamB);
+    // Top third green, middle third pale green, bottom third red.
+    const tier = (rank, key) => {
+      const share = rank / (counts[key] || 365);
+      return share <= 1 / 3 ? "good" : share <= 2 / 3 ? "ok" : "bad";
+    };
+    const pill = (rank, key, end) => `<span class="stat-rank ${end} ${rank ? tier(rank, key) : "none"}">${rank ? `#${rank}` : "-"}</span>`;
+    const logo = t => { const l = teamLogoFrom(t); return l ? `<img src="${l}" alt="" onerror="this.style.display='none'">` : ""; };
+    const rows = HOOPS_STAT_ROWS
+      .filter(([key]) => a[key] || b[key])
+      .map(([key, label, side]) => {
+        const ra = a[key], rb = b[key];
+        const ballA = ra && (!rb || ra < rb), ballB = rb && (!ra || rb < ra);
+        return `<div class="stat-rank-row ${side}">
+          <span class="stat-ball">${ballA ? BASKETBALL_ICON : ""}</span>
+          ${pill(ra, key, "left")}
+          <span class="stat-rank-label">${label}</span>
+          ${pill(rb, key, "right")}
+          <span class="stat-ball">${ballB ? BASKETBALL_ICON : ""}</span>
+        </div>`;
+      }).join("");
+    if (!rows) return;
+    box.innerHTML = `
+      <div class="stat-rank-row stat-rank-head">
+        <span class="stat-side">${logo(teamA)}<span>Away</span></span>
+        <span class="stat-rank-title">Stat Rankings</span>
+        <span class="stat-side">${logo(teamB)}<span>Home</span></span>
+      </div>
+      ${rows}`;
+    box.style.display = "";
+  } catch (err) {
+    console.error("Team stats error:", err);
+  }
+}
 
 function ordinal(n) {
   const v = n % 100;
@@ -721,14 +929,7 @@ function detailsSection(title, html) {
 function pregameSections(s, away, home) {
   const out = [];
 
-  // Most recent meeting, if ESPN includes the series.
-  const series = (s.seasonseries && s.seasonseries[0]) || null;
-  const meeting = series && series.events && series.events[series.events.length - 1];
-  if (meeting && meeting.competitors) {
-    const parts = meeting.competitors.map(c => `${(c.team && (c.team.abbreviation || c.team.displayName)) || ""} ${c.score || ""}`);
-    const when = meeting.date ? new Date(meeting.date).getFullYear() : "";
-    out.push(detailsSection("Last Meeting", `<div class="details-note">${parts.join(" - ")}${when ? ` (${when})` : ""}</div>`));
-  }
+  // The last meeting is in the Series History box above.
 
   // Injury report: players listed as anything other than active.
   const injuries = s.injuries || [];
