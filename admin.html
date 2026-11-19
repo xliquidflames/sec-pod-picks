@@ -73,36 +73,17 @@
       line-height: 1.4;
     }
 
-    /* --- PIN gate --- */
+    /* --- Sign-in gate --- */
     #pinGate {
       max-width: 400px;
       margin: 3rem auto 0;
       text-align: center;
     }
 
-    #pinGate label {
-      display: block;
-      font-size: 0.9rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    #pinGate input {
-      width: 100%;
-      padding: 0.85rem 1rem;
-      border-radius: 8px;
-      background: #0d1527;
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      font-size: 1.1rem;
-      text-align: center;
-      letter-spacing: 2px;
-      outline: none;
-      margin-bottom: 0.85rem;
-    }
-
-    #pinGate input:focus {
-      border-color: var(--accent-gold);
+    #gateNote {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
     }
 
     .btn-unlock {
@@ -117,14 +98,10 @@
       cursor: pointer;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      text-decoration: none;
+      display: block;
     }
 
-    #pinError {
-      color: var(--danger);
-      font-size: 0.85rem;
-      margin-top: 0.75rem;
-      min-height: 1.2rem;
-    }
 
     #adminContent {
       display: none;
@@ -421,10 +398,8 @@
     <h1>Admin Panel</h1>
 
     <div id="pinGate">
-      <label for="adminPinInput">Enter Admin PIN</label>
-      <input type="password" id="adminPinInput" inputmode="numeric" placeholder="••••" />
-      <button type="button" class="btn-unlock" onclick="checkPin()">Unlock</button>
-      <div id="pinError"></div>
+      <div id="gateNote">Checking your account...</div>
+      <a id="gateSignIn" class="btn-unlock" href="signin.html?next=admin.html" style="display: none;">Sign In</a>
     </div>
 
     <div id="adminContent">
@@ -463,34 +438,31 @@
   </div>
 
   <script>
-    // ⚠️ Change this before deploying — this is a placeholder, and since
-    // this whole site runs without any real backend or login system, this
-    // PIN is just a client-side string comparison, same as the Host
-    // Security PIN elsewhere on the site. It stops casual browsing, not a
-    // determined look at the page source. Keep it different from the host
-    // PIN (fewer people know it, so less chance it leaks), and don't reuse
-    // it anywhere that matters.
-    const ADMIN_PIN = "0654";
-
-    function checkPin() {
-      const entered = document.getElementById("adminPinInput").value.trim();
-      const errorEl = document.getElementById("pinError");
-      if (entered === ADMIN_PIN) {
-        document.getElementById("pinGate").style.display = "none";
-        document.getElementById("adminContent").style.display = "block";
-        loadEverything();
-      } else {
-        errorEl.textContent = "Incorrect PIN.";
-      }
-    }
-
-    document.getElementById("adminPinInput").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") checkPin();
-    });
-
     const SUPABASE_URL = "https://kxkctllysuxertyjjppd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_DW2n3YQdAW6jEYNTP-Jm4Q_ejgFJ7nd";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Only site admins (the site_admins table, the same check host picks
+    // uses) see the reports. The sign-in is the one the rest of the site
+    // uses, so an admin who's signed in goes straight in.
+    (async () => {
+      const note = document.getElementById("gateNote");
+      const signIn = document.getElementById("gateSignIn");
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) {
+        note.textContent = "Sign in with an admin account to see this page.";
+        signIn.style.display = "block";
+        return;
+      }
+      const { data: isAdmin, error } = await supabaseClient.rpc("is_site_admin");
+      if (error || !isAdmin) {
+        note.textContent = error ? "Couldn't check your account. Try reloading." : "This account isn't a site admin.";
+        return;
+      }
+      document.getElementById("pinGate").style.display = "none";
+      document.getElementById("adminContent").style.display = "block";
+      loadEverything();
+    })();
 
     let seasonData = { sec: null, nfl: null };
     let activeSport = "sec";
