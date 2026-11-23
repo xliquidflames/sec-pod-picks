@@ -1181,8 +1181,9 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
   }
 }
 
-// Weekly Champ Leaders, under the season podium: whoever has won the most weeks.
-// Same look as the podium, one row per crown count, top three counts.
+// Weekly Champ Leaders, under the season podium: just whoever has won the
+// most weeks so far. Drawn a little smaller than the podium, since crowns
+// count for less than the season record.
 function renderCrownLeaders(after) {
   let box = document.getElementById("crownLeaders");
   if (!box) {
@@ -1199,22 +1200,18 @@ function renderCrownLeaders(after) {
     box.style.display = "none";
     return;
   }
-  const byCount = {};
-  winners.forEach(w => (byCount[w.weeks.length] ||= []).push(w));
-  const tiers = Object.keys(byCount).map(Number).sort((a, b) => b - a).slice(0, 3);
-  const rankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
+  const most = Math.max(...winners.map(w => w.weeks.length));
+  const leaders = winners.filter(w => w.weeks.length === most).sort((a, b) => a.name.localeCompare(b.name));
+  // Smaller logos to match the smaller text.
+  const logo = name => podiumLogoHtml(name).replace('class="fav-logo"', 'class="fav-logo" style="width: 1.05rem; height: 1.05rem; vertical-align: -0.2rem;"');
+  const names = leaders
+    .map(w => `<span class="podium-name" title="${w.weeks.map(weekName).join(", ")} champion">${logo(w.name)}<strong>${escapeHtml(w.name)}</strong></span>`).join("");
   box.innerHTML = `
-    <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">&#128081; Weekly Champ Leaders</span>
-    ${tiers.map((count, idx) => {
-      const names = byCount[count].sort((a, b) => a.name.localeCompare(b.name))
-        .map(w => `<span class="podium-name" title="${w.weeks.map(weekName).join(", ")} champion">${podiumLogoHtml(w.name)}<strong>${escapeHtml(w.name)}</strong></span>`).join("");
-      return `
-        <div class="top3-item podium-row">
-          <span class="rank-badge ${rankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">${idx + 1}</span>
-          <div class="podium-names">${names}</div>
-          <span class="podium-record">&#128081;&times;${count}</span>
-        </div>`;
-    }).join("")}`;
+    <span style="font-size: 0.68rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.35rem;">&#128081; Weekly Champ Leaders</span>
+    <div class="top3-item podium-row" style="font-size: 0.78rem; padding: 0.45rem 0.7rem;">
+      <div class="podium-names">${names}</div>
+      <span class="podium-record">&#128081;&times;${most}</span>
+    </div>`;
   box.style.display = "";
 }
 
