@@ -875,7 +875,7 @@
 
     // ---- Weekly Champions ----
     // The leaderboard page already works out each finished week's champions
-    // (everyone tied for the most correct picks, the same as the trophies).
+    // (everyone tied for the most correct picks, the same as the crowns).
     // Rather than copy all that grading here, the admin page opens the
     // leaderboard out of sight and reads its answer, so the two can never
     // disagree.
@@ -932,7 +932,7 @@
         return `${data.labels[w] || `W${w}`} <span class="muted-cell">(${data.records[w] || ""}${shared})</span>`;
       };
       return `<table class="report-table"><thead><tr><th>Name</th><th>Weeks</th><th>Won</th></tr></thead><tbody>
-        ${list.map(c => `<tr><td>${c.name}</td><td>&#127942;&times;${c.weeks.length}</td><td>${c.weeks.map(weekText).join(", ")}</td></tr>`).join("")}
+        ${list.map(c => `<tr><td>${c.name}</td><td>&#128081;&times;${c.weeks.length}</td><td>${c.weeks.map(weekText).join(", ")}</td></tr>`).join("")}
       </tbody></table>`;
     }
 
@@ -1129,7 +1129,7 @@
         buildCollapsibleCard(
           "championsContent",
           "Weekly Champions",
-          "Everyone who's won a week, most weeks first, with each week's winning record. Ties count as a win for each player, the same as the trophies on the site.",
+          "Everyone who's won a week, most weeks first, with each week's winning record. Ties count as a win for each player, the same as the crowns on the site.",
           `<div id="championsBody"><div class="empty-note">Loading champions...</div></div>`
         ),
         buildCollapsibleCard(

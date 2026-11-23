@@ -549,18 +549,18 @@ function favoriteLogoHtml(favorites) {
   return `<img class="fav-logo" src="${escapeHtml(team.logo)}" alt="${escapeHtml(team.name)}" title="${escapeHtml(team.name)}" />`;
 }
 
-// One trophy and a count of weeks won; the weeks show on tap-and-hold
+// One crown and a count of weeks won; the weeks show on tap-and-hold
 // and in the card's Season So Far box.
 function championChipsHtml(name) {
   const weeks = weeklyChampions[(name || "").toLowerCase()] || [];
   if (!weeks.length) return "";
-  return `<span class="champ-chip" title="${weeks.map(weekName).join(", ")} champion">&#127942;&times;${weeks.length}</span>`;
+  return `<span class="champ-chip" title="${weeks.map(weekName).join(", ")} champion">&#128081;&times;${weeks.length}</span>`;
 }
 
 // Every week won, spelled out, for the Season So Far box on a card.
 function championWeeksHtml(name) {
   const weeks = weeklyChampions[(name || "").toLowerCase()] || [];
-  return weeks.length ? `<div>&#127942; Champion weeks: ${weeks.map(weekShort).join(", ")}</div>` : "";
+  return weeks.length ? `<div>&#128081; Champion weeks: ${weeks.map(weekShort).join(", ")}</div>` : "";
 }
 
 // The standings show just the logo; titles stay on the cards.
@@ -634,7 +634,7 @@ function renderChampionLine(weekNum) {
     return;
   }
   const names = championsByWeek[week];
-  line.innerHTML = `<div class="pulse-label">&#127942; ${weekName(week)} ${names.length > 1 ? "Champions" : "Champion"}</div>
+  line.innerHTML = `<div class="pulse-label">&#128081; ${weekName(week)} ${names.length > 1 ? "Champions" : "Champion"}</div>
     <div class="pulse-stat">${championRecords[week] || ""}</div>
     <div class="champion-line-names">${names.map(n => `<span>${podiumLogoHtml(n)}${escapeHtml(n)}</span>`).join("")}</div>`;
   line.style.display = "";
@@ -1161,6 +1161,7 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
       </div>
     `;
   }).join("");
+  renderCrownLeaders(top5Container);
 
   if (decisionLog) {
     const placeLabels = ["1st Place", "2nd Place", "3rd Place"];
@@ -1178,6 +1179,43 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
     `;
     decisionLog.style.display = "block";
   }
+}
+
+// Weekly Champ Leaders, under the season podium: whoever has won the most weeks.
+// Same look as the podium, one row per crown count, top three counts.
+function renderCrownLeaders(after) {
+  let box = document.getElementById("crownLeaders");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "crownLeaders";
+    box.style.marginTop = "0.8rem";
+    after.after(box);
+  }
+  // Names as they were entered, not lower-cased.
+  const shown = {};
+  Object.values(championsByWeek).forEach(list => list.forEach(n => { shown[n.toLowerCase()] ||= n; }));
+  const winners = Object.entries(weeklyChampions).map(([key, weeks]) => ({ name: shown[key] || key, weeks }));
+  if (!winners.length) {
+    box.style.display = "none";
+    return;
+  }
+  const byCount = {};
+  winners.forEach(w => (byCount[w.weeks.length] ||= []).push(w));
+  const tiers = Object.keys(byCount).map(Number).sort((a, b) => b - a).slice(0, 3);
+  const rankClasses = ["rank-gold", "rank-silver", "rank-bronze"];
+  box.innerHTML = `
+    <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">&#128081; Weekly Champ Leaders</span>
+    ${tiers.map((count, idx) => {
+      const names = byCount[count].sort((a, b) => a.name.localeCompare(b.name))
+        .map(w => `<span class="podium-name" title="${w.weeks.map(weekName).join(", ")} champion">${podiumLogoHtml(w.name)}<strong>${escapeHtml(w.name)}</strong></span>`).join("");
+      return `
+        <div class="top3-item podium-row">
+          <span class="rank-badge ${rankClasses[idx]}" style="width: 22px; height: 22px; font-size: 0.7rem; margin-right: 0.4rem;">${idx + 1}</span>
+          <div class="podium-names">${names}</div>
+          <span class="podium-record">&#128081;&times;${count}</span>
+        </div>`;
+    }).join("")}`;
+  box.style.display = "";
 }
 
 // Weekly ranks on already-sorted rows: everyone on the same number of wins
