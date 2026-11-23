@@ -490,7 +490,8 @@ function openStandings() {
 }
 
 // SEC teams in standings order: conference win %, then conference wins,
-// then overall wins. place is the team's spot in that list.
+// then overall wins. place is the team's spot in that list, shared with any
+// team on the same conference record (tied is true for those).
 async function loadSecStandings() {
   if (!infoCache.standings) {
     infoCache.standings = await fetchFirstOk([
@@ -522,7 +523,14 @@ async function loadSecStandings() {
   // Conference win %, then conference wins, then overall wins.
   const pct = r => r.c.w + r.c.l ? r.c.w / (r.c.w + r.c.l) : 0;
   rows.sort((a, b) => (pct(b) - pct(a)) || (b.c.w - a.c.w) || (b.o.w - a.o.w));
-  rows.forEach((r, i) => { r.place = i + 1; });
+  // Teams with the same conference record share a place, and the next
+  // place skips past them, the usual sports way: 1, T-2, T-2, T-2, 5.
+  // (The SEC's tiebreakers would split them; this list doesn't try.)
+  const sameRecord = (a, b) => a && b && a.c.w === b.c.w && a.c.l === b.c.l;
+  rows.forEach((r, i) => {
+    r.place = i > 0 && sameRecord(r, rows[i - 1]) ? rows[i - 1].place : i + 1;
+  });
+  rows.forEach((r, i) => { r.tied = sameRecord(r, rows[i - 1]) || sameRecord(r, rows[i + 1]); });
   return rows;
 }
 
@@ -534,7 +542,7 @@ async function renderStandings(body) {
       <div class="info-row standings-row head"><span></span><span>Team</span><span class="info-meta">Conf</span><span class="info-meta">Overall</span></div>
       ${rows.map(r => `
         <div class="info-row standings-row">
-          <span class="info-rank">${r.place}</span>
+          <span class="info-rank">${r.tied ? "T-" : ""}${r.place}</span>
           ${infoTeamHtml(r.name, r.logo)}
           <span class="info-meta" style="color: var(--text-main);">${r.conf || "-"}</span>
           <span class="info-meta">${r.overall || "-"}</span>
@@ -893,7 +901,7 @@ async function renderGameDetails(body, eventId) {
       try {
         const names = [t.location, t.shortDisplayName, t.displayName, t.name].filter(Boolean).map(normalizeTeam);
         const row = (await loadSecStandings()).find(r => (r.id && r.id === String(t.id)) || names.includes(normalizeTeam(r.name)));
-        if (row) { place = `#${row.place} SEC`; conf = row.conf; }
+        if (row) { place = `${row.tied ? "T-" : "#"}${row.place} SEC`; conf = row.conf; }
       } catch (e) {}
       col.querySelector(".sched-rec").textContent = `${record || ""}${conf && conf !== "-" ? ` (${conf})` : ""}`;
       col.querySelector(".sched-place").textContent = place || "";
