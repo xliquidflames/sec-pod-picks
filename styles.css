@@ -4788,3 +4788,139 @@ button.tourney-banner {
   text-transform: none;
   letter-spacing: 0;
 }
+
+/* ---- Hoops leaderboard page (hoopsindex.html), moved out of the page ---- */
+/* This week's games, two to a row, under a divider for each day. */
+.hoops-games {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.5rem;
+}
+.hoops-games.collapsed {
+  display: none;
+}
+.hoops-day {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 0.4rem 0 0.1rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-gold);
+}
+.hoops-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.55rem 0.3rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card-alt);
+  text-align: center;
+}
+/* Done: faded. Today: its own banner and lit-up cards. Live: gold box. */
+/* Collapsible days: the header is a button with a count and +/-. */
+.hoops-day.day-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0.3rem 0 0;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+.hoops-day .day-count {
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: none;
+}
+.hoops-day .day-sign {
+  margin-left: auto;
+  font-size: 1rem;
+  line-height: 1;
+}
+.day-games {
+  grid-column: 1 / -1;
+}
+.day-games[hidden] {
+  display: none;
+}
+.hoops-done-row .upcoming-time {
+  grid-column: 1 / -1;
+  margin-top: -0.15rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Finished games: one compact row each, like the picks lists. */
+.hoops-done-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+/* Centered on the @: away team leans in from the left, home from the right. */
+.hoops-done-row .done-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.hoops-done-row .done-side:nth-child(3) {
+  justify-content: flex-start;
+}
+.hoops-done-row .done-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hoops-done-row .done-score {
+  margin-left: 0.35rem;
+  font-weight: 800;
+}
+.hoops-done-row .done-score.won {
+  color: var(--accent-gold);
+}
+.hoops-done-row .done-at {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.hoops-done-row.fav-game {
+  box-shadow: inset 4px 0 0 var(--fav-1, var(--accent-gold)), inset 8px 0 0 var(--fav-2, var(--accent-gold));
+  padding-left: 0.9rem;
+}
+.hoops-day.today {
+  margin: 0.5rem 0 0.15rem;
+  padding: 0.5rem 0;
+  border-radius: 8px;
+  background: var(--accent-gold);
+  color: var(--bg-main);
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+}
+.hoops-game.live-game-row {
+  border: 2px solid var(--accent-gold);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+  opacity: 1;
+}
+.hoops-empty {
+  grid-column: 1 / -1;
+  padding: 1.5rem 0;
+  text-align: center;
+  color: var(--text-muted);
+}

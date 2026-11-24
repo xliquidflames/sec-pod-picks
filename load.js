@@ -8,7 +8,7 @@
 // order. (This file has no version tag of its own; GitHub Pages lets
 // browsers keep it about 10 minutes, so changes reach everyone within that.)
 
-const SITE_VERSION = "100";
+const SITE_VERSION = "101";
 
 (function () {
   const me = document.currentScript;
@@ -21,3 +21,10 @@ const SITE_VERSION = "100";
     document.write(`<script src="${tag(file)}"><\/script>`);
   });
 })();
+
+// A page's own code, from the bottom of the page:
+//   <script>siteScript("index.js");</script>
+// Same version number as everything else.
+function siteScript(file) {
+  document.write(`<script src="${file}?v=${SITE_VERSION}"><\/script>`);
+}

@@ -1,0 +1,31 @@
+// unsubscribe.html's own code, moved out of the page. Loaded at the end of the
+// page by siteScript() in load.js, after the shared files.
+
+// The link in a reminder email: unsubscribe.html?t=<token>. Asks the
+// "hoops-new-games" function to remove that reminder.
+(async () => {
+  const title = document.getElementById("unsubTitle");
+  const text = document.getElementById("unsubText");
+  const token = new URLSearchParams(location.search).get("t") || "";
+  if (!/^[0-9a-f-]{36}$/i.test(token)) {
+    title.textContent = "Link not valid";
+    text.textContent = "That unsubscribe link isn't complete. Untick the reminder box on the picks page instead.";
+    return;
+  }
+  try {
+    const res = await fetch(`${SITE.supabase.url}/functions/v1/hoops-new-games`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ unsub: token })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || `error ${res.status}`);
+    title.textContent = "You're unsubscribed";
+    text.textContent = data.team
+      ? `No more game reminders for ${data.team}. You can turn them back on from the picks page anytime.`
+      : "You won't get these reminders anymore.";
+  } catch (e) {
+    title.textContent = "Couldn't unsubscribe";
+    text.textContent = `Something went wrong (${e.message}). Untick the reminder box on the picks page instead, or try the link again later.`;
+  }
+})();
