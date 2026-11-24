@@ -103,8 +103,8 @@ async function fetchEspnSchedule(week) {
 }
 
 async function initForm() {
-  document.getElementById("pageHeading").textContent = `WEEK ${targetWeek} PICKS`;
-  document.getElementById("pageSubHeading").textContent = `Make your selections for Week ${targetWeek}`;
+  document.getElementById("pageHeading").textContent = `${weekName(targetWeek).toUpperCase()} PICKS`;
+  document.getElementById("pageSubHeading").textContent = `Make your selections for ${weekName(targetWeek)}`;
 
   // Picks go in under the signed-in account's name.
   const account = await requireAccount();
@@ -159,7 +159,7 @@ function confirmNameMatch(typedName, matchedName) {
 function renderForm() {
   const container = document.getElementById("gamesList");
   if (currentSchedule.length === 0) {
-    container.innerHTML = `<div style="text-align:center; color: var(--danger); padding: 1.5rem 0;">No scheduled games found for Week ${targetWeek} yet.</div>`;
+    container.innerHTML = `<div style="text-align:center; color: var(--danger); padding: 1.5rem 0;">No scheduled games found for ${weekName(targetWeek)} yet.</div>`;
     return;
   }
 
@@ -233,9 +233,10 @@ let myEmail = "";
 function tourneyBanner(g) {
   if (!g.tourney) return "";
   // Tap for the whole event's games (hoops.js openTournament).
-  const [name] = splitTourneyLabel(g.tourney);
+  const [name, round] = splitTourneyLabel(g.tourney);
+  const label = [name, ...round.split(/\s+-\s+/)].filter(Boolean).join(" · ");
   return `<button type="button" class="tourney-banner" data-tourney="${escapeHtml(name)}" onclick="openTournament(this.dataset.tourney, ${targetWeek})">
-    🏆 ${escapeHtml(g.tourney.replace(/\s+-\s+/g, " · "))}<span class="tourney-banner-hint">See bracket ›</span></button>`;
+    🏆 ${escapeHtml(label)}<span class="tourney-banner-hint">See bracket ›</span></button>`;
 }
 
 const lastRound = g => /\b(championship|final|third place|3rd place|\d+(st|nd|rd|th) place|fifth place|seventh place)\b/i.test(g.tourney);
@@ -426,7 +427,7 @@ async function submitBallot() {
       localStorage.setItem("secPickEmUserName", finalUsername);
     } catch (storageErr) {}
 
-    setStatus("var(--success)", `Week ${targetWeek} picks saved! Returning to Leaderboard...`);
+    setStatus("var(--success)", `${weekName(targetWeek)} picks saved! Returning to Leaderboard...`);
     setTimeout(() => { window.location.href = "hoopsindex.html"; }, 1800);
   } catch (err) {
     fail(`Error: ${err.message}`);

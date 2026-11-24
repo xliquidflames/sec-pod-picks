@@ -3,13 +3,21 @@
 // common.js. Same as sec.js for football, with basketball feeds and weeks.
 
 // A pick'em week runs Monday through Sunday, starting with the season's
-// opening Monday. Week 19 ends the Sunday of the SEC Tournament final.
+// opening Monday. Week 19 is the SEC Tournament, ending the Sunday of the
+// final (also Selection Sunday). Weeks 20-22 are the NCAA Tournament, every
+// game, the way the football pages add the Playoff: the First and Second
+// Rounds (with the Opening Round), the Sweet 16 and Elite 8, then the Final
+// Four, whose week runs through the Monday title game.
 // ESPN calls the 2026-27 season "2027". Requests ask for the regular season
 // (seasontype=2) explicitly; otherwise, during ESPN's preseason, team
 // schedules come back empty.
 const HOOPS_SEASON = 2027;
 const HOOPS_FIRST_MONDAY = new Date(2026, 10, 2); // Mon Nov 2, 2026
-const TOTAL_WEEKS = 19;
+const TOTAL_WEEKS = 22;
+const NCAA_FIRST_WEEK = 20;
+const isNcaaWeek = w => w >= NCAA_FIRST_WEEK;
+const WEEK_NAMES = { 19: "SEC Tournament", 20: "NCAA First & Second Rounds", 21: "NCAA Sweet 16 & Elite 8", 22: "NCAA Final Four" };
+const WEEK_SHORT = { 19: "SECT", 20: "NCAA R1-2", 21: "S16-E8", 22: "Final Four" };
 const WEEK_NUMS = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1);
 const PICKS_TABLE = "hoops_picks";
 
@@ -20,18 +28,52 @@ function weekRange(week) {
   const start = new Date(HOOPS_FIRST_MONDAY);
   start.setDate(start.getDate() + (week - 1) * 7);
   const end = new Date(start);
-  end.setDate(end.getDate() + 6);
+  end.setDate(end.getDate() + (week === TOTAL_WEEKS ? 7 : 6));  // the title game is a Monday
   end.setHours(23, 59, 59, 999);
   return { start, end };
 }
 
 const ymd = d => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
 
-// Every game with an SEC team (group 23) that week, conference or not.
-const scoreboardUrl = week => {
+// Every game with an SEC team (group 23) that week, conference or not. In
+// NCAA Tournament weeks, every Division I game (group 50), trimmed to the
+// tournament below. From the SEC Tournament on, ESPN's postseason
+// (seasontype 3) is asked too, in case it files those games there.
+const seasonTypesFor = week => (week >= 19 ? [2, 3] : [2]);
+const scoreboardUrls = (week, group) => {
   const { start, end } = weekRange(week);
-  return `${ESPN_HOOPS}/scoreboard?groups=23&seasontype=2&dates=${ymd(start)}-${ymd(end)}&limit=300`;
+  const g = group || (isNcaaWeek(week) ? 50 : 23);
+  return seasonTypesFor(week).map(t => `${ESPN_HOOPS}/scoreboard?groups=${g}&seasontype=${t}&dates=${ymd(start)}-${ymd(end)}&limit=1000`);
 };
+const scoreboardUrl = week => scoreboardUrls(week)[0];
+
+// The NCAA Tournament's own games, not the NIT or other postseason events.
+// ESPN labels them "Men's Basketball Championship - Region - Round".
+const eventHeadline = ev => {
+  const comp = ev && ev.competitions && ev.competitions[0];
+  return (comp && comp.notes && comp.notes[0] && comp.notes[0].headline) || "";
+};
+const isNcaaTournamentGame = ev => /men's basketball championship|ncaa (men's )?tournament/i.test(eventHeadline(ev));
+
+// Fetches each URL and merges the games, one copy of each. Returns the
+// first response's clock time, or null when nothing came back.
+async function fetchMergedScoreboards(urls) {
+  const byId = {};
+  let currentTime = null, any = false;
+  for (const url of urls) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      any = true;
+      if (!currentTime) { const h = res.headers.get("date"); currentTime = h ? new Date(h) : new Date(); }
+      (data.events || []).forEach(ev => { if (ev && ev.id) byId[ev.id] = ev; });
+    } catch (err) {
+      console.error("ESPN scoreboard failed:", url, err);
+    }
+  }
+  return any ? { events: Object.values(byId), currentTime } : null;
+}
 
 // ESPN's scoreboard can refuse weeks it hasn't opened yet, even though each
 // team's schedule already lists the games. So a week whose scoreboard fails
@@ -93,19 +135,15 @@ const bothTeamsSet = ev => {
 
 async function fetchEspnRaw(week) {
   if (espnRawCache[week]) return espnRawCache[week];
-  try {
-    const res = await fetch(scoreboardUrl(week));
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.events) data.events = data.events.filter(bothTeamsSet);
-      if (data && data.events && data.events.length) {
-        const header = res.headers.get("date");
-        return (espnRawCache[week] = { data, currentTime: header ? new Date(header) : new Date() });
-      }
-    }
-  } catch (err) {
-    console.error(`ESPN scoreboard failed for week ${week}:`, err);
+  const got = await fetchMergedScoreboards(scoreboardUrls(week));
+  if (got) {
+    let events = got.events.filter(bothTeamsSet);
+    if (isNcaaWeek(week)) events = events.filter(isNcaaTournamentGame);
+    if (events.length) return (espnRawCache[week] = { data: { events }, currentTime: got.currentTime });
   }
+  // The SEC teams' schedules only cover the regular season, so NCAA weeks
+  // have nothing to fall back on.
+  if (isNcaaWeek(week)) return { data: { events: [] }, currentTime: (got && got.currentTime) || new Date() };
   try {
     const { events, currentTime } = await loadSecSchedules();
     const { start, end } = weekRange(week);
@@ -1018,26 +1056,26 @@ function gameSections(s, away, home, state, comp) {
 // pulled (not just SEC games) so the card shows the full field.
 const tourneyCache = {};
 
-// "Players Era 8 - Semifinal" -> ["Players Era 8", "Semifinal"]
+// "Players Era 8 - Semifinal" -> ["Players Era 8", "Semifinal"]. ESPN's
+// "Men's Basketball Championship" is shown as "NCAA Tournament".
 function splitTourneyLabel(headline) {
   const parts = String(headline || "").split(/\s+-\s+/);
-  return [parts[0].trim(), parts.slice(1).join(" - ").trim()];
+  const name = parts[0].trim();
+  return [/men's basketball championship/i.test(name) ? "NCAA Tournament" : name, parts.slice(1).join(" - ").trim()];
 }
 
 async function loadTournaments(week) {
   if (tourneyCache[week]) return tourneyCache[week];
   return (tourneyCache[week] = (async () => {
-    const { start, end } = weekRange(week);
     let events = [];
-    try {
-      // Division I (group 50): every game, so the whole field shows.
-      const res = await fetch(`${ESPN_HOOPS}/scoreboard?groups=50&seasontype=2&dates=${ymd(start)}-${ymd(end)}&limit=1000`);
-      if (!res.ok) throw new Error(`ESPN ${res.status}`);
-      events = (await res.json()).events || [];
-    } catch (e) {
-      // Fall back to the SEC games already loaded for the week.
+    // Division I (group 50): every game, so the whole field shows.
+    const got = await fetchMergedScoreboards(scoreboardUrls(week, 50));
+    if (got && got.events.length) events = got.events;
+    else {
+      // Fall back to the games already loaded for the week.
       try { events = ((await fetchEspnRaw(week)).data.events) || []; } catch (_) { events = []; }
     }
+    if (isNcaaWeek(week)) events = events.filter(isNcaaTournamentGame);
 
     const byName = {};
     events.forEach(ev => {
@@ -1072,9 +1110,10 @@ async function loadTournaments(week) {
       if (!byName[name].place && venue && venue.city) byName[name].place = [venue.city, venue.state].filter(Boolean).join(", ");
     });
 
-    // Only events with an SEC team in them, soonest first.
+    // Only events with an SEC team in them (the NCAA Tournament always
+    // shows), soonest first.
     return Object.values(byName)
-      .filter(t => t.games.some(g => g.away.sec || g.home.sec))
+      .filter(t => t.name === "NCAA Tournament" || t.games.some(g => g.away.sec || g.home.sec))
       .map(t => ({ ...t, games: t.games.sort((a, b) => a.date - b.date) }))
       .sort((a, b) => a.games[0].date - b.games[0].date);
   })());

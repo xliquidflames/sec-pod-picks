@@ -24,7 +24,7 @@ addSecAliases({
   const md = d => d.toLocaleDateString([], { month: "numeric", day: "numeric" });
   document.getElementById("mainWeekSelect").innerHTML = WEEK_NUMS.map(w => {
     const { start, end } = weekRange(w);
-    return `<option value="${w}">Week ${w} · ${md(start)}–${md(end)}</option>`;
+    return `<option value="${w}">${weekName(w)} · ${md(start)}–${md(end)}</option>`;
   }).join("");
 })();
 
@@ -224,8 +224,8 @@ async function switchWeek(weekNum) {
   const dropdown = document.getElementById("mainWeekSelect");
   if (dropdown) dropdown.value = weekNum;
 
-  document.getElementById("weekHostTitle").textContent = `Week ${weekNum} Info Hub`;
-  document.getElementById("weekCousinsTitle").textContent = `The ${possessive(SITE.players.many)} Week ${weekNum} Picks`;
+  document.getElementById("weekHostTitle").textContent = `${weekName(weekNum)} Info Hub`;
+  document.getElementById("weekCousinsTitle").textContent = `The ${possessive(SITE.players.many)} ${weekName(weekNum)} Picks`;
 
   updateSubmitButton(weekNum, "hoopsmakepicks.html");
   pointToNextWeek(weekNum);
@@ -396,7 +396,7 @@ function onAccountReady() { renderMyTeam(); }
 function renderGamesGrid(games) {
   const grid = document.getElementById("hostGridWrapper");
   if (games.length === 0) {
-    grid.innerHTML = `<div class="hoops-empty">No games scheduled for Week ${activeWeek} yet.</div>`;
+    grid.innerHTML = `<div class="hoops-empty">No games scheduled for ${weekName(activeWeek)} yet.</div>`;
     return;
   }
   const liveMap = liveGames[activeWeek] || {};
@@ -557,7 +557,7 @@ function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
 
   const listContainer = document.getElementById("cousinsList");
   listContainer.innerHTML = cousinRows.length === 0
-    ? `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No picks submitted for Week ${activeWeek} yet.</div>`
+    ? `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No picks submitted for ${weekName(activeWeek)} yet.</div>`
     : "";
 
   const paths = computePathsToFirst(games);
@@ -818,7 +818,7 @@ function renderPerTeamView(games, cousinRows) {
   if (!container) return;
 
   if (games.length === 0) {
-    container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No games scheduled for Week ${activeWeek} yet.</div>`;
+    container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No games scheduled for ${weekName(activeWeek)} yet.</div>`;
     return;
   }
 
