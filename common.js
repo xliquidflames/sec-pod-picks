@@ -36,20 +36,25 @@ function addSiteMenu() {
   nav.innerHTML = SITE_SECTIONS.map(s =>
     `<a href="${s.href}" class="${s.main ? "main" : ""} ${s.match(page) ? "active" : ""}"${s.match(page) ? ' aria-current="page"' : ""}>${s.label}</a>`).join("");
   container.prepend(nav);
-  addAccountBar(nav);
+  // Under the buttons: the Discord link on the left, the account on the right.
+  const sub = document.createElement("div");
+  sub.className = "nav-sub";
+  if (SITE.discord) sub.innerHTML = `<a href="${SITE.discord}" class="nav-discord" target="_blank" rel="noopener noreferrer">Join Our Discord</a>`;
+  nav.appendChild(sub);
+  addAccountBar(sub);
 }
 
-// Inside the pinned menu, under its buttons: who's signed in (with their
+// Inside the pinned menu, under its buttons (right side): who's signed in (with their
 // team logo for this section and any weekly titles), or a Sign in link. The
 // sign-in page has its own, so it's left off there.
 let signedInAccount;  // undefined until checked, then the account or null
 
-function addAccountBar(nav) {
+function addAccountBar(row) {
   if (/^signin/i.test(location.pathname.split("/").pop() || "")) return;
   const bar = document.createElement("div");
   bar.className = "account-bar";
   bar.id = "accountBar";
-  nav.appendChild(bar);
+  row.appendChild(bar);
   currentAccount().then(account => {
     signedInAccount = account;
     renderAccountBar();

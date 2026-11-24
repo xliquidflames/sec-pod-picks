@@ -3344,15 +3344,40 @@ a.btn-submit.bk-cta {
   color: var(--accent-gold);
 }
 
-/* Who's signed in, on its own line inside the pinned menu. */
-.site-nav:has(.account-bar) {
+/* A line inside the pinned menu, under its buttons: the Discord link on
+   the left and who's signed in on the right. */
+.site-nav:has(.nav-sub) {
   flex-wrap: wrap;
   row-gap: 0.2rem;
   padding-bottom: 0.3rem;
 }
 
-.account-bar {
+.nav-sub {
   flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 1rem;
+}
+
+.site-nav a.nav-discord {
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--accent-gold);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1rem;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.account-bar {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 1rem;
   line-height: 1rem;
   text-align: right;
