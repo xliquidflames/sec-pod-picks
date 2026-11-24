@@ -316,9 +316,11 @@ async function renderRankings(body) {
 }
 
 // ---- Playoff bracket, projected from the committee's rankings ----
-// The field is the five highest-ranked conference leaders plus the next
-// seven highest-ranked teams, seeded 1-12 in ranking order. Seeds 1-4 get
-// byes; the first round is 12 at 5, 9 at 8, 11 at 6 and 10 at 7.
+// This season's rule: the Power Four champions (ACC, Big Ten, Big 12, SEC)
+// and the highest-ranked Group of Six champion get automatic bids, and the
+// next highest-ranked teams fill the 12-team field. Today's conference
+// leaders stand in for the champions. Seeded 1-12 in ranking order. Seeds
+// 1-4 get byes; the first round is 12 at 5, 9 at 8, 11 at 6 and 10 at 7.
 
 const BRACKET_PODS = [[4, 5, 12], [1, 8, 9], [3, 6, 11], [2, 7, 10]];
 
@@ -328,7 +330,10 @@ async function loadCfpPoll() {
     (/cfp/i.test(p.type || "") || /playoff/i.test(`${p.name || ""} ${p.shortName || ""}`))) || null;
 }
 
-// Each FBS conference's current leader by conference record, from ESPN.
+// Each FBS conference's current leader by conference record, from ESPN:
+// [{ id, power }], power true for the Power Four.
+const POWER_FOUR = /atlantic coast|^acc$|big ten|big 12|southeastern|^sec$/i;
+
 async function loadConferenceLeaders() {
   if (!infoCache.fbsStandings) {
     infoCache.fbsStandings = await fetchFirstOk([
@@ -351,7 +356,7 @@ async function loadConferenceLeaders() {
     }).filter(r => r.id);
     const pct = r => r.c.w + r.c.l ? r.c.w / (r.c.w + r.c.l) : 0;
     rows.sort((x, y) => (pct(y) - pct(x)) || (y.c.w - x.c.w) || (y.o.w - x.o.w));
-    if (rows.length) leaders.push(rows[0].id);
+    if (rows.length) leaders.push({ id: rows[0].id, power: POWER_FOUR.test(conf.name || "") || POWER_FOUR.test(conf.abbreviation || "") });
   });
   return leaders;
 }
@@ -368,18 +373,21 @@ async function projectBracket() {
 
   let leaders = [];
   try { leaders = await loadConferenceLeaders(); } catch (e) { console.error("Standings error:", e); }
-  const rankedLeaders = ranked.filter(t => leaders.includes(t.id));
-  // Conference leaders outside the committee's top 25 can't be placed, so
-  // only ranked leaders count; that's nearly always enough for five.
-  const autos = rankedLeaders.slice(0, 5);
+  const leaderOf = t => leaders.find(l => l.id === t.id);
+  // Every Power Four leader, plus the best-ranked Group of Six leader.
+  // A leader outside the committee's top 25 can't be placed, so only
+  // ranked leaders count.
+  const powerLeaders = ranked.filter(t => (leaderOf(t) || {}).power);
+  const groupSixLeader = ranked.find(t => leaderOf(t) && !leaderOf(t).power);
+  const autos = [...powerLeaders, ...(groupSixLeader ? [groupSixLeader] : [])];
   const field = [...autos];
   for (const t of ranked) {
     if (field.length >= 12) break;
     if (!field.includes(t)) field.push(t);
   }
   field.sort((a, b) => a.rank - b.rank);
-  // With five automatic bids, a low-ranked champion can push a higher
-  // ranked team out; trim to 12 by dropping the lowest non-automatic team.
+  // A low-ranked champion can push a higher-ranked team out; trim to 12 by
+  // dropping the lowest non-automatic team.
   while (field.length > 12) {
     const drop = [...field].reverse().find(t => !autos.includes(t));
     field.splice(field.indexOf(drop), 1);
