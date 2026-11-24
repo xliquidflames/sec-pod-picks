@@ -45,15 +45,6 @@ scheduleOptions.currentWeek = () => activeWeek;
 scheduleOptions.weekWindows = getWeekWindows;
 scheduleOptions.estimateByes = false;
 
-// A team logo, with the name as a fallback if the image fails to load.
-// attrs (data-team-*) make it open that team's schedule when tapped.
-function teamLogoHtml(name, logo, isSec, attrs = "") {
-  const fallbackClass = `matchup-team-fallback ${isSec ? "matchup-sec-team" : "matchup-other-team"}`;
-  return logo
-    ? `<img src="${logo}" alt="${name}" title="${name}" class="matchup-team-logo" ${attrs} onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span class="${fallbackClass}" ${attrs} style="display:none;">${name}</span>`
-    : `<span class="${fallbackClass}" ${attrs}>${name}</span>`;
-}
-
 // "Details" opens the game details in a row right under the game.
 function detailsLink(g) {
   if (!g.eventId) return "";
@@ -98,25 +89,6 @@ const scheduleAttrs = (id, name, logo) => `data-team-id="${id}" data-team-name="
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const hasRealKickoff = g => g.kickoff && g.kickoff.getFullYear() < 9999;
 const localDateKey = d => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-
-// "SATURDAY 9/19" when game idx is the first of its calendar day, else null.
-function dayDividerLabel(games, idx) {
-  const g = games[idx];
-  if (!hasRealKickoff(g)) return null;
-  const prev = games[idx - 1];
-  if (prev && hasRealKickoff(prev) && localDateKey(prev.kickoff) === localDateKey(g.kickoff)) return null;
-  return `${DAY_NAMES[g.kickoff.getDay()]} ${g.kickoff.toLocaleDateString([], { month: "numeric", day: "numeric" })}`;
-}
-
-function toggleHostGrid() {
-  const wrapper = document.getElementById("hostGridWrapper");
-  const arrow = document.getElementById("hostGridArrow");
-  if (!wrapper) return;
-  const isCollapsed = wrapper.classList.toggle("collapsed");
-  const byeBoxEl = document.getElementById("byeBox");
-  if (byeBoxEl) byeBoxEl.classList.toggle("collapsed", isCollapsed);
-  if (arrow) arrow.innerHTML = isCollapsed ? "&#9656;" : "&#9662;";
-}
 
 async function fetchEspnSchedule(week) {
   try {
@@ -290,21 +262,6 @@ function buildPickCellInner(pickText, scoreText, isLocked, isTriple) {
     ${isTriple ? '<span class="triple-perfect-badge">&#10024; Perfect &#10024;</span>' : ""}
   `;
   return isTriple ? `<span class="triple-perfect-content">${inner}</span>` : inner;
-}
-
-// The favorite named in the betting line ("ALA -7.5") and its spread, or null.
-function lineFavorite(game) {
-  const rawOdds = game.rawOdds || "";
-  if (!rawOdds || rawOdds.toLowerCase().includes("even") || rawOdds.toLowerCase().includes("pk")) return null;
-  const match = rawOdds.match(/([A-Za-z&\s]+)\s+([+-]?\d+(?:\.\d+)?)/);
-  if (!match) return null;
-  const favNorm = normalizeTeam(match[1].trim());
-  const spread = parseFloat(match[2]);
-  for (const team of [game.teamA, game.teamB]) {
-    const norm = normalizeTeam(team);
-    if (norm === favNorm || favNorm.includes(norm) || norm.includes(favNorm)) return { team, spread };
-  }
-  return null;
 }
 
 // Season records for the hosts, the Cousins consensus and the podium.
@@ -651,21 +608,6 @@ function breakdownOf(rows) {
   return b;
 }
 
-function seasonBoxHtml(b, name) {
-  if (!b || b.weeks.length === 0) return "";
-  const facts = [];
-  if (b.lockC + b.lockI > 0) facts.push(`Locks: ${b.lockC}-${b.lockI}`);
-  if (b.best) facts.push(`Best pick: ${shortenPickDisplay(b.best.name)} ${b.best.w}-${b.best.l}`);
-  if (b.worst) facts.push(`Toughest: ${shortenPickDisplay(b.worst.name)} ${b.worst.w}-${b.worst.l}`);
-  return `
-    <div class="season-box">
-      <span class="path-line-label">Season So Far</span>
-      <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">${weekShort(w.week)} ${w.c}-${w.i}</span>`).join("")}</div>
-      ${championWeeksHtml(name)}
-      ${facts.length ? `<div>${facts.join(" · ")}</div>` : ""}
-    </div>`;
-}
-
 // ---- Host and Cousins stats popups ----
 // A host's rows, or for the Cousins (index -1) their majority pick on
 // each game, as one row a week.
@@ -753,70 +695,6 @@ function openEntrantStats(index) {
       ${facts.map(f => `<div>${f}</div>`).join("")}
     </div>` : `<div class="team-sched-note">No decided games yet.</div>`}
   `;
-}
-
-function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
-  // Correct picks, then Lock of the Week hits (from Week 2), then name.
-  // Everyone on the same number of wins shares a rank, with no gaps.
-  cousinRows.forEach(c => c.score = gradePicks(c.picks, activeWeek));
-  cousinRows.sort((a, b) => {
-    if (b.score.correct !== a.score.correct) return b.score.correct - a.score.correct;
-    if (isLockActiveThisWeek && (b.score.lockCorrect !== a.score.lockCorrect)) return b.score.lockCorrect - a.score.lockCorrect;
-    return a.user_name.localeCompare(b.user_name);
-  });
-
-  assignWeeklyRanks(cousinRows);
-
-  const listContainer = document.getElementById("cousinsList");
-  listContainer.innerHTML = cousinRows.length === 0
-    ? `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No picks submitted for ${weekName(activeWeek)} yet.</div>`
-    : "";
-
-  const paths = computePathsToFirst(games);
-  const seasons = computeSeasonBreakdowns();
-
-  cousinRows.forEach(c => {
-    const item = document.createElement("div");
-    item.className = "cousin-item";
-    item.dataset.name = c.user_name;
-    const picks = parseUserPicks(c.picks);
-    const hitLotw = isLockActiveThisWeek && (c.score.lockCorrect > 0);
-    const path = paths[c.user_name];
-    const swingKeys = (path && path.swingKeys) || new Set();
-
-    item.innerHTML = `
-      <div class="cousin-header" onclick="this.nextElementSibling.classList.toggle('open')">
-        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
-          ${c.rank === "-" ? "" : `<span class="rank-badge ${c.rankClass}">#${c.rank}</span>`}${podiumLogoHtml(c.user_name)}
-          <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
-          ${hitLotw ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
-          <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">${c.score.correct}-${c.score.incorrect}</span>
-        </div>
-        <span style="color: var(--accent-gold); font-weight: bold;">+</span>
-      </div>
-      <div class="cousin-picks-body">
-        ${cardBadgesHtml(c.user_name, path ? `<span class="path-chip ${path.isLeader ? 'leader' : ''}">${path.chip}</span>` : '')}
-        ${path ? `<div class="path-line ${path.isLeader ? 'leader' : ''}"><span class="path-line-label">Path to First</span>${path.line}</div>` : ''}
-        ${seasonBoxHtml(seasons[c.user_name], c.user_name)}
-        ${games.map(g => {
-          const uPick = getMatchedUserPick(picks, g) || "No Pick";
-          const isCousinLock = isLockActiveThisWeek && isLockMatch(picks, g);
-          return `
-            <div class="pick-line ${isCousinLock ? 'host-lock-cell' : ''}">
-              <span class="pick-line-matchup">${g.matchupLabel}</span>
-              <span class="${getPickClass(uPick, g, activeWeek)}">
-                ${swingKeys.has(g.matchupKey) ? '<span class="swing-badge">SWING</span>' : ''}
-                ${isCousinLock ? '<span class="lock-badge">LOCK</span>' : ''}
-                ${shortenPickDisplay(uPick)}
-              </span>
-            </div>
-          `;
-        }).join("")}
-      </div>
-    `;
-    listContainer.appendChild(item);
-  });
-  pinMyCard();
 }
 
 // Fan stat cards, from each player's favorite college team (set on the
@@ -1009,114 +887,7 @@ function toggleTierExpand(gridId) {
   if (arrow) arrow.innerHTML = isOpen ? "&minus;" : "+";
 }
 
-// Ignores case, spaces and a leading "@", like the name check on makepicks.html.
-function filterCousinCards() {
-  const squash = s => s.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
-  const query = squash(document.getElementById("cousinSearchInput").value);
-  document.querySelectorAll("#cousinsList .cousin-item").forEach(card => {
-    const name = (card.dataset.name || "").toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
-    card.style.display = (!query || name.includes(query)) ? "" : "none";
-  });
-}
-
-// ---- Per Team view: the same picks grouped by game and team ----
-function buildPerTeamSideHtml(logoHtml, teamName, pickerCount, score, isFinal, isWinner) {
-  let scoreHtml = "";
-  if (score !== null && score !== undefined) {
-    scoreHtml = isFinal
-      ? `<span class="per-team-score ${isWinner ? 'per-team-result-win' : 'per-team-result-loss'}">${score} ${isWinner ? '&#10003;' : '&#10007;'}</span>`
-      : `<span class="per-team-score">${score}</span>`;
-  }
-
-  return `
-    <span class="per-team-header-side">
-      <span class="per-team-header-namerow">
-        ${logoHtml}
-        <span class="per-team-header-name">${teamName}</span>
-      </span>
-      ${scoreHtml}
-      <span class="per-team-header-count">Picked ${pickerCount} time${pickerCount === 1 ? '' : 's'}</span>
-    </span>
-  `;
-}
-
-// One element per name so the CSS columns can balance them.
-function buildPerTeamNamesHtml(names) {
-  if (names.length === 0) return '<span style="color: var(--text-muted);">Nobody</span>';
-  return names.map(n => `<div class="per-team-name-item">${n}</div>`).join('');
-}
-
-function renderPerTeamView(games, cousinRows) {
-  const container = document.getElementById("perTeamList");
-  if (!container) return;
-
-  if (games.length === 0) {
-    container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem 0;">No games scheduled for ${weekName(activeWeek)} yet.</div>`;
-    return;
-  }
-
-  container.innerHTML = games.map(g => {
-    const awayPickers = [];
-    const homePickers = [];
-    const awayNorm = normalizeTeam(g.awayName);
-    const homeNorm = normalizeTeam(g.homeName);
-
-    cousinRows.forEach(c => {
-      const pick = getMatchedUserPick(parseUserPicks(c.picks), g);
-      if (!pick) return;
-      const pickNorm = normalizeTeam(pick);
-      if (pickNorm === awayNorm) awayPickers.push(c.user_name);
-      else if (pickNorm === homeNorm) homePickers.push(c.user_name);
-    });
-
-    awayPickers.sort((a, b) => a.localeCompare(b));
-    homePickers.sort((a, b) => a.localeCompare(b));
-
-    const hasScores = g.isFinal && g.awayScore !== null && g.homeScore !== null;
-    const awaySideHtml = buildPerTeamSideHtml(teamLogoHtml(g.awayName, g.awayLogo, g.awayIsSec), shortenPickDisplay(g.awayName), awayPickers.length, g.awayScore, g.isFinal, hasScores && g.awayScore > g.homeScore);
-    const homeSideHtml = buildPerTeamSideHtml(teamLogoHtml(g.homeName, g.homeLogo, g.homeIsSec), shortenPickDisplay(g.homeName), homePickers.length, g.homeScore, g.isFinal, hasScores && g.homeScore > g.awayScore);
-
-    return `
-      <div class="per-team-game">
-        <div class="per-team-header" onclick="this.nextElementSibling.classList.toggle('open')">
-          <div class="per-team-header-matchup">
-            ${awaySideHtml}
-            <span class="per-team-header-at">AT</span>
-            ${homeSideHtml}
-          </div>
-          <span class="per-team-header-expand-icon">+</span>
-        </div>
-        <div class="per-team-body">
-          <div class="per-team-columns">
-            <div class="per-team-col">
-              <div class="per-team-names">${buildPerTeamNamesHtml(awayPickers)}</div>
-            </div>
-            <div class="per-team-col">
-              <div class="per-team-names">${buildPerTeamNamesHtml(homePickers)}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-function toggleAllPerTeamCards(expand) {
-  document.querySelectorAll(".per-team-body").forEach(b => b.classList.toggle("open", expand));
-}
-
 let picksViewMode = "cousin";
-function togglePicksView() {
-  picksViewMode = picksViewMode === "cousin" ? "team" : "cousin";
-  const team = picksViewMode === "team";
-  document.getElementById("cousinsList").style.display = team ? "none" : "block";
-  document.getElementById("perTeamList").style.display = team ? "block" : "none";
-  document.getElementById("cousinViewControls").style.display = team ? "none" : "flex";
-  document.getElementById("teamViewControls").style.display = team ? "flex" : "none";
-  const searchWrapper = document.getElementById("cousinSearchWrapper");
-  if (searchWrapper) searchWrapper.style.display = team ? "none" : "block";
-}
-
 // Every SEC team seen on any week's scoreboard that isn't playing this week.
 function getSecByeTeams(games) {
   const directory = {};

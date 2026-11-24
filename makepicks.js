@@ -2,6 +2,8 @@
 // page by siteScript() in load.js, after the shared files.
 
 const targetWeek = parseInt(new URLSearchParams(window.location.search).get("week"), 10) || 1;
+// Where saving picks returns to (submitBallot in common.js).
+const LEADERBOARD_PAGE = "index.html";
 
 let currentSchedule = [];
 let userSelections = {};
@@ -11,21 +13,6 @@ let knownNames = [];
 
 // Team schedules highlight the week being picked.
 scheduleOptions.currentWeek = () => targetWeek;
-
-// Logo with the AP rank on its corner.
-function buildLogoHtml(url, rank) {
-  if (!url) return "";
-  return `<span class="btn-pick-logo-wrap"><img src="${url}" alt="" class="btn-pick-logo" onerror="this.style.display='none';">${rank ? `<span class="matchup-rank">#${rank}</span>` : ""}</span>`;
-}
-
-// "4-1 (3-1)": overall, then conference. Display only.
-function buildRecordText(competitor) {
-  const records = (competitor && competitor.records) || [];
-  const overall = records.find(r => r.type === "total" || (r.name || "").toLowerCase() === "overall");
-  const conf = records.find(r => r.type === "vsconf" || /conf/i.test(r.name || "") || /conf/i.test(r.abbreviation || ""));
-  if (!overall || !overall.summary) return "";
-  return conf && conf.summary ? `${overall.summary} (${conf.summary})` : overall.summary;
-}
 
 async function fetchEspnSchedule(week) {
   try {
@@ -119,40 +106,6 @@ async function initForm() {
   startLockCountdown();
 }
 
-// Ignores case, spaces and a leading "@" (same rule as the admin duplicate check).
-function normalizeNameForMatch(name) {
-  return (name || "").trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
-}
-
-function findPossibleNameMatch(typedName) {
-  const normalizedTyped = normalizeNameForMatch(typedName);
-  return knownNames.find(n => n !== typedName && normalizeNameForMatch(n) === normalizedTyped) || null;
-}
-
-// "Is this you?" prompt. Resolves with the name to submit under.
-function confirmNameMatch(typedName, matchedName) {
-  return new Promise(resolve => {
-    const modal = document.getElementById("nameMatchModal");
-    const yesBtn = document.getElementById("nameMatchModalYes");
-    const noBtn = document.getElementById("nameMatchModalNo");
-
-    document.getElementById("nameMatchModalText").innerHTML = `You typed <strong>"${typedName}"</strong>, but that looks like it might be the same person as <strong>"${matchedName}"</strong>, who's already submitted picks before. Is that you?`;
-    modal.style.display = "flex";
-
-    function cleanup(result) {
-      modal.style.display = "none";
-      yesBtn.removeEventListener("click", onYes);
-      noBtn.removeEventListener("click", onNo);
-      resolve(result);
-    }
-    function onYes() { cleanup(matchedName); }
-    function onNo() { cleanup(typedName); }
-
-    yesBtn.addEventListener("click", onYes);
-    noBtn.addEventListener("click", onNo);
-  });
-}
-
 function renderForm() {
   const container = document.getElementById("gamesList");
   if (currentSchedule.length === 0) {
@@ -215,63 +168,11 @@ function renderForm() {
   });
 }
 
-function matchupTitle(g) {
-  return `${shortenPickDisplay(g.awayName)} @ ${shortenPickDisplay(g.homeName)}`;
-}
-
 // "Details +" opens the game's details right inside its card, so picks
 // stay tappable while reading. Filled in the first time it's opened.
 function detailsLink(g) {
   if (!g.eventId) return "";
   return `<button type="button" class="details-link" data-event-id="${g.eventId}" onclick="toggleCardDetails(this)">Details +</button><div class="card-details" style="display: none;"></div>`;
-}
-
-function toggleCardDetails(btn) {
-  setCardDetails(btn, btn.nextElementSibling.style.display === "none");
-}
-
-function setCardDetails(btn, open) {
-  const panel = btn.nextElementSibling;
-  panel.style.display = open ? "" : "none";
-  btn.textContent = open ? "Details −" : "Details +";
-  if (open && !panel.dataset.loaded) {
-    panel.dataset.loaded = "1";
-    renderGameDetails(panel, btn.dataset.eventId);
-  }
-}
-
-// Expand All / Collapse All above the games.
-function setAllCardDetails(open) {
-  document.querySelectorAll("#gamesList .details-link").forEach(btn => setCardDetails(btn, open));
-}
-
-// Bar at the top counting down to the next game that will lock. Updates
-// every 30 seconds; once that game kicks off it asks for a refresh, since
-// the page only knows which games are open as of when it loaded.
-function startLockCountdown() {
-  const bar = document.getElementById("lockCountdown");
-  const next = currentSchedule
-    .filter(g => !g.isFinal && g.kickoff.getFullYear() < 9999)
-    .sort((a, b) => a.kickoff - b.kickoff)[0];
-  if (!bar || !next) return;
-
-  const update = () => {
-    const ms = next.kickoff - Date.now();
-    if (ms <= 0) {
-      bar.innerHTML = `<strong>${matchupTitle(next)}</strong> has kicked off. Refresh the page before submitting.`;
-      bar.classList.add("urgent");
-      clearInterval(timer);
-      return;
-    }
-    const mins = Math.floor(ms / 60000);
-    const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60), m = mins % 60;
-    const left = d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${Math.max(m, 1)}m`;
-    bar.innerHTML = `Next game locks in <strong>${left}</strong> · ${matchupTitle(next)}`;
-    bar.classList.toggle("urgent", ms < 60 * 60 * 1000);
-  };
-  bar.style.display = "block";
-  const timer = setInterval(update, 30000);
-  update();
 }
 
 function chooseTeam(matchupKey, team) {
@@ -284,107 +185,6 @@ function toggleUserLock(matchupKey) {
   if (!isLockWeek(targetWeek)) return;
   currentLockMatchupKey = (currentLockMatchupKey === matchupKey) ? null : matchupKey;
   refreshLockButtons(currentSchedule, currentLockMatchupKey, "Lock Of\nThe Week");
-}
-
-async function submitBallot() {
-  const submitBtn = document.getElementById("submitBtn");
-  const username = document.getElementById("userNameInput").value.trim();
-  const fail = text => {
-    setStatus("var(--danger)", text);
-    resetSubmitButton();
-  };
-
-  if (!username) return setStatus("var(--danger)", "Please enter your handle or name.");
-
-  // Games already started can't be picked, so they aren't required.
-  const pickableGames = currentSchedule.filter(g => !g.isFinal && !pastPickCutoff(g.kickoff));
-  if (pickableGames.length === 0) {
-    return setStatus("var(--danger)", "Every game this week has already started or been played — there's nothing left to submit picks for.");
-  }
-
-  const pickedGameCount = Object.keys(userSelections).filter(k => k !== "lock_matchup_key").length;
-  if (pickedGameCount < pickableGames.length) {
-    return setStatus("var(--danger)", `Please make selections for all ${pickableGames.length} remaining games.`);
-  }
-
-  if (isLockWeek(targetWeek) && !currentLockMatchupKey && !lockFrozenKey) {
-    return setStatus("var(--danger)", "Please select your Lock of the Week pick before submitting.");
-  }
-
-  // Catch "SECFan" vs "@secfan" before it splits one person in two.
-  let finalUsername = username;
-  const possibleMatch = findPossibleNameMatch(username);
-  if (possibleMatch) finalUsername = await confirmNameMatch(username, possibleMatch);
-
-  if (isLockWeek(targetWeek)) userSelections.lock_matchup_key = lockFrozenKey || currentLockMatchupKey;
-  else delete userSelections.lock_matchup_key;
-
-  submitBtn.disabled = true;
-  submitBtn.textContent = "Submitting picks...";
-  setStatus("var(--text-muted)", "Submitting your picks...");
-
-  try {
-    const { error } = await supabaseClient
-      .from(PICKS_TABLE)
-      .insert({
-        user_name: finalUsername,
-        week_number: targetWeek,
-        is_host: false,
-        picks: userSelections,
-        created_at: new Date().toISOString()
-      });
-
-    if (error) {
-      if (error.code === "23505" || error.message?.includes("unique")) {
-        return fail(`Changing picks isn't turned on yet. Message ${SITE.accountHelp || "us"} about it.`);
-      }
-      throw error;
-    }
-
-    try {
-      localStorage.setItem("secPickEmUserName", finalUsername);
-    } catch (storageErr) {}
-
-    setStatus("var(--success)", `${weekName(targetWeek)} picks saved! Returning to Leaderboard...`);
-    setTimeout(() => { window.location.href = "index.html"; }, 1800);
-  } catch (err) {
-    fail(`Error: ${err.message}`);
-  }
-}
-
-// Every team playing this week, SEC first. Tapping a pick-button logo
-// picks the team, so schedules are reached from here instead.
-function openSchedulePicker() {
-  showInfoModal("Team Schedules");
-  const body = document.getElementById("infoBody");
-  const seen = new Set();
-  const teams = [];
-  currentSchedule.forEach(g => {
-    [[g.teamA, g.teamALogo, g.teamAId], [g.teamB, g.teamBLogo, g.teamBId]].forEach(([name, logo, id]) => {
-      if (!id || seen.has(id)) return;
-      seen.add(id);
-      teams.push({ name, logo, id, sec: isSecTeam(name) });
-    });
-  });
-  if (teams.length === 0) {
-    body.innerHTML = `<div class="team-sched-note">No games loaded for this week yet.</div>`;
-    return;
-  }
-  const tile = t => `
-    <button type="button" class="sched-pick-team ${t.sec ? "sec" : ""}"
-      onclick="closeInfoModal(); openTeamSchedule('${t.id}', this.dataset.name, this.dataset.logo)"
-      data-name="${t.name.replace(/"/g, "&quot;")}" data-logo="${t.logo || ""}">
-      ${t.logo ? `<img src="${t.logo}" alt="" onerror="this.style.display='none'">` : ""}
-      <span>${shortenPickDisplay(t.name)}</span>
-    </button>`;
-  const byName = (a, b) => a.name.localeCompare(b.name);
-  const sec = teams.filter(t => t.sec).sort(byName);
-  const other = teams.filter(t => !t.sec).sort(byName);
-  body.innerHTML = `
-    <div class="sched-section-label">SEC</div>
-    <div class="sched-pick-grid">${sec.map(tile).join("")}</div>
-    ${other.length ? `<div class="sched-section-label">Opponents</div>
-    <div class="sched-pick-grid">${other.map(tile).join("")}</div>` : ""}`;
 }
 
 initForm();
