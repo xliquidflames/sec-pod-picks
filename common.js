@@ -1769,6 +1769,12 @@ function renderYourSeason(paths, seasons) {
   const pathKey = me && Object.keys(paths).find(isMe);
   const html = me ? yourSeasonHtml(pathKey ? paths[pathKey] : null, key ? seasons[key] : null, key || me).trim() : "";
   document.getElementById("yourSeasonBody").innerHTML = html;
+  // "(team logo) Liquid's Season"
+  if (me) {
+    const logo = favoriteLogoHtml(playerFavorites[me.toLowerCase().trim()] || signedInAccount.favorites);
+    document.getElementById("yourSeasonTitle").innerHTML =
+      `${logo}<span>${escapeHtml(me)}${/s$/i.test(me) ? "'" : "'s"} Season</span>`;
+  }
   card.style.display = html ? "" : "none";
 }
 

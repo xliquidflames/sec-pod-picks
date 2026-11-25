@@ -5147,3 +5147,31 @@ button.tourney-banner {
   font-size: 0.8rem;
 }
 
+/* ---- Your Season card ----
+   A logo before the title, and the text a few points bigger than the same
+   sections on the picks cards. */
+.your-season-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.your-season-title .fav-logo {
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+}
+
+#yourSeasonBody .path-line,
+#yourSeasonBody .season-box {
+  font-size: 0.95rem;
+}
+
+#yourSeasonBody .path-line-label {
+  font-size: 0.76rem;
+}
+
+#yourSeasonBody .season-week {
+  font-size: 0.84rem;
+}
+
