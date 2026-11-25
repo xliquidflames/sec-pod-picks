@@ -5175,3 +5175,41 @@ button.tourney-banner {
   font-size: 0.84rem;
 }
 
+/* ---- Reactions on Lock Takes ---- */
+.take-reacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.take-react {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 32px;
+  padding: 0 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.take-react span {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.take-react.mine {
+  border-color: var(--accent-gold);
+  background: rgba(251, 191, 36, 0.15);
+}
+
+.take-react:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+

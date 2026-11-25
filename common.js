@@ -1994,14 +1994,19 @@ function startLockCountdown() {
 const LOCK_NOTE_MAX = 140;
 const noteSport = () => ({ picks: "cfb", nfl_picks: "nfl", hoops_picks: "hoops" })[PICKS_TABLE];
 let lockNotes = {};        // week -> lowercased name -> { note, user_id }
+let takeReactions = {};    // week -> author's user id -> { reactor's user id: emoji }
 let myNoteUserId = null;
 
 async function loadLockNotes() {
   try {
-    const [{ data: session }, { data, error }] = await Promise.all([
+    const [{ data: session }, { data, error }, { data: reacts, error: reactError }] = await Promise.all([
       supabaseClient.auth.getSession(),
-      supabaseClient.from("lock_notes_view").select("week_number, user_id, display_name, note").eq("sport", noteSport())
+      supabaseClient.from("lock_notes_view").select("week_number, user_id, display_name, note").eq("sport", noteSport()),
+      supabaseClient.from("lock_note_reactions").select("week_number, author_id, user_id, emoji").eq("sport", noteSport())
     ]);
+    if (reactError) console.error("Couldn't load reactions:", reactError);
+    takeReactions = {};
+    (reacts || []).forEach(r => reactionsFor(r.week_number, r.author_id)[r.user_id] = r.emoji);
     myNoteUserId = (session && session.session && session.session.user.id) || null;
     if (error) throw error;
     lockNotes = {};
@@ -2029,7 +2034,8 @@ function lockTakeHtml(name, game) {
   const started = !game || game.isFinal || pastPickCutoff(game.kickoff);
   return `<div class="lock-take" data-name="${escapeHtml(name)}" data-key="${game ? game.matchupKey : ""}">&#128172; ${escapeHtml(n.note)}${mine ? `
     <span class="lock-take-own">${started ? "" : `<button type="button" onclick="event.stopPropagation(); editMyLockNote(this)">Edit</button>`}
-    <button type="button" onclick="event.stopPropagation(); deleteMyLockNote(this)">Delete</button></span>` : ""}</div>`;
+    <button type="button" onclick="event.stopPropagation(); deleteMyLockNote(this)">Delete</button></span>` : ""}
+    ${reactionsHtml(n.user_id)}</div>`;
 }
 
 // Puts the note in a box to change in place.
@@ -2122,7 +2128,7 @@ function renderLockTakes(games, rows) {
     const game = games.find(g => isLockMatch(picks, g));
     if (!game) return null;
     const pick = getMatchedUserPick(picks, game) || "No Pick";
-    return { name: c.user_name, pick, cls: getPickClass(pick, game, activeWeek), note: n.note };
+    return { name: c.user_name, pick, cls: getPickClass(pick, game, activeWeek), note: n.note, authorId: n.user_id };
   }).filter(Boolean);
   if (!takes.length) { if (card) card.remove(); return; }
   if (!card) {
@@ -2142,6 +2148,7 @@ function renderLockTakes(games, rows) {
         <div class="lock-takes-item">
           <div class="lock-takes-who"><strong>${escapeHtml(t.name)}</strong> <span class="${t.cls}"><span class="lock-badge">LOCK</span> ${escapeHtml(typeof shortenPickDisplay === "function" ? shortenPickDisplay(t.pick) : t.pick)}</span></div>
           <div class="lock-takes-note">${escapeHtml(t.note)}</div>
+          ${reactionsHtml(t.authorId)}
         </div>`).join("")}
     </div>`;
 }
@@ -2250,5 +2257,52 @@ function deleteLockNoteHere(btn) {
   btn.dataset.armed = "";
   btn.textContent = "Delete";
   deleteLockNote(false);
+}
+
+// ---- Reactions on Lock Takes ----
+// One per player per take (lock-reactions.sql); tapping another swaps it,
+// tapping yours again removes it. The same row shows under the take on the
+// player's card and in the Lock Takes card, and both redraw together.
+const TAKE_REACTIONS = [["fire", "&#128293;", "Fire take"], ["ice", "&#129482;", "Ice cold"], ["eyes", "&#128064;", "Can't believe you said that"],
+  ["up", "&#128077;", "Agree"], ["down", "&#128078;", "Disagree"]];
+
+function reactionsFor(week, authorId) {
+  const w = takeReactions[week] = takeReactions[week] || {};
+  return w[authorId] = w[authorId] || {};
+}
+
+function reactionsHtml(authorId) {
+  if (!authorId) return "";
+  const all = reactionsFor(activeWeek, authorId);
+  const mine = myNoteUserId ? all[myNoteUserId] : null;
+  const buttons = TAKE_REACTIONS.map(([key, emoji, label]) => {
+    const count = Object.values(all).filter(e => e === key).length;
+    return `<button type="button" class="take-react${mine === key ? " mine" : ""}" title="${label}" aria-label="${label}"
+      ${myNoteUserId ? `onclick="event.stopPropagation(); reactToTake('${authorId}', '${key}')"` : "disabled"}>${emoji}${count ? `<span>${count}</span>` : ""}</button>`;
+  }).join("");
+  return `<div class="take-reacts" data-author="${authorId}">${buttons}</div>`;
+}
+
+function redrawReactions(authorId) {
+  document.querySelectorAll(`.take-reacts[data-author="${authorId}"]`).forEach(el => { el.outerHTML = reactionsHtml(authorId); });
+}
+
+async function reactToTake(authorId, key) {
+  const all = reactionsFor(activeWeek, authorId);
+  const before = all[myNoteUserId];
+  const after = before === key ? null : key;
+  if (after) all[myNoteUserId] = after; else delete all[myNoteUserId];
+  redrawReactions(authorId);
+  const match = q => q.eq("sport", noteSport()).eq("week_number", activeWeek).eq("author_id", authorId).eq("user_id", myNoteUserId);
+  const { error } = after
+    ? await supabaseClient.from("lock_note_reactions").upsert(
+        { sport: noteSport(), week_number: activeWeek, author_id: authorId, user_id: myNoteUserId, emoji: after },
+        { onConflict: "sport,week_number,author_id,user_id" })
+    : await match(supabaseClient.from("lock_note_reactions").delete());
+  if (error) {
+    console.error("Couldn't save reaction:", error);
+    if (before) all[myNoteUserId] = before; else delete all[myNoteUserId];
+    redrawReactions(authorId);
+  }
 }
 
