@@ -1737,7 +1737,7 @@ function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
                 ${shortenPickDisplay(uPick)}
               </span>
             </div>
-            ${isCousinLock ? lockTakeHtml(c.user_name, g) : ''}
+            ${isCousinLock ? lockTakeHtml(c.user_name, g, uPick) : ''}
           `;
         }).join("")}
       </div>
@@ -2027,12 +2027,22 @@ function lockTakeFlag(name) {
 
 // The note under a lock pick. The writer also gets Delete, and Edit until
 // the lock kicks off; both work right here on the leaderboard.
-function lockTakeHtml(name, game) {
+// "Florida to beat FSU": the lock pick and the team it's over.
+function lockMatchText(pick, game) {
+  const short = t => typeof shortenPickDisplay === "function" ? shortenPickDisplay(t) : t;
+  if (!pick || pick === "No Pick" || !game) return short(pick || "");
+  const opp = normalizeTeam(pick) === normalizeTeam(game.teamA) ? game.teamB : game.teamA;
+  return `${short(pick)} to beat ${short(opp)}`;
+}
+
+function lockTakeHtml(name, game, pick) {
   const n = lockNoteOf(name);
   if (!n) return "";
   const mine = myNoteUserId && n.user_id === myNoteUserId;
   const started = !game || game.isFinal || pastPickCutoff(game.kickoff);
-  return `<div class="lock-take" data-name="${escapeHtml(name)}" data-key="${game ? game.matchupKey : ""}">&#128172; ${escapeHtml(n.note)}${mine ? `
+  return `<div class="lock-take" data-name="${escapeHtml(name)}" data-key="${game ? game.matchupKey : ""}" data-pick="${escapeHtml(pick || "")}">
+    <div class="lock-takes-who"><strong>${escapeHtml(name)}</strong> <span class="lock-badge">LOCKED</span> ${escapeHtml(lockMatchText(pick, game))}</div>
+    &#128172; ${escapeHtml(n.note)}${mine ? `
     <span class="lock-take-own">${started ? "" : `<button type="button" onclick="event.stopPropagation(); editMyLockNote(this)">Edit</button>`}
     <button type="button" onclick="event.stopPropagation(); deleteMyLockNote(this)">Delete</button></span>` : ""}
     ${reactionsHtml(n.user_id)}</div>`;
@@ -2061,7 +2071,7 @@ function editMyLockNote(btn) {
 // Draws one note again, and the Lock Takes card with it.
 function redrawLockTake(box) {
   const game = (lastLockTakes.games || []).find(g => g.matchupKey === box.dataset.key);
-  const html = lockTakeHtml(box.dataset.name, game);
+  const html = lockTakeHtml(box.dataset.name, game, box.dataset.pick);
   if (html) box.outerHTML = html; else box.remove();
   if (lastLockTakes.games) renderLockTakes(lastLockTakes.games, lastLockTakes.rows);
 }
@@ -2128,7 +2138,7 @@ function renderLockTakes(games, rows) {
     const game = games.find(g => isLockMatch(picks, g));
     if (!game) return null;
     const pick = getMatchedUserPick(picks, game) || "No Pick";
-    return { name: c.user_name, pick, cls: getPickClass(pick, game, activeWeek), note: n.note, authorId: n.user_id };
+    return { name: c.user_name, pick, game, cls: getPickClass(pick, game, activeWeek), note: n.note, authorId: n.user_id };
   }).filter(Boolean);
   if (!takes.length) { if (card) card.remove(); return; }
   if (!card) {
@@ -2146,7 +2156,7 @@ function renderLockTakes(games, rows) {
     <div class="lock-takes-body${open}">
       ${takes.map(t => `
         <div class="lock-takes-item">
-          <div class="lock-takes-who"><strong>${escapeHtml(t.name)}</strong> <span class="${t.cls}"><span class="lock-badge">LOCK</span> ${escapeHtml(typeof shortenPickDisplay === "function" ? shortenPickDisplay(t.pick) : t.pick)}</span></div>
+          <div class="lock-takes-who"><strong>${escapeHtml(t.name)}</strong> <span class="lock-badge">LOCKED</span> <span class="${t.cls}">${escapeHtml(lockMatchText(t.pick, t.game))}</span></div>
           <div class="lock-takes-note">${escapeHtml(t.note)}</div>
           ${reactionsHtml(t.authorId)}
         </div>`).join("")}
@@ -2199,9 +2209,11 @@ function updateLockNoteFor() {
   const frozen = typeof lockFrozenKey !== "undefined" && lockFrozenKey;
   const key = frozen || (typeof currentLockMatchupKey !== "undefined" ? currentLockMatchupKey : null);
   const team = key && typeof userSelections !== "undefined" ? userSelections[key] : null;
+  const lockGame = key && typeof currentSchedule !== "undefined" ? (currentSchedule || []).find(g => g.matchupKey === key) : null;
+  const lockText = team ? lockMatchText(team, lockGame) : null;
   line.textContent = !key ? "Pick your Lock of the Week, then say why."
-    : frozen ? `Your lock: ${team || "picked"}. It has kicked off, so the take can't change now. You can still delete it.`
-    : `Your lock: ${team || "pick a side for it"}`;
+    : frozen ? `Your lock: ${lockText || "picked"}. It has kicked off, so the take can't change now. You can still delete it.`
+    : `Your lock: ${lockText || "pick a side for it"}`;
   const input = document.getElementById("lockNoteInput");
   input.readOnly = !!frozen;
   document.getElementById("lockNoteSave").style.display = frozen ? "none" : "";

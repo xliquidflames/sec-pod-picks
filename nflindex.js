@@ -360,7 +360,7 @@ async function renderActiveWeek() {
                 ${uPick}
               </span>
             </div>
-            ${isCousinLock ? lockTakeHtml(c.user_name, g) : ''}
+            ${isCousinLock ? lockTakeHtml(c.user_name, g, uPick) : ''}
           `;
         }).join("")}
       </div>

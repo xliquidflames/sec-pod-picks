@@ -5213,3 +5213,7 @@ button.tourney-banner {
   opacity: 0.85;
 }
 
+
+.lock-take .lock-takes-who {
+  margin-bottom: 0.25rem;
+}
