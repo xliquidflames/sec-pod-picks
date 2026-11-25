@@ -565,7 +565,11 @@ function championChipsHtml(name) {
 // Every week won, spelled out, for the Season So Far box on a card.
 function championWeeksHtml(name) {
   const weeks = weeklyChampions[(name || "").toLowerCase()] || [];
-  return weeks.length ? `<div>&#128081; Champion weeks: ${weeks.map(weekShort).join(", ")}</div>` : "";
+  return weeks.length ? `
+    <div class="season-box">
+      <span class="path-line-label">Champion Weeks</span>
+      <div>&#128081; ${weeks.map(weekShort).join(", ")}</div>
+    </div>` : "";
 }
 
 // The standings show just the logo; titles stay on the cards.
@@ -1659,9 +1663,8 @@ function seasonBoxHtml(b, name) {
     <div class="season-box">
       <span class="path-line-label">Season So Far</span>
       <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">${weekShort(w.week)} ${w.c}-${w.i}</span>`).join("")}</div>
-      ${championWeeksHtml(name)}
       ${facts.length ? `<div>${facts.join(" · ")}</div>` : ""}
-    </div>`;
+    </div>${championWeeksHtml(name)}`;
 }
 
 function toggleHostGrid() {
