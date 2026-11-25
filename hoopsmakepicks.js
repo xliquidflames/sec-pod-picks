@@ -106,6 +106,7 @@ async function initForm() {
     lockFrozenKey = saved.lockStarted ? saved.lockKey : null;
     applySavedPicks(saved, currentSchedule, chooseTeam, toggleUserLock);
   }
+  setupLockNote(account);
   startLockCountdown();
 }
 

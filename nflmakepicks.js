@@ -95,6 +95,7 @@ async function initForm() {
     lockFrozenKey = saved.lockStarted ? saved.lockKey : null;
     applySavedPicks(saved, currentSchedule, chooseTeam, toggleUserLock);
   }
+  setupLockNote(account);
 }
 
 function renderForm() {
@@ -198,6 +199,7 @@ async function submitBallot() {
       throw error;
     }
 
+    await saveLockNote(true);
     setStatus("var(--success)", `Week ${targetWeek} picks saved! Returning to Leaderboard...`);
     setTimeout(() => { window.location.href = "nflindex.html"; }, 1800);
   } catch (err) {

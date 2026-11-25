@@ -425,6 +425,17 @@
       </div>
 
       <div class="card">
+        <div class="collapsible-header" onclick="toggleCollapsible('lockTakesContent')">
+          <div class="section-title">Lock Takes</div>
+          <span class="collapsible-arrow" id="lockTakesContent_arrow">&#9662;</span>
+        </div>
+        <div class="collapsible-content" id="lockTakesContent">
+          <div class="section-desc">Notes players wrote on their Lock of the Week, newest first. Delete removes one for good.</div>
+          <div id="lockTakesBody"><div class="empty-note">Loading...</div></div>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="collapsible-header" onclick="toggleCollapsible('emailRemindersContent')">
           <div class="section-title">Email Reminders</div>
           <span class="collapsible-arrow" id="emailRemindersContent_arrow">&#9662;</span>
@@ -1029,8 +1040,45 @@
         ${off.length ? `<div class="section-desc" style="margin-top: 1rem;">Turned off or unsubscribed (${off.length}): <span class="muted-cell">${off.map(r => escapeHtml(r.display_name)).join(", ")}</span></div>` : ""}`;
     }
 
+    // ---- Lock Takes ----
+    // From lock_notes_view; deleting goes through admin_delete_lock_note
+    // (lock-notes.sql), which only site admins can run.
+    const SPORT_LABEL = { cfb: "SEC Football", nfl: "NFL", hoops: "SEC Hoops" };
+    async function loadLockTakes() {
+      const body = document.getElementById("lockTakesBody");
+      const { data, error } = await supabaseClient.from("lock_notes_view")
+        .select("sport, week_number, user_id, display_name, note, updated_at")
+        .order("updated_at", { ascending: false }).limit(100);
+      if (error) {
+        body.innerHTML = `<div class="empty-note" style="color: var(--danger);">Couldn't load: ${escapeHtml(error.message)}</div>`;
+        return;
+      }
+      if (!data || !data.length) {
+        body.innerHTML = `<div class="empty-note">No Lock Takes yet.</div>`;
+        return;
+      }
+      body.innerHTML = `<table class="report-table"><tbody>${data.map(n => `
+        <tr>
+          <td><strong>${escapeHtml(n.display_name || "(no name)")}</strong>
+            <span class="muted-cell">· ${SPORT_LABEL[n.sport] || n.sport} wk ${n.week_number}</span><br>${escapeHtml(n.note)}</td>
+          <td style="text-align: right; white-space: nowrap;">
+            <button type="button" class="btn-run-query" style="margin: 0; padding: 0.35rem 0.7rem;"
+              onclick="adminDeleteTake(this, '${n.sport}', ${n.week_number}, '${n.user_id}')">Delete</button></td>
+        </tr>`).join("")}</tbody></table>`;
+    }
+
+    // Tap once to arm, again to delete.
+    async function adminDeleteTake(btn, sport, week, userId) {
+      if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = "Sure?"; return; }
+      btn.disabled = true;
+      const { error } = await supabaseClient.rpc("admin_delete_lock_note", { p_sport: sport, p_week: week, p_user: userId });
+      if (error) { btn.disabled = false; btn.dataset.armed = ""; btn.textContent = "Failed. Retry"; return; }
+      btn.closest("tr").remove();
+    }
+
     async function loadEverything() {
       loadEmailReminders();
+      loadLockTakes();
       try {
         const [sec, nfl] = await Promise.all([
           loadSportData("picks", "college-football", 14),

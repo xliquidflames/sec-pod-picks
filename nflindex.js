@@ -342,6 +342,7 @@ async function renderActiveWeek() {
           ${c.rank === "-" ? "" : `<span class="rank-badge ${c.rankClass}">#${c.rank}</span>`}${podiumLogoHtml(c.user_name)}
           <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
           ${hitLotw ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
+          ${lockTakeFlag(c.user_name)}
           <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">${c.score.correct}-${c.score.incorrect}</span>
         </div>
         <span style="color: var(--accent-gold); font-weight: bold;">+</span>
@@ -359,12 +360,14 @@ async function renderActiveWeek() {
                 ${uPick}
               </span>
             </div>
+            ${isCousinLock ? lockTakeHtml(c.user_name) : ''}
           `;
         }).join("")}
       </div>
     `;
     listContainer.appendChild(item);
   });
+  renderLockTakes(games, rows);
   pinMyCard();
 
   computeSeasonTotals();

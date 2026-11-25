@@ -1044,7 +1044,7 @@ async function loadAllSeasonData() {
     const uniqueWeeks = Array.from(
       new Set(allWeekRows.map(r => r.week_number).concat([1, activeWeek]))
     ).filter(w => w >= 1 && w <= TOTAL_WEEKS);
-    await Promise.all([...uniqueWeeks.map(fetchEspnSchedule), loadPlayerFavorites()]);
+    await Promise.all([...uniqueWeeks.map(fetchEspnSchedule), loadPlayerFavorites(), loadLockNotes()]);
     allWeekRows = [...groups.values()].map(g => g.length > 1 ? mergeEntryRows(g, weekSchedules[g[0].week_number] || []) : g[0]);
     allWeekRows.forEach(dropLatePicks);
     computeWeeklyChampions();
@@ -1306,6 +1306,7 @@ function markPick(matchupKey, isSideA) {
     btnA.classList.toggle("selected", isA);
     btnB.classList.toggle("selected", !isA);
   }
+  updateLockNoteFor();
 }
 
 // Shows which game (if any) is the Lock of the Week.
@@ -1319,6 +1320,7 @@ function refreshLockButtons(games, lockKey, offLabel) {
     lockBtn.classList.toggle("active", on);
     lockBtn.textContent = on ? "★ Lock Selected" : offLabel;
   });
+  updateLockNoteFor();
 }
 
 function resetSubmitButton() {
@@ -1707,6 +1709,7 @@ function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
           ${c.rank === "-" ? "" : `<span class="rank-badge ${c.rankClass}">#${c.rank}</span>`}${podiumLogoHtml(c.user_name)}
           <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${c.user_name}</span>
           ${hitLotw ? `<span class="lotw-hit-badge" style="font-size: 0.58rem; padding: 0.05rem 0.25rem;">LOTW <span class="lotw-check">✓</span></span>` : ''}
+          ${isLockActiveThisWeek ? lockTakeFlag(c.user_name) : ''}
           <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-gold); margin-left: 0.4rem;">${c.score.correct}-${c.score.incorrect}</span>
         </div>
         <span style="color: var(--accent-gold); font-weight: bold;">+</span>
@@ -1727,12 +1730,14 @@ function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
                 ${shortenPickDisplay(uPick)}
               </span>
             </div>
+            ${isCousinLock ? lockTakeHtml(c.user_name) : ''}
           `;
         }).join("")}
       </div>
     `;
     listContainer.appendChild(item);
   });
+  renderLockTakes(games, isLockActiveThisWeek ? cousinRows : []);
   pinMyCard();
 }
 
@@ -1906,6 +1911,7 @@ async function submitBallot() {
       localStorage.setItem("secPickEmUserName", finalUsername);
     } catch (storageErr) {}
 
+    await saveLockNote(true);
     setStatus("var(--success)", `${weekName(targetWeek)} picks saved! Returning to Leaderboard...`);
     setTimeout(() => { window.location.href = LEADERBOARD_PAGE; }, 1800);
   } catch (err) {
@@ -1941,3 +1947,214 @@ function startLockCountdown() {
   const timer = setInterval(update, 30000);
   update();
 }
+
+// ---- Lock Takes ----
+// A player's short note on their Lock of the Week, one per sport per week
+// (the lock_notes table, lock-notes.sql). Written on the picks page; shown
+// on the leaderboard under their lock pick, with a 💬 by their name, and
+// all together in the collapsed Lock Takes card. The writer can change it
+// until their lock kicks off and delete it anytime.
+const LOCK_NOTE_MAX = 140;
+const noteSport = () => ({ picks: "cfb", nfl_picks: "nfl", hoops_picks: "hoops" })[PICKS_TABLE];
+const picksPageFor = () => ({ picks: "makepicks.html", nfl_picks: "nflmakepicks.html", hoops_picks: "hoopsmakepicks.html" })[PICKS_TABLE];
+let lockNotes = {};        // week -> lowercased name -> { note, user_id }
+let myNoteUserId = null;
+
+async function loadLockNotes() {
+  try {
+    const [{ data: session }, { data, error }] = await Promise.all([
+      supabaseClient.auth.getSession(),
+      supabaseClient.from("lock_notes_view").select("week_number, user_id, display_name, note").eq("sport", noteSport())
+    ]);
+    myNoteUserId = (session && session.session && session.session.user.id) || null;
+    if (error) throw error;
+    lockNotes = {};
+    (data || []).forEach(n => {
+      if (!n.display_name) return;
+      (lockNotes[n.week_number] = lockNotes[n.week_number] || {})[n.display_name.toLowerCase().trim()] = n;
+    });
+  } catch (err) {
+    console.error("Couldn't load lock notes:", err);
+  }
+}
+
+const lockNoteOf = name => (lockNotes[activeWeek] || {})[String(name || "").toLowerCase().trim()] || null;
+
+function lockTakeFlag(name) {
+  return lockNoteOf(name) ? `<span class="lock-take-flag" title="Has a Lock Take">&#128172;</span>` : "";
+}
+
+// The note under a lock pick; the writer also gets Edit and Delete.
+function lockTakeHtml(name) {
+  const n = lockNoteOf(name);
+  if (!n) return "";
+  const mine = myNoteUserId && n.user_id === myNoteUserId;
+  return `<div class="lock-take">&#128172; ${escapeHtml(n.note)}${mine ? `
+    <span class="lock-take-own"><a href="${picksPageFor()}?week=${activeWeek}">Edit</a>
+    <button type="button" onclick="event.stopPropagation(); deleteMyLockNote(this, ${activeWeek})">Delete</button></span>` : ""}</div>`;
+}
+
+// Tap once to arm, again to delete.
+async function deleteMyLockNote(btn, week) {
+  if (btn.dataset.armed !== "1") {
+    btn.dataset.armed = "1";
+    btn.textContent = "Tap again to delete";
+    return;
+  }
+  btn.disabled = true;
+  const { error } = await supabaseClient.from("lock_notes").delete()
+    .eq("sport", noteSport()).eq("week_number", week).eq("user_id", myNoteUserId);
+  if (error) {
+    btn.disabled = false;
+    btn.textContent = "Couldn't delete. Try again";
+    btn.dataset.armed = "";
+    return;
+  }
+  Object.keys(lockNotes[week] || {}).forEach(k => { if (lockNotes[week][k].user_id === myNoteUserId) delete lockNotes[week][k]; });
+  switchWeek(activeWeek);
+}
+
+// The collapsed Lock Takes card, right after the picks list. rows: that
+// week's entries; only ones with a note and a lock are listed.
+function renderLockTakes(games, rows) {
+  const list = document.getElementById("cousinsList");
+  const host = list && list.closest(".card");
+  if (!host) return;
+  let card = document.getElementById("lockTakesCard");
+  const takes = rows.map(c => {
+    const n = lockNoteOf(c.user_name);
+    if (!n) return null;
+    const picks = parseUserPicks(c.picks);
+    const game = games.find(g => isLockMatch(picks, g));
+    if (!game) return null;
+    const pick = getMatchedUserPick(picks, game) || "No Pick";
+    return { name: c.user_name, pick, cls: getPickClass(pick, game, activeWeek), note: n.note };
+  }).filter(Boolean);
+  if (!takes.length) { if (card) card.remove(); return; }
+  if (!card) {
+    card = document.createElement("div");
+    card.className = "card";
+    card.id = "lockTakesCard";
+    host.after(card);
+  }
+  const open = card.querySelector(".lock-takes-body.open") ? " open" : "";
+  card.innerHTML = `
+    <div class="lock-takes-head" onclick="this.nextElementSibling.classList.toggle('open')">
+      <h2 class="section-title">&#128172; Lock Takes <span class="lock-takes-count">${takes.length}</span></h2>
+      <span style="color: var(--accent-gold); font-weight: bold;">+</span>
+    </div>
+    <div class="lock-takes-body${open}">
+      ${takes.map(t => `
+        <div class="lock-takes-item">
+          <div class="lock-takes-who"><strong>${escapeHtml(t.name)}</strong> <span class="${t.cls}"><span class="lock-badge">LOCK</span> ${escapeHtml(typeof shortenPickDisplay === "function" ? shortenPickDisplay(t.pick) : t.pick)}</span></div>
+          <div class="lock-takes-note">${escapeHtml(t.note)}</div>
+        </div>`).join("")}
+    </div>`;
+}
+
+// ---- Lock Take box on the picks page ----
+// Sits above the submit button in lock weeks. Saves on its own button, and
+// again with the picks if it changed.
+let myLockNote = { userId: null, saved: "" };
+
+async function setupLockNote(account) {
+  if (typeof isLockWeek === "function" && !isLockWeek(targetWeek)) return;
+  const submit = document.getElementById("submitBtn");
+  if (!submit || !account || !account.user) return;
+  myLockNote.userId = account.user.id;
+  const { data } = await supabaseClient.from("lock_notes").select("note")
+    .eq("sport", noteSport()).eq("week_number", targetWeek).eq("user_id", account.user.id).maybeSingle();
+  myLockNote.saved = (data && data.note) || "";
+  submit.insertAdjacentHTML("beforebegin", `
+    <div class="lock-note" id="lockNoteBox">
+      <label class="lock-note-label" for="lockNoteInput">&#128172; Lock Take <span>(optional)</span></label>
+      <div class="lock-note-for" id="lockNoteFor"></div>
+      <textarea id="lockNoteInput" maxlength="${LOCK_NOTE_MAX}" rows="2" placeholder="Why this lock? A sentence or two."></textarea>
+      <div class="lock-note-row">
+        <span class="lock-note-count" id="lockNoteCount"></span>
+        <button type="button" class="lock-note-btn" id="lockNoteDelete" onclick="deleteLockNoteHere(this)">Delete</button>
+        <button type="button" class="lock-note-btn save" id="lockNoteSave" onclick="saveLockNote()">Save Take</button>
+      </div>
+      <div class="lock-note-status" id="lockNoteStatus"></div>
+    </div>`);
+  const input = document.getElementById("lockNoteInput");
+  input.value = myLockNote.saved;
+  input.addEventListener("input", lockNoteChanged);
+  lockNoteChanged();
+  updateLockNoteFor();
+}
+
+function lockNoteChanged() {
+  const input = document.getElementById("lockNoteInput");
+  if (!input) return;
+  document.getElementById("lockNoteCount").textContent = `${input.value.length}/${LOCK_NOTE_MAX}`;
+  document.getElementById("lockNoteDelete").style.display = myLockNote.saved ? "" : "none";
+}
+
+// The current lock pick, and whether the note can still change.
+function updateLockNoteFor() {
+  const line = document.getElementById("lockNoteFor");
+  if (!line) return;
+  const frozen = typeof lockFrozenKey !== "undefined" && lockFrozenKey;
+  const key = frozen || (typeof currentLockMatchupKey !== "undefined" ? currentLockMatchupKey : null);
+  const team = key && typeof userSelections !== "undefined" ? userSelections[key] : null;
+  line.textContent = !key ? "Pick your Lock of the Week, then say why."
+    : frozen ? `Your lock: ${team || "picked"}. It has kicked off, so the take can't change now. You can still delete it.`
+    : `Your lock: ${team || "pick a side for it"}`;
+  const input = document.getElementById("lockNoteInput");
+  input.readOnly = !!frozen;
+  document.getElementById("lockNoteSave").style.display = frozen ? "none" : "";
+}
+
+function lockNoteStatus(color, text) {
+  const el = document.getElementById("lockNoteStatus");
+  el.style.color = color;
+  el.textContent = text;
+}
+
+// Saves the box; an empty box deletes the note. Returns false on an error.
+async function saveLockNote(quiet) {
+  const input = document.getElementById("lockNoteInput");
+  if (!input || input.readOnly) return true;
+  const note = input.value.trim();
+  if (note === myLockNote.saved) { if (!quiet) lockNoteStatus("var(--text-muted)", note ? "Already saved." : "Nothing to save."); return true; }
+  if (!note) return deleteLockNote(quiet);
+  if (!(typeof currentLockMatchupKey !== "undefined" && currentLockMatchupKey)) {
+    lockNoteStatus("var(--danger)", "Pick your Lock of the Week first.");
+    return false;
+  }
+  if (!quiet) lockNoteStatus("var(--text-muted)", "Saving...");
+  const { error } = await supabaseClient.from("lock_notes").upsert(
+    { sport: noteSport(), week_number: targetWeek, user_id: myLockNote.userId, note },
+    { onConflict: "sport,week_number,user_id" });
+  if (error) { lockNoteStatus("var(--danger)", `Couldn't save your take: ${error.message}`); return false; }
+  myLockNote.saved = note;
+  lockNoteChanged();
+  lockNoteStatus("var(--success)", "Take saved.");
+  return true;
+}
+
+async function deleteLockNote(quiet) {
+  const { error } = await supabaseClient.from("lock_notes").delete()
+    .eq("sport", noteSport()).eq("week_number", targetWeek).eq("user_id", myLockNote.userId);
+  if (error) { lockNoteStatus("var(--danger)", `Couldn't delete your take: ${error.message}`); return false; }
+  myLockNote.saved = "";
+  document.getElementById("lockNoteInput").value = "";
+  lockNoteChanged();
+  if (!quiet) lockNoteStatus("var(--success)", "Take deleted.");
+  return true;
+}
+
+// Tap once to arm, again to delete.
+function deleteLockNoteHere(btn) {
+  if (btn.dataset.armed !== "1") {
+    btn.dataset.armed = "1";
+    btn.textContent = "Tap again";
+    setTimeout(() => { btn.dataset.armed = ""; btn.textContent = "Delete"; }, 4000);
+    return;
+  }
+  btn.dataset.armed = "";
+  btn.textContent = "Delete";
+  deleteLockNote(false);
+}
+
