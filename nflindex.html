@@ -45,6 +45,14 @@
       </div>
     </div>
 
+    <!-- Your Team: the signed-in player's favorite, filled by renderMyTeam. -->
+    <div class="card" id="myTeamSection" style="display: none;">
+      <div class="section-title-bar">
+        <h2 class="section-title">Your Team</h2>
+      </div>
+      <div id="myTeamBox" class="my-team-card"></div>
+    </div>
+
     <div class="section-divider"></div>
 
     <div class="week-selector-bar">
@@ -82,11 +90,6 @@
           <h2 class="section-title" id="weekScheduleTitle">Week 1 Schedule</h2>
         </div>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; margin-bottom: 0.85rem; line-height: 1.4;">Here is this week's schedule, lines, and scores. Highlighted rows are games currently in progress.</p>
-        <!-- Your Team: the signed-in player's favorite, filled by renderMyTeam. -->
-        <div id="myTeamSection" class="hub-my-team nfl-my-team" style="display: none;">
-          <div class="hub-sub-title">Your Team</div>
-          <div id="myTeamBox" class="my-team-card"></div>
-        </div>
         <div id="scheduleList">
           <div style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">Loading schedule...</div>
         </div>

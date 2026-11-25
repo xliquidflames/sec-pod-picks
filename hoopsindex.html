@@ -52,6 +52,23 @@
       </div>
     </div>
 
+    <!-- Your Season: the signed-in player's Path to First, weekly records
+         and champion weeks (renderYourSeason). Hidden until there's some. -->
+    <div class="card" id="yourSeasonCard" style="display: none;">
+      <div class="section-title-bar">
+        <h2 class="section-title">Your Season</h2>
+      </div>
+      <div id="yourSeasonBody"></div>
+    </div>
+
+    <!-- Your Team: the signed-in player's favorite, filled by renderMyTeam. -->
+    <div class="card" id="myTeamSection" style="display: none;">
+      <div class="section-title-bar">
+        <h2 class="section-title">Your Team</h2>
+      </div>
+      <div id="myTeamBox" class="my-team-card"></div>
+    </div>
+
     <div class="section-divider"></div>
 
     <div class="week-selector-bar">
@@ -75,11 +92,6 @@
         <div class="hub-action-row" style="margin-top: 0.6rem;">
           <button type="button" class="btn-ctrl" onclick="openRankings()">Top 25</button>
           <button type="button" class="btn-ctrl" onclick="openStandings()">SEC Standings</button>
-        </div>
-        <!-- Your Team: the signed-in player's favorite, filled by renderMyTeam. -->
-        <div id="myTeamSection" class="hub-my-team" style="display: none;">
-          <div class="hub-sub-title">Your Team</div>
-          <div id="myTeamBox" class="my-team-card"></div>
         </div>
         <!-- Tournaments this week with an SEC team (hoops.js renderTournaments). -->
         <div id="tourneySection" class="hub-tourneys" style="display: none;">

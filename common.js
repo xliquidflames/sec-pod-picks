@@ -59,6 +59,9 @@ function addAccountBar(row) {
     signedInAccount = account;
     renderAccountBar();
     askForFavorite(account);
+    // Picks drawn before the account was known: draw them again, so the
+    // player's own season moves to Your Season.
+    if (lastCousinList) renderCousinList(...lastCousinList);
     if (typeof onAccountReady === "function") onAccountReady(account);
   });
 }
@@ -1661,7 +1664,7 @@ function seasonBoxHtml(b, name) {
   if (b.worst) facts.push(`Toughest: ${shortenPickDisplay(b.worst.name)} ${b.worst.w}-${b.worst.l}`);
   return `
     <div class="season-box">
-      <span class="path-line-label">Season So Far</span>
+      <span class="path-line-label">Weekly Breakdown</span>
       <div class="season-weeks">${b.weeks.map(w => `<span class="season-week">${weekShort(w.week)} ${w.c}-${w.i}</span>`).join("")}</div>
       ${facts.length ? `<div>${facts.join(" · ")}</div>` : ""}
     </div>${championWeeksHtml(name)}`;
@@ -1677,7 +1680,9 @@ function toggleHostGrid() {
   if (arrow) arrow.innerHTML = isCollapsed ? "&#9656;" : "&#9662;";
 }
 
+let lastCousinList = null;
 function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
+  lastCousinList = [games, cousinRows, isLockActiveThisWeek];
   // Correct picks, then Lock of the Week hits, then name.
   // Everyone on the same number of wins shares a rank, with no gaps.
   cousinRows.forEach(c => c.score = gradePicks(c.picks, activeWeek));
@@ -1719,8 +1724,7 @@ function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
       </div>
       <div class="cousin-picks-body">
         ${cardBadgesHtml(c.user_name, path ? `<span class="path-chip ${path.isLeader ? 'leader' : ''}">${path.chip}</span>` : '')}
-        ${path ? `<div class="path-line ${path.isLeader ? 'leader' : ''}"><span class="path-line-label">Path to First</span>${path.line}</div>` : ''}
-        ${seasonBoxHtml(seasons[c.user_name], c.user_name)}
+        ${isMe(c.user_name) ? '' : yourSeasonHtml(path, seasons[c.user_name], c.user_name)}
         ${games.map(g => {
           const uPick = getMatchedUserPick(picks, g) || "No Pick";
           const isCousinLock = isLockActiveThisWeek && isLockMatch(picks, g);
@@ -1741,7 +1745,31 @@ function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
     listContainer.appendChild(item);
   });
   renderLockTakes(games, isLockActiveThisWeek ? cousinRows : []);
+  renderYourSeason(paths, seasons);
   pinMyCard();
+}
+
+// ---- Your Season ----
+// The signed-in player's Path to First, Weekly Breakdown and Champion
+// Weeks, in their own card in the season half of the page. Everyone else's
+// stay on their picks cards.
+const isMe = name => !!(signedInAccount && signedInAccount.name &&
+  String(name || "").toLowerCase().trim() === signedInAccount.name.toLowerCase().trim());
+
+function yourSeasonHtml(path, season, name) {
+  return `${path ? `<div class="path-line ${path.isLeader ? 'leader' : ''}"><span class="path-line-label">Path to First</span>${path.line}</div>` : ''}
+        ${seasonBoxHtml(season, name)}`;
+}
+
+function renderYourSeason(paths, seasons) {
+  const card = document.getElementById("yourSeasonCard");
+  if (!card) return;
+  const me = signedInAccount && signedInAccount.name;
+  const key = me && Object.keys(seasons).find(isMe);
+  const pathKey = me && Object.keys(paths).find(isMe);
+  const html = me ? yourSeasonHtml(pathKey ? paths[pathKey] : null, key ? seasons[key] : null, key || me).trim() : "";
+  document.getElementById("yourSeasonBody").innerHTML = html;
+  card.style.display = html ? "" : "none";
 }
 
 // ---- Shared by the football and hoops picks pages (makepicks, hoopsmakepicks) ----

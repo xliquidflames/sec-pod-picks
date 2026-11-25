@@ -63,6 +63,23 @@
       </div>
     </div>
 
+    <!-- Your Season: the signed-in player's Path to First, weekly records
+         and champion weeks (renderYourSeason). Hidden until there's some. -->
+    <div class="card" id="yourSeasonCard" style="display: none;">
+      <div class="section-title-bar">
+        <h2 class="section-title">Your Season</h2>
+      </div>
+      <div id="yourSeasonBody"></div>
+    </div>
+
+    <!-- Your Team: the signed-in player's favorite, filled by renderMyTeam. -->
+    <div class="card" id="myTeamSection" style="display: none;">
+      <div class="section-title-bar">
+        <h2 class="section-title">Your Team</h2>
+      </div>
+      <div id="myTeamBox" class="my-team-card"></div>
+    </div>
+
     <!-- Season-long fan stats, from each player's favorite team. -->
     <div class="card elevated-card">
       <div class="section-title-bar">
@@ -102,11 +119,6 @@
             </div>
           </div>
           <div id="rankingsPanel" class="rankings-panel" style="display: none;"></div>
-        </div>
-        <!-- Your Team: the signed-in player's favorite, filled by renderMyTeam. -->
-        <div id="myTeamSection" class="hub-my-team" style="display: none;">
-          <div class="hub-sub-title">Your Team</div>
-          <div id="myTeamBox" class="my-team-card"></div>
         </div>
         <div class="hub-sub-title hub-games-title" id="weekGamesTitle">Week 1 Games</div>
         <div class="hub-action-row hub-split" style="margin-top: 0.4rem;">
