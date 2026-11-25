@@ -3383,6 +3383,13 @@ a.btn-submit.bk-cta {
   gap: 0.35rem;
 }
 
+/* Admins see these in place of the Discord link. */
+.nav-admin-links {
+  display: inline-flex;
+  gap: 1rem;
+  flex: none;
+}
+
 .nav-discord-icon {
   width: 1.15rem;
   height: 1.15rem;

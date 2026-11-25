@@ -58,12 +58,26 @@ function addAccountBar(row) {
   currentAccount().then(account => {
     signedInAccount = account;
     renderAccountBar();
+    showAdminLinks(account);
     askForFavorite(account);
     // Picks drawn before the account was known: draw them again, so the
     // player's own season moves to Your Season.
     if (lastCousinList) renderCousinList(...lastCousinList);
     if (typeof onAccountReady === "function") onAccountReady(account);
   });
+}
+
+// Site admins get Host Picks and Admin in place of the Discord link.
+async function showAdminLinks(account) {
+  if (!account) return;
+  const discord = document.querySelector(".site-nav .nav-discord");
+  if (!discord) return;
+  const { data, error } = await supabaseClient.rpc("is_site_admin");
+  if (error || data !== true) return;
+  const links = document.createElement("span");
+  links.className = "nav-admin-links";
+  links.innerHTML = `<a href="hostpicks.html" class="nav-discord">Host Picks</a><a href="admin.html" class="nav-discord">Admin</a>`;
+  discord.replaceWith(links);
 }
 
 // ---- Your Team ----
