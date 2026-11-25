@@ -4976,6 +4976,25 @@ button.tourney-banner {
   overflow-wrap: anywhere;
 }
 
+.lock-take.editing textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-main);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.lock-take .lock-note-status:empty {
+  display: none;
+}
+
 .lock-take-own {
   display: inline-flex;
   gap: 0.6rem;

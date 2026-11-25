@@ -1730,7 +1730,7 @@ function renderCousinList(games, cousinRows, isLockActiveThisWeek) {
                 ${shortenPickDisplay(uPick)}
               </span>
             </div>
-            ${isCousinLock ? lockTakeHtml(c.user_name) : ''}
+            ${isCousinLock ? lockTakeHtml(c.user_name, g) : ''}
           `;
         }).join("")}
       </div>
@@ -1956,7 +1956,6 @@ function startLockCountdown() {
 // until their lock kicks off and delete it anytime.
 const LOCK_NOTE_MAX = 140;
 const noteSport = () => ({ picks: "cfb", nfl_picks: "nfl", hoops_picks: "hoops" })[PICKS_TABLE];
-const picksPageFor = () => ({ picks: "makepicks.html", nfl_picks: "nflmakepicks.html", hoops_picks: "hoopsmakepicks.html" })[PICKS_TABLE];
 let lockNotes = {};        // week -> lowercased name -> { note, user_id }
 let myNoteUserId = null;
 
@@ -1984,39 +1983,97 @@ function lockTakeFlag(name) {
   return lockNoteOf(name) ? `<span class="lock-take-flag" title="Has a Lock Take">&#128172;</span>` : "";
 }
 
-// The note under a lock pick; the writer also gets Edit and Delete.
-function lockTakeHtml(name) {
+// The note under a lock pick. The writer also gets Delete, and Edit until
+// the lock kicks off; both work right here on the leaderboard.
+function lockTakeHtml(name, game) {
   const n = lockNoteOf(name);
   if (!n) return "";
   const mine = myNoteUserId && n.user_id === myNoteUserId;
-  return `<div class="lock-take">&#128172; ${escapeHtml(n.note)}${mine ? `
-    <span class="lock-take-own"><a href="${picksPageFor()}?week=${activeWeek}">Edit</a>
-    <button type="button" onclick="event.stopPropagation(); deleteMyLockNote(this, ${activeWeek})">Delete</button></span>` : ""}</div>`;
+  const started = !game || game.isFinal || pastPickCutoff(game.kickoff);
+  return `<div class="lock-take" data-name="${escapeHtml(name)}" data-key="${game ? game.matchupKey : ""}">&#128172; ${escapeHtml(n.note)}${mine ? `
+    <span class="lock-take-own">${started ? "" : `<button type="button" onclick="event.stopPropagation(); editMyLockNote(this)">Edit</button>`}
+    <button type="button" onclick="event.stopPropagation(); deleteMyLockNote(this)">Delete</button></span>` : ""}</div>`;
 }
 
-// Tap once to arm, again to delete.
-async function deleteMyLockNote(btn, week) {
-  if (btn.dataset.armed !== "1") {
+// Puts the note in a box to change in place.
+function editMyLockNote(btn) {
+  const box = btn.closest(".lock-take");
+  const n = lockNoteOf(box.dataset.name);
+  if (!n) return;
+  box.classList.add("editing");
+  box.innerHTML = `
+    <textarea maxlength="${LOCK_NOTE_MAX}" rows="3" onclick="event.stopPropagation()"
+      oninput="this.parentElement.querySelector('.lock-note-count').textContent = this.value.length + '/${LOCK_NOTE_MAX}'">${escapeHtml(n.note)}</textarea>
+    <div class="lock-note-row">
+      <span class="lock-note-count">${n.note.length}/${LOCK_NOTE_MAX}</span>
+      <button type="button" class="lock-note-btn" onclick="event.stopPropagation(); redrawLockTake(this.closest('.lock-take'))">Cancel</button>
+      <button type="button" class="lock-note-btn save" onclick="event.stopPropagation(); saveMyLockNote(this)">Save</button>
+    </div>
+    <div class="lock-note-status"></div>`;
+  const input = box.querySelector("textarea");
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+}
+
+// Draws one note again, and the Lock Takes card with it.
+function redrawLockTake(box) {
+  const game = (lastLockTakes.games || []).find(g => g.matchupKey === box.dataset.key);
+  const html = lockTakeHtml(box.dataset.name, game);
+  if (html) box.outerHTML = html; else box.remove();
+  if (lastLockTakes.games) renderLockTakes(lastLockTakes.games, lastLockTakes.rows);
+}
+
+async function saveMyLockNote(btn) {
+  const box = btn.closest(".lock-take");
+  const note = box.querySelector("textarea").value.trim();
+  const status = box.querySelector(".lock-note-status");
+  if (!note) return deleteMyLockNote(btn, true);
+  btn.disabled = true;
+  status.style.color = "var(--text-muted)";
+  status.textContent = "Saving...";
+  const { error } = await supabaseClient.from("lock_notes").upsert(
+    { sport: noteSport(), week_number: activeWeek, user_id: myNoteUserId, note },
+    { onConflict: "sport,week_number,user_id" });
+  if (error) {
+    btn.disabled = false;
+    status.style.color = "var(--danger)";
+    status.textContent = `Couldn't save: ${error.message}`;
+    return;
+  }
+  lockNoteOf(box.dataset.name).note = note;
+  redrawLockTake(box);
+}
+
+// Tap once to arm, again to delete. now: skip the second tap (an emptied
+// box being saved).
+async function deleteMyLockNote(btn, now) {
+  if (!now && btn.dataset.armed !== "1") {
     btn.dataset.armed = "1";
     btn.textContent = "Tap again to delete";
     return;
   }
   btn.disabled = true;
+  const box = btn.closest(".lock-take");
   const { error } = await supabaseClient.from("lock_notes").delete()
-    .eq("sport", noteSport()).eq("week_number", week).eq("user_id", myNoteUserId);
+    .eq("sport", noteSport()).eq("week_number", activeWeek).eq("user_id", myNoteUserId);
   if (error) {
     btn.disabled = false;
-    btn.textContent = "Couldn't delete. Try again";
     btn.dataset.armed = "";
+    btn.textContent = "Couldn't delete. Try again";
     return;
   }
-  Object.keys(lockNotes[week] || {}).forEach(k => { if (lockNotes[week][k].user_id === myNoteUserId) delete lockNotes[week][k]; });
-  switchWeek(activeWeek);
+  const key = String(box.dataset.name || "").toLowerCase().trim();
+  if (lockNotes[activeWeek]) delete lockNotes[activeWeek][key];
+  const flag = box.closest(".cousin-item")?.querySelector(".lock-take-flag");
+  if (flag) flag.remove();
+  redrawLockTake(box);
 }
 
 // The collapsed Lock Takes card, right after the picks list. rows: that
 // week's entries; only ones with a note and a lock are listed.
+let lastLockTakes = {};
 function renderLockTakes(games, rows) {
+  lastLockTakes = { games, rows };
   const list = document.getElementById("cousinsList");
   const host = list && list.closest(".card");
   if (!host) return;
