@@ -39,7 +39,7 @@ function addSiteMenu() {
   // Under the buttons: the Discord link on the left, the account on the right.
   const sub = document.createElement("div");
   sub.className = "nav-sub";
-  if (SITE.discord) sub.innerHTML = `<a href="${SITE.discord}" class="nav-discord" target="_blank" rel="noopener noreferrer">Join Our Discord</a>`;
+  if (SITE.discord) sub.innerHTML = `<a href="${SITE.discord}" class="nav-discord" target="_blank" rel="noopener noreferrer"><img src="discord.png" alt="" class="nav-discord-icon">Join Our Discord</a>`;
   nav.appendChild(sub);
   addAccountBar(sub);
 }

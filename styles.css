@@ -3375,6 +3375,19 @@ a.btn-submit.bk-cta {
   text-decoration: underline;
 }
 
+/* The Discord icon, left of the text; not underlined. */
+.site-nav a.nav-discord {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-discord-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+}
+
 .account-bar {
   flex: 1 1 auto;
   min-width: 0;
