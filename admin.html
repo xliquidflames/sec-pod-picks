@@ -425,6 +425,17 @@
       </div>
 
       <div class="card">
+        <div class="collapsible-header" onclick="toggleCollapsible('emailRemindersContent')">
+          <div class="section-title">Email Reminders</div>
+          <span class="collapsible-arrow" id="emailRemindersContent_arrow">&#9662;</span>
+        </div>
+        <div class="collapsible-content" id="emailRemindersContent">
+          <div class="section-desc">Who turned on reminder emails from their account page, and for which sports. Names only. "Last email" is the last day the morning or night email went to them.</div>
+          <div id="emailRemindersBody"><div class="empty-note">Loading...</div></div>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="collapsible-header" onclick="toggleCollapsible('trafficContent')">
           <div class="section-title">Site Traffic</div>
           <span class="collapsible-arrow" id="trafficContent_arrow">&#9662;</span>
@@ -989,7 +1000,37 @@
       return { openWeek, attendance, attendanceGrid, duplicates, timing, trend, newPlayers, pickBreakdown, chart };
     }
 
+    // ---- Email Reminders ----
+    // From the admin_email_reminders function (admin-email-reminders.sql).
+    const escapeHtml = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    async function loadEmailReminders() {
+      const body = document.getElementById("emailRemindersBody");
+      const { data, error } = await supabaseClient.rpc("admin_email_reminders");
+      if (error) {
+        body.innerHTML = `<div class="empty-note" style="color: var(--danger);">Couldn't load: ${escapeHtml(error.message)}</div>`;
+        return;
+      }
+      const rows = data || [];
+      const on = rows.filter(r => r.enabled);
+      const off = rows.filter(r => !r.enabled);
+      if (!rows.length) {
+        body.innerHTML = `<div class="empty-note">Nobody has turned on email reminders yet.</div>`;
+        return;
+      }
+      const count = key => on.filter(r => r[key]).length;
+      const mark = v => v ? `<td class="grid-cell-filled" style="color: var(--success); text-align: center;">&#10003;</td>` : `<td class="grid-cell-empty" style="color: var(--text-muted); text-align: center;">&middot;</td>`;
+      const day = d => d ? new Date(`${d}T12:00:00`).toLocaleDateString("en-US", { month: "numeric", day: "numeric" }) : "&mdash;";
+      body.innerHTML = `
+        <div class="section-desc"><strong>${on.length}</strong> on &middot; SEC Football ${count("cfb")} &middot; NFL ${count("nfl")} &middot; SEC Hoops ${count("hoops")}</div>
+        ${on.length ? `<table class="report-table">
+          <thead><tr><th>Name</th><th>CFB</th><th>NFL</th><th>Hoops</th><th>Last email</th></tr></thead>
+          <tbody>${on.map(r => `<tr><td>${escapeHtml(r.display_name)}</td>${mark(r.cfb)}${mark(r.nfl)}${mark(r.hoops)}<td class="muted-cell">${day(r.last_sent)}</td></tr>`).join("")}</tbody>
+        </table>` : ""}
+        ${off.length ? `<div class="section-desc" style="margin-top: 1rem;">Turned off or unsubscribed (${off.length}): <span class="muted-cell">${off.map(r => escapeHtml(r.display_name)).join(", ")}</span></div>` : ""}`;
+    }
+
     async function loadEverything() {
+      loadEmailReminders();
       try {
         const [sec, nfl] = await Promise.all([
           loadSportData("picks", "college-football", 14),
