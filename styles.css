@@ -4559,44 +4559,64 @@ img.logo-tile {
   text-transform: uppercase;
 }
 
-.tourney-remind {
+/* Account page: email reminder switches. */
+.email-opt {
   display: flex;
   align-items: flex-start;
   gap: 0.55rem;
-  margin: 0.7rem 0 0.2rem;
+  margin: 0.5rem 0 0;
   padding: 0.6rem 0.7rem;
-  border: 1px dashed var(--accent-gold);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   line-height: 1.35;
   text-align: left;
   cursor: pointer;
 }
 
-.tourney-remind input {
+.email-opt.main {
+  border: 1px dashed var(--accent-gold);
+}
+
+.email-opt input {
   flex: 0 0 auto;
   width: 1.15rem;
   height: 1.15rem;
-  margin-top: 0.1rem;
+  margin-top: 0.05rem;
   accent-color: var(--accent-gold);
 }
 
-.tourney-remind-note {
+.email-opt small {
   display: block;
   margin-top: 0.25rem;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
+  font-weight: 400;
   color: var(--text-muted);
 }
 
-/* After ticking: green when saved, red if it failed. */
-.tourney-remind-note.ok {
-  color: var(--success);
-  font-weight: 700;
+.email-sports {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0 0.4rem;
 }
 
-.tourney-remind-note.err {
-  color: var(--danger);
-  font-weight: 700;
+.email-sports .email-opt {
+  padding: 0.55rem 0.5rem;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 420px) {
+  .email-sports {
+    grid-template-columns: 1fr;
+  }
+}
+
+.email-sports.off {
+  opacity: 0.45;
+}
+
+.email-sports.off .email-opt {
+  cursor: default;
 }
 
 /* ---- Tournaments: one card per event, games by day ---- */

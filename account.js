@@ -123,6 +123,61 @@ async function saveFavorite(sportKey, team) {
   setStatus("var(--success)", team ? `${team.name} saved for ${label}.` : `${label} team cleared.`);
 }
 
+// ---- Email reminders ----
+// One row in email_prefs: the main switch and a box per sport. Sent by the
+// "daily-reminders" function (supabase/daily-reminders-function.ts).
+const EMAIL_SPORTS = [["cfb", "SEC Football"], ["nfl", "NFL"], ["hoops", "SEC Hoops"]];
+let emailPrefs = { enabled: false, cfb: true, nfl: false, hoops: true };
+let emailUserId = null, emailAddress = "";
+
+async function loadEmailPrefs() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+  emailUserId = user.id;
+  emailAddress = user.email || "";
+  const { data, error } = await supabaseClient.from("email_prefs").select("enabled, cfb, nfl, hoops").maybeSingle();
+  if (error) console.error("Couldn't load email settings:", error);
+  if (data) emailPrefs = data;
+  renderEmailPrefs();
+}
+
+function renderEmailPrefs() {
+  const on = emailPrefs.enabled;
+  document.getElementById("emailPrefs").innerHTML = `
+    <label class="email-opt main">
+      <input type="checkbox" ${on ? "checked" : ""} onchange="saveEmailPrefs('enabled', this.checked)">
+      <span><strong>Email me pick'em reminders</strong>${emailAddress ? `<small>Sent to ${escapeHtml(emailAddress)}. Every email has an unsubscribe link.</small>` : ""}</span>
+    </label>
+    <div class="email-sports${on ? "" : " off"}">
+      ${EMAIL_SPORTS.map(([key, label]) => `
+        <label class="email-opt">
+          <input type="checkbox" ${emailPrefs[key] ? "checked" : ""} ${on ? "" : "disabled"} onchange="saveEmailPrefs('${key}', this.checked)">
+          <span>${label}</span>
+        </label>`).join("")}
+    </div>`;
+}
+
+async function saveEmailPrefs(key, value) {
+  const status = document.getElementById("emailStatus");
+  const next = { ...emailPrefs, [key]: value };
+  status.style.color = "var(--text-muted)";
+  status.textContent = "Saving...";
+  const { error } = await supabaseClient.from("email_prefs")
+    .upsert({ user_id: emailUserId, enabled: next.enabled, cfb: next.cfb, nfl: next.nfl, hoops: next.hoops }, { onConflict: "user_id" });
+  if (error) {
+    status.style.color = "var(--danger)";
+    status.textContent = `Couldn't save that: ${error.message}`;
+    renderEmailPrefs();
+    return;
+  }
+  emailPrefs = next;
+  renderEmailPrefs();
+  const picked = EMAIL_SPORTS.filter(([k]) => next[k]).map(([, label]) => label);
+  status.style.color = "var(--success)";
+  status.textContent = !next.enabled ? "Email reminders are off."
+    : picked.length ? `Saved. Reminders for ${picked.join(", ")}.` : "Saved. Tick a sport to get reminders.";
+}
+
 // Right after claiming a name: an optional stop on the way to the picks.
 const params = new URLSearchParams(location.search);
 const welcomeNext = params.has("welcome") && /^[\w-]+\.html(\?[\w=&%-]*)?$/.test(params.get("next") || "") ? params.get("next") : null;
@@ -140,4 +195,5 @@ const welcomeNext = params.has("welcome") && /^[\w-]+\.html(\?[\w=&%-]*)?$/.test
   favorites = account.favorites || {};
   document.getElementById("accountSub").innerHTML = `Signed in as <strong>${escapeHtml(account.name)}</strong>`;
   renderSections();
+  loadEmailPrefs();
 })();
