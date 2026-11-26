@@ -390,7 +390,33 @@
       font-size: 0.85rem;
       color: var(--text-muted);
     }
-  </style>
+      /* Error log */
+    .error-alert {
+      margin-bottom: 1rem;
+      padding: 1rem 1.1rem;
+      border: 2px solid #ef4444;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.14);
+      color: #fff;
+      text-align: left;
+    }
+    .error-alert-title { color: #f87171; font-size: 1.35rem; font-weight: 900; }
+    .error-alert-message { margin-top: 0.35rem; font-size: 1.05rem; font-weight: 700; overflow-wrap: anywhere; }
+    .error-alert-meta { margin-top: 0.4rem; color: #fecaca; font-size: 0.8rem; line-height: 1.45; }
+    .error-alert-stack { margin-top: 0.5rem; font-size: 0.75rem; }
+    .error-alert-stack summary { cursor: pointer; color: #fecaca; }
+    .error-alert-stack pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0.4rem 0 0; color: #fee2e2; }
+    .error-fix-btn {
+      margin-top: 0.75rem; min-height: 40px; padding: 0 1.2rem;
+      border: 0; border-radius: 8px; background: #ef4444; color: #fff;
+      font-weight: 800; font-size: 0.95rem; cursor: pointer;
+    }
+    .error-log-card { font-size: 0.85rem; text-align: left; }
+    .error-none { color: var(--success); font-weight: 700; }
+    .error-fixed { margin-top: 0.5rem; }
+    .error-fixed summary { cursor: pointer; color: var(--text-muted); }
+    .error-fixed-row { display: flex; flex-direction: column; padding: 0.4rem 0; border-top: 1px solid var(--border-color); font-size: 0.78rem; overflow-wrap: anywhere; }
+</style>
 </head>
 <body>
 
@@ -403,6 +429,9 @@
     </div>
 
     <div id="adminContent">
+      <!-- Error log: new errors big and red, fixed ones small underneath. -->
+      <div id="errorLog"></div>
+
       <div class="sport-toggle">
         <button type="button" class="sport-btn active" id="btnSecTab" onclick="switchSport('sec')">SEC</button>
         <button type="button" class="sport-btn" id="btnNflTab" onclick="switchSport('nfl')">NFL</button>
@@ -1076,7 +1105,52 @@
       btn.closest("tr").remove();
     }
 
+    // ---- Error log ----
+    // From admin_site_errors (error-log.sql). New errors are big and red
+    // until Fixed; fixed ones stay listed, small, under a collapsed heading.
+    async function loadErrorLog() {
+      const box = document.getElementById("errorLog");
+      const { data, error } = await supabaseClient.rpc("admin_site_errors");
+      if (error) {
+        box.innerHTML = `<div class="card"><div class="empty-note" style="color: var(--danger);">Couldn't load the error log: ${escapeHtml(error.message)}</div></div>`;
+        return;
+      }
+      const rows = data || [];
+      const open = rows.filter(r => !r.fixed_at), fixed = rows.filter(r => r.fixed_at);
+      const when = t => new Date(t).toLocaleString("en-US", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
+      const device = ua => /iPhone|iPad/.test(ua) ? "iPhone/iPad" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "Mac" : "Other";
+      const browser = ua => /CriOS|Chrome/.test(ua) ? "Chrome" : /FxiOS|Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "";
+      box.innerHTML = `
+        ${open.map(r => `
+          <div class="error-alert">
+            <div class="error-alert-title">&#9888; Site error${r.count > 1 ? ` &times;${r.count}` : ""}</div>
+            <div class="error-alert-message">${escapeHtml(r.message)}</div>
+            <div class="error-alert-meta">
+              ${escapeHtml(r.page)} · ${escapeHtml(device(r.user_agent || ""))} ${escapeHtml(browser(r.user_agent || ""))}${r.user_name ? ` · ${escapeHtml(r.user_name)}` : ""}<br>
+              First ${when(r.first_seen)}${r.count > 1 ? ` · last ${when(r.last_seen)}` : ""}
+            </div>
+            ${r.source || r.stack ? `<details class="error-alert-stack"><summary>Details</summary><pre>${escapeHtml(r.source || "")}\n${escapeHtml(r.stack || "")}</pre></details>` : ""}
+            <button type="button" class="error-fix-btn" onclick="fixError(this, ${r.id})">Fixed</button>
+          </div>`).join("")}
+        <div class="card error-log-card">
+          <div class="${open.length ? "" : "error-none"}">${open.length ? `${open.length} open error${open.length === 1 ? "" : "s"} above.` : "&#10003; No new site errors."}</div>
+          ${fixed.length ? `
+            <details class="error-fixed">
+              <summary>Fixed (${fixed.length})</summary>
+              ${fixed.map(r => `<div class="error-fixed-row"><span>${escapeHtml(r.message)}</span><span class="muted-cell">${escapeHtml(r.page)} · &times;${r.count} · fixed ${when(r.fixed_at)}</span></div>`).join("")}
+            </details>` : ""}
+        </div>`;
+    }
+
+    async function fixError(btn, id) {
+      btn.disabled = true;
+      const { error } = await supabaseClient.rpc("admin_fix_error", { p_id: id });
+      if (error) { btn.disabled = false; btn.textContent = "Failed. Retry"; return; }
+      loadErrorLog();
+    }
+
     async function loadEverything() {
+      loadErrorLog();
       loadEmailReminders();
       loadLockTakes();
       try {

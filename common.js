@@ -3,6 +3,45 @@
 
 const supabaseClient = window.supabase.createClient(SITE.supabase.url, SITE.supabase.key);
 
+// ---- Error log ----
+// Anything that breaks on a player's device is reported to site_errors
+// (error-log.sql) and shows up at the top of the admin page. Errors from
+// browser extensions and other sites' scripts are skipped, and one page
+// load reports at most 5.
+let errorsReported = 0;
+function reportError(message, source, stack) {
+  try {
+    if (errorsReported >= 5 || !message) return;
+    if (/^Script error\.?$|ResizeObserver loop/i.test(message)) return;
+    if (source && !source.startsWith(location.origin)) return;
+    errorsReported++;
+    supabaseClient.rpc("log_site_error", {
+      p_page: location.pathname.split("/").pop() + location.search,
+      p_message: String(message),
+      p_source: source || null,
+      p_stack: stack ? String(stack) : null,
+      p_user_agent: navigator.userAgent,
+      p_user_name: (typeof signedInAccount !== "undefined" && signedInAccount && signedInAccount.name) || null
+    }).then(() => {}, () => {});
+  } catch (_) {}
+}
+window.addEventListener("error", e => {
+  if (!e.message) return;   // a failed image or script download, not a code error
+  reportError(e.message, e.filename ? `${e.filename}:${e.lineno}:${e.colno}` : "", e.error && e.error.stack);
+});
+window.addEventListener("unhandledrejection", e => {
+  const r = e.reason;
+  if (!r) return;
+  const message = r.message || String(r);
+  // Network blips (ESPN or Supabase not answering) aren't bugs.
+  if (/Failed to fetch|NetworkError|Load failed|AbortError|aborted/i.test(message + (r.name || ""))) return;
+  // Skipped when every file in the stack is another site's (an extension).
+  const stack = r.stack || "";
+  const files = stack.match(/https?:\/\/[^\s)]+/g) || [];
+  if (files.length && !files.some(f => f.startsWith(location.origin))) return;
+  reportError(message, files[0] || "", stack);
+});
+
 // ---- Show settings from config.js ----
 
 // Color overrides apply right away so the page never shows the defaults.
