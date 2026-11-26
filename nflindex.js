@@ -143,7 +143,34 @@ function dayDivider(games, idx) {
 }
 
 // Once the account loads (common.js), show their team.
-function onAccountReady() { renderMyTeam(); }
+function onAccountReady() { renderMyTeam(); renderNflYourSeason(); }
+
+// ---- Your Season (renderYourSeason, in common.js) ----
+function computePathsToFirst(games) {
+  const season = {};
+  allWeekRows.forEach(row => {
+    const s = gradePicks(row.picks, row.week_number);
+    if (!season[row.user_name]) season[row.user_name] = { name: row.user_name, correct: 0, incorrect: 0 };
+    season[row.user_name].correct += s.correct;
+    season[row.user_name].incorrect += s.incorrect;
+  });
+  const weekPicksFor = (name) => {
+    const rows = allWeekRows.filter(r => r.week_number === activeWeek && r.user_name === name);
+    return rows.length ? parseUserPicks(rows[rows.length - 1].picks) : null;
+  };
+  return pathsAmong(Object.values(season), weekPicksFor, games, () => YOU);
+}
+
+function computeSeasonBreakdowns() {
+  const byName = {};
+  allWeekRows.forEach(row => { (byName[row.user_name] || (byName[row.user_name] = [])).push(row); });
+  return Object.fromEntries(Object.entries(byName).map(([name, rows]) => [name, breakdownOf(rows)]));
+}
+
+function renderNflYourSeason() {
+  if (!allWeekRows.length) return;
+  renderYourSeason(computePathsToFirst(weekSchedules[activeWeek] || []), computeSeasonBreakdowns());
+}
 
 function renderSchedule(games) {
   const container = document.getElementById("scheduleList");
@@ -368,6 +395,7 @@ async function renderActiveWeek() {
     listContainer.appendChild(item);
   });
   renderLockTakes(games, rows);
+  renderNflYourSeason();
   pinMyCard();
 
   computeSeasonTotals();

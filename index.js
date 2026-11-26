@@ -363,117 +363,8 @@ function computePathsToFirst(games) {
   return pathsAmong(Object.values(season), weekPicksFor, games, () => YOU);
 }
 
-// Wording for "you" on a listener's own card, or a name in a host's stats.
-const YOU = { subj: "you", take: "take", tie: "tie", pull: "pull", poss: "Your" };
+// Wording for a name in a host's stats (YOU, for a listener's own card, is in common.js).
 const voiceOf = name => ({ subj: name, take: "takes", tie: "ties", pull: "pulls", poss: "Their" });
-
-// everyone: [{ name, correct, incorrect }] for the season. picksFor(name)
-// gives that entrant's picks for the week being shown, or null.
-function pathsAmong(everyone, picksFor, games, voice) {
-  const result = {};
-  if (!everyone.some(p => p.correct > 0 || p.incorrect > 0)) return result;
-
-  const better = (a, b) => a.correct !== b.correct ? a.correct > b.correct : a.incorrect < b.incorrect;
-  let top = everyone[0];
-  everyone.forEach(p => { if (better(p, top)) top = p; });
-  const leaders = everyone.filter(p => p.correct === top.correct && p.incorrect === top.incorrect);
-  const leaderNames = new Set(leaders.map(l => l.name));
-
-  // Best record outside the leader group, for "up by".
-  let second = null;
-  everyone.filter(p => !leaderNames.has(p.name)).forEach(p => { if (!second || better(p, second)) second = p; });
-
-  const openGames = games.filter(g => !winnerOf(activeWeek, g));
-
-  // Outcomes of winning every swing game, worst to best.
-  const OUTCOME_RANK = { short: 0, evenWins: 1, tie: 2, pass: 3 };
-
-  everyone.forEach(p => {
-    if (leaderNames.has(p.name)) {
-      if (leaders.length > 1) {
-        result[p.name] = { isLeader: true, chip: "Tied 1st", line: `Tied for first with ${leaders.length - 1} other${leaders.length === 2 ? "" : "s"}.` };
-      } else if (!second) {
-        result[p.name] = { isLeader: true, chip: "1st", line: "In first." };
-      } else {
-        const lead = p.correct - second.correct;
-        result[p.name] = { isLeader: true, chip: "1st", line: lead > 0 ? `In first, up by ${lead}.` : "In first on fewer losses." };
-      }
-      return;
-    }
-
-    // Measured against whichever leader is hardest to pass.
-    const myPicks = picksFor(p.name);
-    const v = voice(p.name);
-    let worst = null;
-
-    leaders.forEach(L => {
-      const theirPicks = picksFor(L.name);
-      const swingGames = [];
-      let theyTakeLoss = 0;
-
-      if (myPicks) {
-        openGames.forEach(g => {
-          const mine = getMatchedUserPick(myPicks, g);
-          if (!mine) return;
-          const theirs = theirPicks ? getMatchedUserPick(theirPicks, g) : null;
-          if (theirs && normalizeTeam(theirs) === normalizeTeam(mine)) return;
-          swingGames.push(g);
-          if (theirs) theyTakeLoss++;
-        });
-      }
-
-      const winsBack = L.correct - p.correct;
-      const s = swingGames.length;
-      const lossDiff = p.incorrect - (L.incorrect + theyTakeLoss);
-      let outcome;
-      if (s > winsBack) outcome = "pass";
-      else if (s < winsBack) outcome = "short";
-      else if (lossDiff < 0) outcome = "pass";
-      else if (lossDiff === 0) outcome = "tie";
-      else outcome = "evenWins";
-
-      if (!worst || OUTCOME_RANK[outcome] < OUTCOME_RANK[worst.outcome] ||
-          (outcome === worst.outcome && s < worst.swingGames.length)) {
-        worst = { leader: L, swingGames, winsBack, outcome, leaderPicked: !!theirPicks };
-      }
-    });
-
-    const { leader, swingGames, winsBack, outcome, leaderPicked } = worst;
-    const who = leaders.length === 1 ? leader.name
-      : leaders.length === 2 ? `${leaders[0].name} and ${leaders[1].name}`
-      : "first";
-    const s = swingGames.length;
-    const gamesWord = n => `${n} swing game${n === 1 ? "" : "s"}`;
-    const winAll = s === 1 ? "it" : s === 2 ? "both" : `all ${s}`;
-    const head = winsBack > 0 ? `${winsBack} back of ${who}` : `Even on wins with ${who}`;
-
-    let line;
-    if (!myPicks || openGames.length === 0) {
-      line = winsBack > 0 ? `${head}.` : `${head}, behind on losses.`;
-    } else if (!leaderPicked && leaders.length === 1) {
-      line = `${head}. ${leader.name} hasn't picked this week yet.`;
-    } else if (s === 0) {
-      line = `${head}. No swing games left this week. ${v.poss} open picks all match.`;
-    } else if (outcome === "pass") {
-      line = `${head} · ${gamesWord(s)} left. Win ${winAll} and ${v.subj} ${v.take} first.`;
-    } else if (outcome === "tie") {
-      line = `${head} · ${gamesWord(s)} left. Win ${winAll} and ${v.subj} ${v.tie} for first.`;
-    } else if (outcome === "evenWins") {
-      line = `${head} · ${gamesWord(s)} left. Win ${winAll} and ${v.subj} ${v.pull} even on wins, but ${leaders.length === 1 ? leader.name : "first"} still has fewer losses.`;
-    } else {
-      line = `${head} · only ${gamesWord(s)} left this week. Best case: ${winsBack - s} back.`;
-    }
-
-    result[p.name] = {
-      isLeader: false,
-      chip: winsBack > 0 ? `${winsBack} back` : "Even on wins",
-      line,
-      swingKeys: new Set(swingGames.map(g => g.matchupKey))
-    };
-  });
-
-  return result;
-}
 
 // Week Info Hub grid: one row per game with Mike, Shane, Steven and the
 // Cousins' majority pick, under a divider for each new day.
@@ -575,37 +466,6 @@ function computeSeasonBreakdowns() {
     if (!row.is_host) (byName[row.user_name] || (byName[row.user_name] = [])).push(row);
   });
   return Object.fromEntries(Object.entries(byName).map(([name, rows]) => [name, breakdownOf(rows)]));
-}
-
-// Weekly records, Lock record, and best and toughest team to pick (3+
-// decided picks) across one entrant's rows.
-function breakdownOf(rows) {
-  const b = { weeks: [], lockC: 0, lockI: 0, teams: {} };
-  rows.forEach(row => {
-    const score = gradePicks(row.picks, row.week_number);
-    if (score.correct + score.incorrect > 0) b.weeks.push({ week: row.week_number, c: score.correct, i: score.incorrect });
-    b.lockC += score.lockCorrect;
-    b.lockI += score.lockIncorrect;
-
-    const picks = parseUserPicks(row.picks);
-    (weekSchedules[row.week_number] || []).forEach(g => {
-      const winner = winnerOf(row.week_number, g);
-      const pick = getMatchedUserPick(picks, g);
-      if (!winner || !pick) return;
-      const key = normalizeTeam(pick);
-      const t = b.teams[key] || (b.teams[key] = { name: pick, w: 0, l: 0 });
-      if (key === normalizeTeam(winner)) t.w++;
-      else t.l++;
-    });
-  });
-
-  b.weeks.sort((x, y) => x.week - y.week);
-  const pct = t => t.w / (t.w + t.l);
-  const eligible = Object.values(b.teams).filter(t => t.w + t.l >= 3);
-  b.best = eligible.slice().sort((x, y) => (pct(y) - pct(x)) || (y.w - x.w))[0] || null;
-  const worst = eligible.slice().sort((x, y) => (pct(x) - pct(y)) || (y.l - x.l))[0] || null;
-  b.worst = worst && worst !== b.best && worst.l > 0 ? worst : null;
-  return b;
 }
 
 // ---- Host and Cousins stats popups ----
