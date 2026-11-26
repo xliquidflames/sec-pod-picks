@@ -8,7 +8,7 @@
 // order. (This file has no version tag of its own; GitHub Pages lets
 // browsers keep it about 10 minutes, so changes reach everyone within that.)
 
-const SITE_VERSION = "117";
+const SITE_VERSION = "118";
 
 (function () {
   const me = document.currentScript;

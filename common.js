@@ -1674,8 +1674,10 @@ function seasonBoxHtml(b, name) {
   if (!b || b.weeks.length === 0) return "";
   const facts = [];
   if (b.lockC + b.lockI > 0) facts.push(`Locks: ${b.lockC}-${b.lockI}`);
-  if (b.best) facts.push(`Best pick: ${shortenPickDisplay(b.best.name)} ${b.best.w}-${b.best.l}`);
-  if (b.worst) facts.push(`Toughest: ${shortenPickDisplay(b.worst.name)} ${b.worst.w}-${b.worst.l}`);
+  // The NFL page has no shortenPickDisplay; its team names are short already.
+  const short = t => typeof shortenPickDisplay === "function" ? shortenPickDisplay(t) : t;
+  if (b.best) facts.push(`Best pick: ${short(b.best.name)} ${b.best.w}-${b.best.l}`);
+  if (b.worst) facts.push(`Toughest: ${short(b.worst.name)} ${b.worst.w}-${b.worst.l}`);
   return `
     <div class="season-box">
       <span class="path-line-label">Weekly Breakdown</span>
