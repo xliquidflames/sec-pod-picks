@@ -180,8 +180,7 @@ async function saveEmailPrefs(key, value) {
 
 // ---- Your Lock Takes ----
 // Every take this player wrote, newest first (lock_notes, lock-notes.sql).
-// Edit until the lock kicks off (lock_kickoff); delete any time. Takes
-// written before the kickoff time was saved can only be deleted here.
+// Edit until the lock kicks off (lock_kickoff); delete any time.
 const TAKE_SPORTS = { cfb: "SEC Football", nfl: "NFL", hoops: "SEC Hoops" };
 const TAKE_WEEK_NAMES = {
   cfb: { 14: "SEC Championship", 15: "Bowls & CFP Round 1", 16: "CFP Quarterfinals", 17: "CFP Semifinals", 18: "CFP National Championship" },
@@ -201,7 +200,9 @@ async function loadMyTakes() {
   renderMyTakes();
 }
 
-const takeEditable = t => t.lock_kickoff && Date.now() < new Date(t.lock_kickoff).getTime();
+// Editable unless its lock is known to have kicked off. Older takes have
+// no kickoff saved, so they stay editable.
+const takeEditable = t => !t.lock_kickoff || Date.now() < new Date(t.lock_kickoff).getTime();
 
 function renderMyTakes() {
   const card = document.getElementById("myTakesCard");
