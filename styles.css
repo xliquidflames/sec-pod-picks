@@ -5163,6 +5163,10 @@ button.tourney-banner {
   gap: 0.5rem;
 }
 
+.your-season-record {
+  color: var(--text-main);
+}
+
 .your-season-title .fav-logo {
   width: 2rem;
   height: 2rem;

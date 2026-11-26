@@ -1783,11 +1783,12 @@ function renderYourSeason(paths, seasons) {
   const pathKey = me && Object.keys(paths).find(isMe);
   const html = me ? yourSeasonHtml(pathKey ? paths[pathKey] : null, key ? seasons[key] : null, key || me).trim() : "";
   document.getElementById("yourSeasonBody").innerHTML = html;
-  // "(team logo) Liquid's Season"
+  // "(team logo) Your Season 83-22"
   if (me) {
     const logo = favoriteLogoHtml(playerFavorites[me.toLowerCase().trim()] || signedInAccount.favorites);
+    const rec = seasonRecords[me.toLowerCase().trim()];
     document.getElementById("yourSeasonTitle").innerHTML =
-      `${logo}<span>${escapeHtml(me)}${/s$/i.test(me) ? "'" : "'s"} Season</span>`;
+      `${logo}<span>Your Season</span>${rec && rec.c + rec.i > 0 ? `<span class="your-season-record">${rec.c}-${rec.i}</span>` : ""}`;
   }
   card.style.display = html ? "" : "none";
 }
