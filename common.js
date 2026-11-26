@@ -411,14 +411,20 @@ async function currentAccount() {
     const { data } = await supabaseClient.auth.getSession();
     const user = data && data.session && data.session.user;
     if (!user) return null;
-    const { data: profile } = await supabaseClient.from("profiles").select("display_name, favorites").eq("user_id", user.id).maybeSingle();
+    const { data: profile } = await supabaseClient.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
     if (!profile) {
       // Hosts and admins get their name set up for them (host-admin.sql);
       // everyone else gets null and chooses one on the sign-in page.
       const { data: adminName } = await supabaseClient.rpc("claim_admin_name");
       if (adminName) return { user, name: adminName, favorites: {} };
     }
-    return { user, name: profile ? profile.display_name : null, favorites: (profile && profile.favorites) || {} };
+    // Remembered on this device, so the next visit can open on that sport
+    // before the account has loaded (index.js).
+    try {
+      if (profile && profile.default_sport) localStorage.setItem("defaultSport", profile.default_sport);
+      else localStorage.removeItem("defaultSport");
+    } catch (_) {}
+    return { user, name: profile ? profile.display_name : null, favorites: (profile && profile.favorites) || {}, defaultSport: (profile && profile.default_sport) || null };
   } catch (err) {
     console.error("Account check failed:", err);
     return null;
@@ -1793,6 +1799,26 @@ function renderYourSeason(paths, seasons) {
       `${logo}<span>Your Season</span>${rec && rec.c + rec.i > 0 ? `<span class="your-season-record">${rec.c}-${rec.i}</span>` : ""}`;
   }
   card.style.display = html ? "" : "none";
+  if (me) saveMyStats(seasonRecords[me.toLowerCase().trim()], key ? seasons[key] : null, weeklyChampions[me.toLowerCase().trim()] || []);
+}
+
+// The Account page's trophy case reads these (player_stats,
+// account-extras.sql). Saved only when something changed.
+function saveMyStats(rec, b, crowns) {
+  if (!signedInAccount || !signedInAccount.user || !rec || rec.c + rec.i === 0) return;
+  const row = {
+    sport: noteSport(), user_id: signedInAccount.user.id, wins: rec.c, losses: rec.i,
+    crown_weeks: crowns.slice().sort((x, y) => x - y),
+    lock_w: b ? b.lockC : 0, lock_l: b ? b.lockI : 0,
+    best_pick: b && b.best ? (typeof shortenPickDisplay === "function" ? shortenPickDisplay(b.best.name) : b.best.name) : null,
+    best_w: b && b.best ? b.best.w : null, best_l: b && b.best ? b.best.l : null
+  };
+  const memo = `stats:${row.sport}:${row.user_id}`, text = JSON.stringify(row);
+  try { if (sessionStorage.getItem(memo) === text) return; } catch (_) {}
+  supabaseClient.from("player_stats").upsert(row, { onConflict: "sport,user_id" }).then(({ error }) => {
+    if (error) return console.error("Couldn't save your stats:", error);
+    try { sessionStorage.setItem(memo, text); } catch (_) {}
+  });
 }
 
 // ---- Shared by the football and hoops picks pages (makepicks, hoopsmakepicks) ----

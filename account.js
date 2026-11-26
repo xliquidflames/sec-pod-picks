@@ -188,6 +188,9 @@ const TAKE_WEEK_NAMES = {
   hoops: { 19: "SEC Tournament", 20: "NCAA First & Second Rounds", 21: "NCAA Sweet 16 & Elite 8", 22: "NCAA Final Four" }
 };
 let myTakes = [];
+let takeReacts = {};   // "sport:week" -> { emoji key: count }
+const TAKE_EMOJI = [["fire", "&#128293;"], ["ice", "&#129482;"], ["eyes", "&#128064;"], ["up", "&#128077;"], ["down", "&#128078;"]];
+const takeTitle = t => `${TAKE_SPORTS[t.sport] || t.sport} · ${(TAKE_WEEK_NAMES[t.sport] || {})[t.week_number] || `Week ${t.week_number}`}`;
 
 async function loadMyTakes() {
   const { data: { user } } = await supabaseClient.auth.getUser();
@@ -197,6 +200,13 @@ async function loadMyTakes() {
     .eq("user_id", user.id).order("updated_at", { ascending: false });
   if (error) { console.error("Couldn't load your takes:", error); return; }
   myTakes = data || [];
+  const { data: reacts } = await supabaseClient.from("lock_note_reactions")
+    .select("sport, week_number, emoji").eq("author_id", user.id);
+  takeReacts = {};
+  (reacts || []).forEach(r => {
+    const k = `${r.sport}:${r.week_number}`;
+    (takeReacts[k] = takeReacts[k] || {})[r.emoji] = ((takeReacts[k] || {})[r.emoji] || 0) + 1;
+  });
   renderMyTakes();
 }
 
@@ -207,16 +217,25 @@ const takeEditable = t => !t.lock_kickoff || Date.now() < new Date(t.lock_kickof
 function renderMyTakes() {
   const card = document.getElementById("myTakesCard");
   card.style.display = myTakes.length ? "" : "none";
-  document.getElementById("myTakes").innerHTML = myTakes.map((t, i) => `
+  // "Your most 🔥 take", when any have fire.
+  const fireOf = t => ((takeReacts[`${t.sport}:${t.week_number}`] || {}).fire || 0);
+  const hottest = myTakes.slice().sort((a, b) => fireOf(b) - fireOf(a))[0];
+  const top = hottest && fireOf(hottest) ? `<div class="my-take-hot">&#128293; Your hottest take: ${takeTitle(hottest)}, with ${fireOf(hottest)} fire.</div>` : "";
+  document.getElementById("myTakes").innerHTML = top + myTakes.map((t, i) => {
+    const counts = takeReacts[`${t.sport}:${t.week_number}`] || {};
+    const reacts = TAKE_EMOJI.filter(([k]) => counts[k]).map(([k, e]) => `<span class="take-react" aria-disabled="true">${e}<span>${counts[k]}</span></span>`).join("");
+    return `
     <div class="my-take" id="myTake${i}">
-      <div class="my-take-head">${TAKE_SPORTS[t.sport] || t.sport} · ${(TAKE_WEEK_NAMES[t.sport] || {})[t.week_number] || `Week ${t.week_number}`}</div>
+      <div class="my-take-head">${takeTitle(t)}</div>
       ${t.lock_pick ? `<div class="lock-takes-who"><span class="lock-badge">LOCKED</span> ${escapeHtml(t.lock_pick)}</div>` : ""}
       <div class="my-take-note">${escapeHtml(t.note)}</div>
+      ${reacts ? `<div class="take-reacts">${reacts}</div>` : ""}
       <div class="lock-take-own">
         ${takeEditable(t) ? `<button type="button" onclick="editMyTake(${i})">Edit</button>` : ""}
         <button type="button" onclick="deleteMyTake(this, ${i})">Delete</button>
       </div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 
 function editMyTake(i) {
@@ -279,6 +298,109 @@ async function deleteMyTake(btn, i, now) {
   renderMyTakes();
 }
 
+// ---- Trophy case ----
+// Each sport's season as of the player's last visit to that leaderboard
+// (player_stats, written by saveMyStats in common.js).
+async function loadTrophies() {
+  const { data, error } = await supabaseClient.from("player_stats")
+    .select("sport, wins, losses, crown_weeks, lock_w, lock_l, best_pick, best_w, best_l, updated_at");
+  if (error) { console.error("Couldn't load your trophy case:", error); return; }
+  const rows = (data || []).sort((a, b) => ["cfb", "nfl", "hoops"].indexOf(a.sport) - ["cfb", "nfl", "hoops"].indexOf(b.sport));
+  if (!rows.length) return;
+  const weekLabel = (sport, w) => (sport === "cfb" ? { 14: "SECCG", 15: "Bowls", 16: "CFP QF", 17: "CFP SF", 18: "Title" }
+    : sport === "hoops" ? { 19: "SECT", 20: "NCAA R1-2", 21: "S16-E8", 22: "Final Four" } : {})[w] || `W${w}`;
+  document.getElementById("trophyCase").innerHTML = rows.map(r => {
+    const crowns = r.crown_weeks || [];
+    return `
+    <div class="trophy">
+      <div class="trophy-head"><span>${TAKE_SPORTS[r.sport]}</span><span class="trophy-record">${r.wins}-${r.losses}</span></div>
+      <div class="trophy-facts">
+        ${crowns.length ? `<span>&#128081;&times;${crowns.length} (${crowns.map(w => weekLabel(r.sport, w)).join(", ")})</span>` : ""}
+        ${r.lock_w + r.lock_l ? `<span>Locks ${r.lock_w}-${r.lock_l}</span>` : ""}
+        ${r.best_pick ? `<span>Best pick: ${escapeHtml(r.best_pick)} ${r.best_w}-${r.best_l}</span>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+  document.getElementById("trophyCard").style.display = "";
+}
+
+// ---- Home page ----
+// Which leaderboard the site opens on from outside links (load.js).
+const HOME_SPORTS = [["cfb", "SEC Football"], ["nfl", "NFL"], ["hoops", "SEC Hoops"]];
+let homeSport = "cfb";
+
+function renderHomeSport() {
+  document.getElementById("homeSport").innerHTML = HOME_SPORTS.map(([key, label]) => `
+    <label class="email-opt">
+      <input type="radio" name="homeSport" ${homeSport === key ? "checked" : ""} onchange="saveHomeSport('${key}')">
+      <span>${label}</span>
+    </label>`).join("");
+}
+
+async function saveHomeSport(key) {
+  const status = document.getElementById("homeStatus");
+  status.style.color = "var(--text-muted)";
+  status.textContent = "Saving...";
+  const { error } = await supabaseClient.rpc("set_default_sport", { p_sport: key === "cfb" ? null : key });
+  if (error) {
+    status.style.color = "var(--danger)";
+    status.textContent = `Couldn't save that: ${error.message}`;
+    renderHomeSport();
+    return;
+  }
+  homeSport = key;
+  try { if (key === "cfb") localStorage.removeItem("defaultSport"); else localStorage.setItem("defaultSport", key); } catch (_) {}
+  status.style.color = "var(--success)";
+  status.textContent = `Saved. Links to the site will open on ${HOME_SPORTS.find(s => s[0] === key)[1]}.`;
+}
+
+// ---- Sample email ----
+// The test version of the 7 AM email, sent to this player only, once a day
+// (the "daily-reminders" function).
+async function sendSample() {
+  const btn = document.getElementById("sampleBtn");
+  const status = document.getElementById("sampleStatus");
+  btn.disabled = true;
+  status.style.color = "var(--text-muted)";
+  status.textContent = "Sending...";
+  const { data, error } = await supabaseClient.functions.invoke("daily-reminders", { body: { sample: true } });
+  btn.disabled = false;
+  let message = data && (data.error || data.note);
+  if (error) {
+    try { const body = await error.context.json(); message = body.error || body.note || error.message; } catch (_) { message = error.message; }
+  }
+  if (!error && data && data.sent) {
+    status.style.color = "var(--success)";
+    status.textContent = `Sent to ${emailAddress}. Check your spam folder if it isn't there in a minute.`;
+  } else {
+    status.style.color = error ? "var(--danger)" : "var(--text-muted)";
+    status.textContent = message || "Couldn't send a sample. Try again later.";
+  }
+}
+
+// ---- Delete account ----
+async function deleteAccount() {
+  const status = document.getElementById("deleteStatus");
+  if (document.getElementById("deleteConfirm").value.trim().toUpperCase() !== "DELETE") {
+    status.style.color = "var(--danger)";
+    status.textContent = "Type DELETE to confirm.";
+    return;
+  }
+  status.style.color = "var(--text-muted)";
+  status.textContent = "Deleting...";
+  const { error } = await supabaseClient.functions.invoke("delete-account", { body: { confirm: "DELETE" } });
+  if (error) {
+    let message = error.message;
+    try { message = (await error.context.json()).error || message; } catch (_) {}
+    status.style.color = "var(--danger)";
+    status.textContent = `Couldn't delete your account: ${message}`;
+    return;
+  }
+  try { localStorage.removeItem("defaultSport"); } catch (_) {}
+  await supabaseClient.auth.signOut();
+  location.replace("index.html");
+}
+
 // Right after claiming a name: an optional stop on the way to the picks.
 const params = new URLSearchParams(location.search);
 const welcomeNext = params.has("welcome") && /^[\w-]+\.html(\?[\w=&%-]*)?$/.test(params.get("next") || "") ? params.get("next") : null;
@@ -298,4 +420,7 @@ const welcomeNext = params.has("welcome") && /^[\w-]+\.html(\?[\w=&%-]*)?$/.test
   renderSections();
   loadEmailPrefs();
   loadMyTakes();
+  loadTrophies();
+  homeSport = account.defaultSport || "cfb";
+  renderHomeSport();
 })();

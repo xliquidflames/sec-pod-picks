@@ -17,6 +17,14 @@
       <p class="sub-header" id="accountSub">Checking your sign-in...</p>
     </header>
 
+    <div class="card" id="trophyCard" style="display: none;">
+      <div class="section-title-bar">
+        <h2 class="section-title">&#127942; Trophy Case</h2>
+      </div>
+      <div id="trophyCase"></div>
+      <div class="signin-note" style="margin-top: 0.6rem;">Updated each time you open that sport's leaderboard.</div>
+    </div>
+
     <div class="card">
       <div class="section-title-bar">
         <h2 class="section-title">Favorite Teams</h2>
@@ -29,11 +37,22 @@
 
     <div class="card">
       <div class="section-title-bar">
+        <h2 class="section-title">Home Page</h2>
+      </div>
+      <div class="signin-note">The leaderboard the site opens on when you come from a link or a bookmark.</div>
+      <div id="homeSport" class="email-sports"></div>
+      <div id="homeStatus" class="status-alert"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title-bar">
         <h2 class="section-title">Email Reminders</h2>
       </div>
-      <div class="signin-note">Off unless you turn it on. At most one email a day, around 7 AM Eastern, and only when a week opens or games today still need your picks. During hoops tournaments, also a late-night wrap-up when SEC teams advance and new games are set.</div>
+      <div class="signin-note">Off unless you turn it on. Emails only come when you have picks to make: around 7 AM Eastern when a week opens or games today still need picks, a last call an hour before an SEC Football or NFL week kicks off, and during hoops tournaments a late-night wrap-up when new games are set.</div>
       <div id="emailPrefs"></div>
       <div id="emailStatus" class="status-alert"></div>
+      <button type="button" class="btn-provider" id="sampleBtn" onclick="sendSample()" style="margin-top: 0.75rem;">Send me a sample email</button>
+      <div id="sampleStatus" class="status-alert"></div>
     </div>
 
     <div class="card" id="myTakesCard" style="display: none;">
@@ -49,6 +68,15 @@
         <button type="button" class="btn-provider" onclick="signOut('index.html')">Sign Out</button>
       </div>
       <div class="signin-help" id="signinHelp"></div>
+      <div class="delete-account">
+        <button type="button" class="delete-account-link" onclick="document.getElementById('deleteBox').style.display = ''; this.style.display = 'none';">Delete my account</button>
+        <div id="deleteBox" style="display: none;">
+          <p>This deletes your account, your name, your settings, your Lock Takes and your reactions for good. Your past picks stay on the leaderboards under your name. Type <strong>DELETE</strong> to confirm.</p>
+          <input type="text" id="deleteConfirm" class="delete-input" autocomplete="off" autocapitalize="characters" placeholder="DELETE">
+          <button type="button" class="btn-provider delete-go" onclick="deleteAccount()">Delete my account</button>
+          <div id="deleteStatus" class="status-alert"></div>
+        </div>
+      </div>
     </div>
   </div>
 

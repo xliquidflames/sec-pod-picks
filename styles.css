@@ -5269,3 +5269,93 @@ button.tourney-banner {
   margin: 0.4rem 0 0;
 }
 
+
+/* Account page: trophy case. */
+.trophy {
+  padding: 0.65rem 0.75rem;
+  margin-top: 0.5rem;
+  border-left: 3px solid var(--accent-gold);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+}
+
+.trophy-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: var(--accent-gold);
+  font-weight: 800;
+}
+
+.trophy-record {
+  color: var(--text-main);
+  font-size: 1.1rem;
+}
+
+.trophy-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.9rem;
+  margin-top: 0.25rem;
+  color: var(--text-main);
+  font-size: 0.85rem;
+}
+
+.trophy-facts:empty {
+  display: none;
+}
+
+/* Account page: hottest take, and delete account. */
+.my-take-hot {
+  margin-bottom: 0.4rem;
+  color: var(--text-main);
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.my-take .take-react {
+  cursor: default;
+}
+
+.delete-account {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.delete-account-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+#deleteBox p {
+  color: var(--text-main);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.delete-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-main);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 16px;
+}
+
+.delete-go {
+  margin-top: 0.6rem;
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+}

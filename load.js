@@ -8,7 +8,20 @@
 // order. (This file has no version tag of its own; GitHub Pages lets
 // browsers keep it about 10 minutes, so changes reach everyone within that.)
 
-const SITE_VERSION = "120";
+const SITE_VERSION = "121";
+
+// A player who picked NFL or SEC Hoops as their home page (Account page)
+// lands there when they arrive at the SEC Football page from outside the
+// site: a Discord link, a bookmark. Tapping SEC Football on the site itself
+// still goes to SEC Football. common.js keeps the choice on this device.
+(function () {
+  try {
+    const page = { nfl: "nflindex.html", hoops: "hoopsindex.html" }[localStorage.getItem("defaultSport")];
+    const onSecHome = /\/(index\.html)?$/.test(location.pathname);
+    const fromOutside = !document.referrer || new URL(document.referrer).origin !== location.origin;
+    if (page && onSecHome && fromOutside && !location.search && !location.hash) location.replace(page);
+  } catch (_) {}
+})();
 
 (function () {
   const me = document.currentScript;
