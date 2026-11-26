@@ -5341,21 +5341,24 @@ button.tourney-banner {
   text-align: left;
 }
 
-.delete-input {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.6rem 0.7rem;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-main);
-  color: var(--text-main);
-  font: inherit;
-  font-size: 16px;
-}
-
 .delete-go {
   margin-top: 0.6rem;
   border-color: var(--danger) !important;
   color: var(--danger) !important;
 }
+
+/* Sign-in page: "Is it your old account?" */
+#oldAccountBox {
+  margin-top: 0.9rem;
+}
+
+.old-account-buttons {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.old-account-buttons .btn-provider {
+  flex: 1;
+}
+

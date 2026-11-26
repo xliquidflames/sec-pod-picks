@@ -69,11 +69,10 @@
       </div>
       <div class="signin-help" id="signinHelp"></div>
       <div class="delete-account">
-        <button type="button" class="delete-account-link" onclick="document.getElementById('deleteBox').style.display = ''; this.style.display = 'none';">Delete my account</button>
+        <button type="button" class="delete-account-link" onclick="document.getElementById('deleteBox').style.display = ''; this.style.display = 'none';">Deactivate my account</button>
         <div id="deleteBox" style="display: none;">
-          <p>This deletes your account, your name, your settings, your Lock Takes and your reactions for good. Your past picks stay on the leaderboards under your name. Type <strong>DELETE</strong> to confirm.</p>
-          <input type="text" id="deleteConfirm" class="delete-input" autocomplete="off" autocapitalize="characters" placeholder="DELETE">
-          <button type="button" class="btn-provider delete-go" onclick="deleteAccount()">Delete my account</button>
+          <p>This signs you out and stops your reminder emails. Nothing is deleted: your name stays yours, and your picks, records and Lock Takes are kept. Sign in again any time to turn your account back on.</p>
+          <button type="button" class="btn-provider delete-go" onclick="deactivateAccount(this)">Deactivate my account</button>
           <div id="deleteStatus" class="status-alert"></div>
         </div>
       </div>

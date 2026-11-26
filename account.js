@@ -378,22 +378,25 @@ async function sendSample() {
   }
 }
 
-// ---- Delete account ----
-async function deleteAccount() {
+// ---- Deactivate account ----
+// Nothing is deleted (account-deactivate.sql). Tap twice; then signed out.
+async function deactivateAccount(btn) {
   const status = document.getElementById("deleteStatus");
-  if (document.getElementById("deleteConfirm").value.trim().toUpperCase() !== "DELETE") {
-    status.style.color = "var(--danger)";
-    status.textContent = "Type DELETE to confirm.";
+  if (btn.dataset.armed !== "1") {
+    btn.dataset.armed = "1";
+    btn.textContent = "Tap again to deactivate";
     return;
   }
+  btn.disabled = true;
   status.style.color = "var(--text-muted)";
-  status.textContent = "Deleting...";
-  const { error } = await supabaseClient.functions.invoke("delete-account", { body: { confirm: "DELETE" } });
+  status.textContent = "Deactivating...";
+  const { error } = await supabaseClient.rpc("deactivate_my_account");
   if (error) {
-    let message = error.message;
-    try { message = (await error.context.json()).error || message; } catch (_) {}
+    btn.disabled = false;
+    btn.dataset.armed = "";
+    btn.textContent = "Deactivate my account";
     status.style.color = "var(--danger)";
-    status.textContent = `Couldn't delete your account: ${message}`;
+    status.textContent = `Couldn't deactivate your account: ${error.message}`;
     return;
   }
   try { localStorage.removeItem("defaultSport"); } catch (_) {}

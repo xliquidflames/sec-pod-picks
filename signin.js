@@ -75,6 +75,7 @@ async function claimName() {
   if (!name) return setStatus("var(--danger)", "Type a name first.");
   setStatus("var(--text-muted)", "Claiming...");
   const { data, error } = await supabaseClient.rpc("claim_name", { p_name: name });
+  if (error && /NAME_DEACTIVATED/.test(error.message)) return askOldAccount(name);
   if (error) return setStatus("var(--danger)", error.message);
   // Then an optional stop to pick favorite teams, and on to where they were going.
   const welcome = `account.html?welcome=1&next=${encodeURIComponent(next)}`;
@@ -84,6 +85,42 @@ async function claimName() {
     return;
   }
   location.replace(welcome);
+}
+
+// The name belongs to a deactivated account: is it theirs?
+function askOldAccount(name) {
+  setStatus("", "");
+  const box = document.getElementById("oldAccountBox");
+  box.style.display = "";
+  box.innerHTML = `
+    <div class="signin-note">The name <strong>${escapeHtml(name)}</strong> belongs to an account that was deactivated. Is it your old account?</div>
+    <div class="old-account-buttons">
+      <button type="button" class="btn-provider" onclick="reactivateOld(this)">Yes, it's mine</button>
+      <button type="button" class="btn-provider" onclick="notMine()">No</button>
+    </div>`;
+  box.dataset.name = name;
+}
+
+function notMine() {
+  document.getElementById("oldAccountBox").style.display = "none";
+  setStatus("var(--danger)", "That name is already in use. Pick another one.");
+}
+
+// Emails a sign-in link to the old account's address. Signing in with it
+// turns the old account back on, with everything it had.
+async function reactivateOld(btn) {
+  const box = document.getElementById("oldAccountBox");
+  btn.disabled = true;
+  setStatus("var(--text-muted)", "Sending...");
+  const { data, error } = await supabaseClient.functions.invoke("reactivate-account", { body: { name: box.dataset.name } });
+  btn.disabled = false;
+  let message = data && data.error;
+  if (error) {
+    try { message = (await error.context.json()).error || error.message; } catch (_) { message = error.message; }
+    return setStatus("var(--danger)", message);
+  }
+  box.style.display = "none";
+  setStatus("var(--success)", `${data.again ? "A link already went" : "We sent a sign-in link"} to the email on that account (${data.hint}). Open it on this device and your old account, picks and records come back.`);
 }
 
 // Shows the step this visitor is on, or sends them on once they're set.
@@ -108,6 +145,9 @@ async function route() {
     return;
   }
   try { localStorage.setItem("secPickEmUserName", account.name); } catch (e) {}
+  let back = null;
+  try { back = sessionStorage.getItem("reactivated"); sessionStorage.removeItem("reactivated"); } catch (_) {}
+  if (back) setStatus("var(--success)", `Welcome back, ${back}. Your account is active again, with all your picks and records.`);
   document.getElementById("doneName").textContent = account.name;
   document.getElementById("continueBtn").href = next;
   show("signinDone");

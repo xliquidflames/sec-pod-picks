@@ -418,6 +418,12 @@ async function currentAccount() {
       const { data: adminName } = await supabaseClient.rpc("claim_admin_name");
       if (adminName) return { user, name: adminName, favorites: {} };
     }
+    // Signing in to a deactivated account turns it back on (account-
+    // deactivate.sql). The sign-in page says so.
+    if (profile && profile.deactivated_at) {
+      const { data: back } = await supabaseClient.rpc("reactivate_my_account");
+      if (back) { profile.deactivated_at = null; try { sessionStorage.setItem("reactivated", back); } catch (_) {} }
+    }
     // Remembered on this device, so the next visit can open on that sport
     // before the account has loaded (index.js).
     try {
