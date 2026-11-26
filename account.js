@@ -178,6 +178,106 @@ async function saveEmailPrefs(key, value) {
     : picked.length ? `Saved. Reminders for ${picked.join(", ")}.` : "Saved. Tick a sport to get reminders.";
 }
 
+// ---- Your Lock Takes ----
+// Every take this player wrote, newest first (lock_notes, lock-notes.sql).
+// Edit until the lock kicks off (lock_kickoff); delete any time. Takes
+// written before the kickoff time was saved can only be deleted here.
+const TAKE_SPORTS = { cfb: "SEC Football", nfl: "NFL", hoops: "SEC Hoops" };
+const TAKE_WEEK_NAMES = {
+  cfb: { 14: "SEC Championship", 15: "Bowls & CFP Round 1", 16: "CFP Quarterfinals", 17: "CFP Semifinals", 18: "CFP National Championship" },
+  nfl: {},
+  hoops: { 19: "SEC Tournament", 20: "NCAA First & Second Rounds", 21: "NCAA Sweet 16 & Elite 8", 22: "NCAA Final Four" }
+};
+let myTakes = [];
+
+async function loadMyTakes() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+  const { data, error } = await supabaseClient.from("lock_notes")
+    .select("sport, week_number, note, lock_pick, lock_kickoff, updated_at")
+    .eq("user_id", user.id).order("updated_at", { ascending: false });
+  if (error) { console.error("Couldn't load your takes:", error); return; }
+  myTakes = data || [];
+  renderMyTakes();
+}
+
+const takeEditable = t => t.lock_kickoff && Date.now() < new Date(t.lock_kickoff).getTime();
+
+function renderMyTakes() {
+  const card = document.getElementById("myTakesCard");
+  card.style.display = myTakes.length ? "" : "none";
+  document.getElementById("myTakes").innerHTML = myTakes.map((t, i) => `
+    <div class="my-take" id="myTake${i}">
+      <div class="my-take-head">${TAKE_SPORTS[t.sport] || t.sport} · ${(TAKE_WEEK_NAMES[t.sport] || {})[t.week_number] || `Week ${t.week_number}`}</div>
+      ${t.lock_pick ? `<div class="lock-takes-who"><span class="lock-badge">LOCKED</span> ${escapeHtml(t.lock_pick)}</div>` : ""}
+      <div class="my-take-note">${escapeHtml(t.note)}</div>
+      <div class="lock-take-own">
+        ${takeEditable(t) ? `<button type="button" onclick="editMyTake(${i})">Edit</button>` : ""}
+        <button type="button" onclick="deleteMyTake(this, ${i})">Delete</button>
+      </div>
+    </div>`).join("");
+}
+
+function editMyTake(i) {
+  const t = myTakes[i];
+  const box = document.getElementById(`myTake${i}`);
+  box.querySelector(".my-take-note").outerHTML = `
+    <div class="lock-take editing">
+      <textarea maxlength="${LOCK_NOTE_MAX}" rows="3"
+        oninput="this.parentElement.querySelector('.lock-note-count').textContent = this.value.length + '/${LOCK_NOTE_MAX}'">${escapeHtml(t.note)}</textarea>
+      <div class="lock-note-row">
+        <span class="lock-note-count">${t.note.length}/${LOCK_NOTE_MAX}</span>
+        <button type="button" class="lock-note-btn" onclick="renderMyTakes()">Cancel</button>
+        <button type="button" class="lock-note-btn save" onclick="saveMyTake(this, ${i})">Save</button>
+      </div>
+      <div class="lock-note-status"></div>
+    </div>`;
+  box.querySelector(".lock-take-own").style.display = "none";
+  box.querySelector("textarea").focus();
+}
+
+async function saveMyTake(btn, i) {
+  const t = myTakes[i];
+  const box = document.getElementById(`myTake${i}`);
+  const note = box.querySelector("textarea").value.trim();
+  const status = box.querySelector(".lock-note-status");
+  if (!note) return deleteMyTake(btn, i, true);
+  btn.disabled = true;
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  const { error } = await supabaseClient.from("lock_notes").update({ note })
+    .eq("sport", t.sport).eq("week_number", t.week_number).eq("user_id", user.id);
+  if (error) {
+    btn.disabled = false;
+    status.style.color = "var(--danger)";
+    status.textContent = `Couldn't save: ${error.message}`;
+    return;
+  }
+  t.note = note;
+  renderMyTakes();
+}
+
+// Tap once to arm, again to delete. now: skip the second tap.
+async function deleteMyTake(btn, i, now) {
+  if (!now && btn.dataset.armed !== "1") {
+    btn.dataset.armed = "1";
+    btn.textContent = "Tap again to delete";
+    return;
+  }
+  btn.disabled = true;
+  const t = myTakes[i];
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  const { error } = await supabaseClient.from("lock_notes").delete()
+    .eq("sport", t.sport).eq("week_number", t.week_number).eq("user_id", user.id);
+  if (error) {
+    btn.disabled = false;
+    btn.dataset.armed = "";
+    btn.textContent = "Couldn't delete. Try again";
+    return;
+  }
+  myTakes.splice(i, 1);
+  renderMyTakes();
+}
+
 // Right after claiming a name: an optional stop on the way to the picks.
 const params = new URLSearchParams(location.search);
 const welcomeNext = params.has("welcome") && /^[\w-]+\.html(\?[\w=&%-]*)?$/.test(params.get("next") || "") ? params.get("next") : null;
@@ -196,4 +296,5 @@ const welcomeNext = params.has("welcome") && /^[\w-]+\.html(\?[\w=&%-]*)?$/.test
   document.getElementById("accountSub").innerHTML = `Signed in as <strong>${escapeHtml(account.name)}</strong>`;
   renderSections();
   loadEmailPrefs();
+  loadMyTakes();
 })();

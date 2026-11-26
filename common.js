@@ -2052,6 +2052,12 @@ function lockMatchText(pick, game) {
   return `${short(pick)} to beat ${short(opp)}`;
 }
 
+// Saved with a take, for the Account page's list of them.
+function lockFields(pick, game) {
+  const kickoff = game && game.kickoff && game.kickoff.getFullYear() < 9999 ? game.kickoff.toISOString() : null;
+  return pick && game ? { lock_pick: lockMatchText(pick, game), lock_kickoff: kickoff } : {};
+}
+
 function lockTakeHtml(name, game, pick) {
   const n = lockNoteOf(name);
   if (!n) return "";
@@ -2101,8 +2107,9 @@ async function saveMyLockNote(btn) {
   btn.disabled = true;
   status.style.color = "var(--text-muted)";
   status.textContent = "Saving...";
+  const game = (lastLockTakes.games || []).find(g => g.matchupKey === box.dataset.key);
   const { error } = await supabaseClient.from("lock_notes").upsert(
-    { sport: noteSport(), week_number: activeWeek, user_id: myNoteUserId, note },
+    { sport: noteSport(), week_number: activeWeek, user_id: myNoteUserId, note, ...lockFields(box.dataset.pick, game) },
     { onConflict: "sport,week_number,user_id" });
   if (error) {
     btn.disabled = false;
@@ -2247,15 +2254,19 @@ async function saveLockNote(quiet) {
   const input = document.getElementById("lockNoteInput");
   if (!input || input.readOnly) return true;
   const note = input.value.trim();
-  if (note === myLockNote.saved) { if (!quiet) lockNoteStatus("var(--text-muted)", note ? "Already saved." : "Nothing to save."); return true; }
+  // Quiet (after picks are saved): resave an unchanged take too, so it
+  // follows a lock that moved to another game.
+  if (note === myLockNote.saved && !(quiet && note)) { if (!quiet) lockNoteStatus("var(--text-muted)", note ? "Already saved." : "Nothing to save."); return true; }
   if (!note) return deleteLockNote(quiet);
   if (!(typeof currentLockMatchupKey !== "undefined" && currentLockMatchupKey)) {
     lockNoteStatus("var(--danger)", "Pick your Lock of the Week first.");
     return false;
   }
   if (!quiet) lockNoteStatus("var(--text-muted)", "Saving...");
+  const key = currentLockMatchupKey;
+  const lockGame = (typeof currentSchedule !== "undefined" ? currentSchedule || [] : []).find(g => g.matchupKey === key);
   const { error } = await supabaseClient.from("lock_notes").upsert(
-    { sport: noteSport(), week_number: targetWeek, user_id: myLockNote.userId, note },
+    { sport: noteSport(), week_number: targetWeek, user_id: myLockNote.userId, note, ...lockFields(userSelections[key], lockGame) },
     { onConflict: "sport,week_number,user_id" });
   if (error) { lockNoteStatus("var(--danger)", `Couldn't save your take: ${error.message}`); return false; }
   myLockNote.saved = note;

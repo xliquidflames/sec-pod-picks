@@ -5228,3 +5228,44 @@ button.tourney-banner {
 .lock-take .lock-takes-who {
   margin-bottom: 0.25rem;
 }
+
+/* Account page: Your Lock Takes. */
+.my-take {
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border-color);
+  text-align: left;
+}
+
+.my-take:first-child {
+  border-top: 0;
+}
+
+.my-take-head {
+  color: var(--accent-gold);
+  font-weight: 800;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.my-take .lock-takes-who {
+  margin-top: 0.3rem;
+}
+
+.my-take-note {
+  margin-top: 0.3rem;
+  color: var(--text-main);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.my-take .lock-take-own {
+  display: flex;
+  margin: 0.4rem 0 0;
+}
+
+.my-take .lock-take.editing {
+  margin: 0.4rem 0 0;
+}
+
