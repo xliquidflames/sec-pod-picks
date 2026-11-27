@@ -18,24 +18,42 @@
     </header>
 
     <div class="card privacy-text">
-      <p>This pick'em is a free fan project run by a volunteer. It collects only what it needs to run the game, and never sells or shares it.</p>
+      <p>This pick'em is a free fan project run by a volunteer. It collects only what it needs to run the game. It has no ads, and your data is never sold or shared. <strong>Your data is yours:</strong> you can download all of it, or delete all of it, any time from your account page.</p>
+      <p class="privacy-updated">Last updated November 27, 2026.</p>
 
       <h2>What's collected</h2>
       <ul>
         <li><strong>Your sign-in account.</strong> When you sign in with Google, Discord, GitHub or an email address, the site receives your email address and an account ID from that service. It never sees your password for those services.</li>
-        <li><strong>Your display name</strong>, which you choose, and <strong>your picks</strong> with the time you submitted them.</li>
-        <li><strong>Visit counts</strong> through GoatCounter, which counts page views without cookies or tracking you across sites.</li>
+        <li><strong>Your display name</strong>, which you choose.</li>
+        <li><strong>Your picks</strong>, with the time the site saved them.</li>
+        <li><strong>Your Lock Takes and reactions</strong>: the notes you write about your Lock of the Week, and the reactions you give other players' takes.</li>
+        <li><strong>Your settings</strong>: favorite teams, home sport and email reminder choices.</li>
+        <li><strong>Your records</strong>: wins, losses, weekly crowns and best picks, for the trophy case on your account page.</li>
+        <li><strong>A log of the reminder emails sent to you</strong>, so no one gets the same email twice.</li>
+        <li><strong>Error reports.</strong> If a page breaks while you're using it, the site records the page, the error, your browser type and your display name, so it can be fixed.</li>
+        <li><strong>Messages you send</strong> through "Send a message" go to the site's volunteer by email, with the name and reply address you give.</li>
+        <li><strong>Visit counts</strong> through GoatCounter, which counts page views without cookies and without tracking you across sites.</li>
       </ul>
 
+      <h2>What's public</h2>
+      <p>Your display name, picks, records, Lock Takes, reactions and favorite team logos show on the leaderboards. Your email address is never shown to anyone.</p>
+
       <h2>How it's used</h2>
-      <p>Your email and account ID are used only to sign you in and keep your picks under your name. Your display name and picks are shown publicly on the leaderboards; your email is never shown.</p>
-      <p>The one exception is email reminders, and only if you turn them on from your account page. Then the site emails you only when a week opens or games still need your picks, for the sports you choose, plus a late-night tournament wrap-up for hoops and a last call an hour before a football week kicks off. Every reminder has an unsubscribe link, and turning them off on your account page stops them too.</p>
+      <p>Your email and account ID are used only to sign you in and keep your picks under your name. Everything else is used only to run the game.</p>
+      <p>The site emails you only if you turn on reminders from your account page. Then it emails you only when a week opens or games still need your picks, in the sports you choose, plus a late-night tournament wrap-up for hoops and a last call an hour before a football week kicks off. Every reminder has an unsubscribe link, and turning them off on your account page stops them too.</p>
 
       <h2>Where it's kept</h2>
-      <p>Accounts and picks are stored with Supabase, the site's database service. Emails for confirming an account, resetting a password, or reminders you turned on are sent through Resend.</p>
+      <p>Accounts and everything above are stored with Supabase, the site's database service. Emails for confirming an account, resetting a password, reminders you turned on, and messages you send are delivered through Resend. Schedules and scores come from ESPN; nothing about you is sent there.</p>
+      <p><strong>Backups.</strong> A copy of the database is saved every night, so the site can be repaired if something breaks, and only the last three are kept. Each copy holds whatever was in the database that night, so a deleted account is gone from the copies within three days. Copies are kept private and used only for repairs. A deleted account is never brought back from one, and if the site is ever restored from a copy, any accounts deleted since are deleted again.</p>
 
-      <h2>Removing your data</h2>
-      <p class="privacy-contact">You can deactivate your account yourself from your account page. That signs you out and stops reminder emails, but keeps your name, picks and records so you can come back by signing in again. To have your account and data deleted for good, message us on Discord.</p>
+      <h2>Your choices</h2>
+      <p>Everything is under <strong>Manage My Data</strong> at the bottom of your <a href="account.html#manageData">account page</a>:</p>
+      <ul>
+        <li><strong>Download my data</strong> gives you a file with everything the site has about you: your account, settings, every pick, Lock Take, reaction, record and email sent.</li>
+        <li><strong>Deactivate my account</strong> signs you out and stops reminder emails, but keeps your name, picks and records, so you can come back just by signing in again.</li>
+        <li><strong>Delete my account</strong> erases your account and everything you've done on the site, right away. It can't be undone. Your picks disappear from the leaderboards, and your name is freed for someone else.</li>
+      </ul>
+      <p class="privacy-contact">Questions about your data? Use "Send a message" at the bottom of any page.</p>
     </div>
   </div>
 

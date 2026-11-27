@@ -68,13 +68,27 @@
         <button type="button" class="btn-provider" onclick="signOut('index.html')">Sign Out</button>
       </div>
       <div class="signin-help" id="signinHelp"></div>
-      <div class="delete-account">
-        <button type="button" class="btn-provider delete-account-btn" onclick="document.getElementById('deleteBox').style.display = ''; this.style.display = 'none';">Deactivate my account</button>
+    </div>
+
+    <!-- Manage My Data: the player's data is theirs to download, set aside
+         or delete. Spaced apart so nothing is tapped by accident. -->
+    <div class="card" id="manageData">
+      <div class="section-title-bar">
+        <h2 class="section-title">&#128274; Manage My Data</h2>
+      </div>
+      <div class="signin-note">Everything you do here is yours. Download a copy of all of it any time, take a break, or delete it. <a href="privacy.html">How your data is used</a></div>
+      <div class="data-actions">
+        <button type="button" class="btn-provider data-btn" onclick="downloadMyData(this)">Download my data</button>
+        <div id="dataStatus" class="data-status"></div>
+
+        <button type="button" class="btn-provider data-btn" onclick="document.getElementById('deleteBox').style.display = ''; this.style.display = 'none';">Deactivate my account</button>
         <div id="deleteBox" style="display: none;">
           <p>This signs you out and stops your reminder emails. Nothing is deleted: your name stays yours, and your picks, records and Lock Takes are kept. Sign in again any time to turn your account back on.</p>
           <button type="button" class="btn-provider delete-go" onclick="deactivateAccount(this)">Deactivate my account</button>
           <div id="deleteStatus" class="status-alert"></div>
         </div>
+
+        <a class="btn-provider data-btn data-delete" href="delete-account.html">Delete my account</a>
       </div>
     </div>
   </div>

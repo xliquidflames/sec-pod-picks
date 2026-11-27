@@ -412,6 +412,34 @@ async function deactivateAccount(btn) {
   location.replace("index.html");
 }
 
+// Download my data: everything the site has about this player (my_data in
+// my-data.sql), saved as a JSON file they can open and read.
+async function downloadMyData(btn) {
+  const status = document.getElementById("dataStatus");
+  btn.disabled = true;
+  status.style.color = "var(--text-muted)";
+  status.textContent = "Gathering your data...";
+  const { data, error } = await supabaseClient.rpc("my_data");
+  btn.disabled = false;
+  if (error || !data) {
+    status.style.color = "var(--danger)";
+    status.textContent = `Couldn't get your data: ${error ? error.message : "nothing came back"}`;
+    return;
+  }
+  const name = ((data.account && data.account.name) || "my").replace(/[^\w-]+/g, "-");
+  const day = new Date().toISOString().slice(0, 10);
+  const file = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(file);
+  link.download = `pickem-data-${name}-${day}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+  status.style.color = "var(--success)";
+  status.textContent = "Downloaded. It opens in any text viewer or browser.";
+}
+
 // Right after claiming a name: an optional stop on the way to the picks.
 const params = new URLSearchParams(location.search);
 const welcomeNext = params.has("welcome") && /^[\w-]+\.html(\?[\w=&%-]*)?$/.test(params.get("next") || "") ? params.get("next") : null;

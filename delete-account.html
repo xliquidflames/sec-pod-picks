@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-site-text="Delete Your Account - {name}">Delete Your Account - That SEC Podcast</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- styles.css, config.js, common.js: see load.js -->
+  <script src="load.js"></script>
+</head>
+<body>
+
+  <!-- Deleting an account, from the Account page's Manage My Data
+       card. Three taps: Delete on the Account page, Delete here, then the
+       player's name typed out and a last Delete. delete_my_account
+       (supabase/my-data.sql) checks the name again before erasing. -->
+  <div class="container narrow">
+    <header>
+      <a href="account.html" class="back-link">&larr; Back to Your Account</a>
+      <h1>DELETE YOUR ACCOUNT</h1>
+      <p class="sub-header" id="delSub">Checking your sign-in...</p>
+    </header>
+
+    <div class="card delete-warning" id="delCard" style="display: none;">
+      <h2>This can't be undone.</h2>
+      <p class="delete-lead">Deleting your account erases <strong>everything</strong> you've done on this site, right away. <strong>You can't undo it,</strong> and no one will restore your account for you, not even the site's admins.</p>
+
+      <p>What gets erased:</p>
+      <ul>
+        <li>Your account, your sign-in and your name (someone else could take the name later)</li>
+        <li>Every pick you've ever made, in every sport and every season</li>
+        <li>Your records, weekly crowns and trophy case</li>
+        <li>Your Lock Takes, the reactions you gave, and the reactions on your takes</li>
+        <li>Your favorite teams, home sport and email reminder settings</li>
+        <li>Your March Madness brackets</li>
+        <li>Your name on any error reports</li>
+      </ul>
+      <p class="delete-small">Your picks disappear from every leaderboard, and other players' standings will shift. The 2025 SEC Football picks came from the show's spreadsheet, before the site existed, and aren't part of your account.</p>
+      <p class="delete-small"><strong>One honest note:</strong> the site saves a copy of its database every night, so it can be repaired if something breaks, and keeps only the last three. Your data stays in those copies until they're replaced, so it's gone from them within three days. They're used only for repairs, a deleted account is never brought back from one, and if the site ever has to be restored from a copy, accounts deleted since are deleted again.</p>
+
+      <div class="delete-options">
+        <a href="account.html#manageData">Want a copy first? Download your data from your account page.</a>
+        <a href="account.html#manageData">Just need a break? Deactivate instead. It keeps everything.</a>
+      </div>
+
+      <button type="button" class="btn-provider delete-step" id="delFirst" onclick="showConfirm()">Delete my account</button>
+
+      <div id="delConfirm" style="display: none;">
+        <p class="delete-lead"><strong>Last step.</strong> Type your name, <strong id="delName"></strong>, to confirm you want everything erased.</p>
+        <input type="text" id="delTyped" class="delete-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Your name" oninput="checkTyped()">
+        <button type="button" class="btn-provider delete-step" id="delFinal" disabled onclick="deleteEverything(this)">Yes, delete everything</button>
+      </div>
+      <div id="delStatus" class="status-alert"></div>
+    </div>
+
+    <div class="card" id="delDone" style="display: none;">
+      <h2 class="section-title">Your account is gone.</h2>
+      <p>Your account and everything tied to it have been erased from the site. Thanks for playing.</p>
+      <a class="btn-provider" href="index.html" style="display: block; text-align: center; text-decoration: none;">Back to the site</a>
+    </div>
+  </div>
+
+  <script>siteScript("delete-account.js");</script>
+</body>
+</html>
