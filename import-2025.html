@@ -124,6 +124,10 @@
           g.picks.forEach((p, i) => { if (p !== null) picks[i][String(m.ev.id)] = siteName(m.teams[p]); });
           if (m.hits < 2) lines.push(`<div class="imp-game">${escapeHtml(g.a)} vs ${escapeHtml(g.b)} = ${escapeHtml(siteName(m.teams[0]))} vs ${escapeHtml(siteName(m.teams[1]))}</div>`);
         });
+        if (w.cfp && matched < w.games.length) {
+          const names = events.map(ev => (((ev.competitions || [])[0] || {}).competitors || []).map(c => c.team && c.team.shortDisplayName).join(" vs "));
+          lines.push(`<div class="imp-game">ESPN has ${names.length ? escapeHtml(names.join("; ")) : "no games"} for this week.</div>`);
+        }
         const expected = w.seccg ? REGULAR_WEEKS : w.week;
         if (expected && week !== expected) { problems++; lines.unshift(`<div class="imp-game imp-bad">Expected ${weekName(expected)}</div>`); }
         const at = new Date((first || new Date("2025-08-28T12:00:00Z")).getTime() - 24 * 3600000).toISOString();
@@ -134,7 +138,8 @@
         return `<div class="imp-week"><strong>${escapeHtml(w.label)}</strong> &rarr; ${weekName(week)}:
           <span class="${ok ? "imp-ok" : "imp-bad"}">${matched} of ${w.games.length} games</span>. Guest: ${escapeHtml(w.people[3])}${lines.join("")}</div>`;
       }).join("");
-      box.innerHTML = html + `<div class="imp-week">${importRows.length} entries ready (hosts and guests). ${problems ? `<span class="imp-bad">${problems} problem${problems === 1 ? "" : "s"} above.</span>` : `<span class="imp-ok">Everything matched.</span>`}</div>`;
+      const postCount = Object.values(byWeek).reduce((t, evs) => t + evs.length, 0);
+      box.innerHTML = html + `<div class="imp-week">ESPN postseason: ${postCount} games${postseasonSource ? ` (${postseasonSource})` : ""}.</div><div class="imp-week">${importRows.length} entries ready (hosts and guests). ${problems ? `<span class="imp-bad">${problems} problem${problems === 1 ? "" : "s"} above.</span>` : `<span class="imp-ok">Everything matched.</span>`}</div>`;
       document.getElementById("impGo").style.display = "flex";
       document.getElementById("impGo").innerHTML = `<span>Import ${importRows.length} entries as 2025</span>`;
     }

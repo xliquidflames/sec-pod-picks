@@ -29,24 +29,46 @@ const CFP_ROUNDS = [[/first round/i, RW + 1], [/quarterfinal/i, RW + 2], [/semif
 // When each later round starts, about when it usually does, used until ESPN
 // lists its games. A bowl goes in the week of whichever round has started by its date.
 const CFP_ROUND_STARTS = { [RW + 2]: `${SEASON.football}-12-30T00:00:00-05:00`, [RW + 3]: `${SEASON.hoops}-01-14T00:00:00-05:00`, [RW + 4]: `${SEASON.hoops}-01-25T00:00:00-05:00` };
-const POSTSEASON_URL = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?seasontype=3&dates=${SEASON.football}1201-${SEASON.hoops}0131&limit=300`;
+const ESPN_CFB_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard";
+const POSTSEASON_URL = `${ESPN_CFB_SCOREBOARD}?seasontype=3&dates=${SEASON.football}1201-${SEASON.hoops}0131&limit=300`;
 
 let postseasonLoad = null;
+let postseasonSource = "";   // which ESPN request worked (the import page shows it)
 function loadPostseason() {
   return (postseasonLoad ||= (async () => {
-    let data = null, currentTime = new Date();
-    for (const url of [`${POSTSEASON_URL}&groups=80`, POSTSEASON_URL]) {
+    let currentTime = new Date();
+    const get = async url => {
       try {
         const res = await fetch(url);
         const header = res.headers.get("date");
         if (header) currentTime = new Date(header);
         const json = await res.json();
-        if (json && json.events && json.events.length) { data = json; break; }
+        return (json && json.events) || [];
       } catch (err) {
-        console.error("ESPN postseason fetch failed:", err);
+        console.error("ESPN postseason fetch failed:", url, err);
+        return [];
       }
+    };
+    // ESPN's date-range request sometimes comes back empty. Then its
+    // postseason "week", then one day at a time, Dec 1 through Jan 31.
+    let events = [];
+    for (const [name, url] of [["range", `${POSTSEASON_URL}&groups=80`], ["range, all", POSTSEASON_URL],
+      ["week", `${ESPN_CFB_SCOREBOARD}?seasontype=3&dates=${SEASON.football}&week=1&groups=80&limit=300`]]) {
+      events = await get(url);
+      if (events.length) { postseasonSource = name; break; }
     }
-    const events = (data && data.events) || [];
+    // Only once the postseason has started, and only through today.
+    const end = Math.min(Date.UTC(SEASON.hoops, 0, 31), Date.now());
+    if (!events.length && end >= Date.UTC(SEASON.football, 11, 1)) {
+      const days = [];
+      for (let d = new Date(Date.UTC(SEASON.football, 11, 1)); d.getTime() <= end; d = new Date(d.getTime() + 864e5)) {
+        days.push(d.toISOString().slice(0, 10).replace(/-/g, ""));
+      }
+      const byDay = await Promise.all(days.map(day => get(`${ESPN_CFB_SCOREBOARD}?seasontype=3&dates=${day}&groups=80&limit=100`)));
+      const seen = new Set();
+      events = byDay.flat().filter(ev => !seen.has(ev.id) && seen.add(ev.id));
+      if (events.length) postseasonSource = "day by day";
+    }
     const noteOf = ev => [...((((ev.competitions || [])[0]) || {}).notes || []), ...(ev.notes || [])].map(n => n.headline || n.text || "").join(" ");
     const cfpWeek = ev => {
       const note = noteOf(ev);
