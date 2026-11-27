@@ -1057,6 +1057,9 @@ const pastPickCutoff = kickoff => kickoff instanceof Date && kickoff.getFullYear
 
 function dropLatePicks(row) {
   if (row.is_host || !row.created_at) return;
+  // A season from before the site (sec.js, GUEST_SEASON) has no real
+  // submission times: its picks were made on the show, before the games.
+  if (typeof GUEST_SEASON !== "undefined" && GUEST_SEASON) return;
   const at = new Date(row.created_at).getTime();
   if (isNaN(at)) return;
   const picks = { ...parseUserPicks(row.picks) };
