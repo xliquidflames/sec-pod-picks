@@ -148,7 +148,7 @@ function renderForm() {
     } else {
       card.className = "game-card";
       const pickBtn = (side, team, logo, rank, record) =>
-        `<button type="button" class="btn-pick" id="btn_${g.matchupKey}_${side}" data-team="${team}" onclick="chooseTeam('${g.matchupKey}', '${team}')">${buildLogoHtml(logo, rank)}<span class="btn-pick-name">${shortenPickDisplay(team)}</span>${record ? `<span class="btn-pick-record">${record}</span>` : ""}</button>`;
+        `<button type="button" class="btn-pick" id="btn_${g.matchupKey}_${side}" data-team="${escapeHtml(team)}" onclick="chooseTeam('${g.matchupKey}', this.dataset.team)">${buildLogoHtml(logo, rank)}<span class="btn-pick-name">${shortenPickDisplay(team)}</span>${record ? `<span class="btn-pick-record">${record}</span>` : ""}</button>`;
       const [left, right] = awayHome(
         pickBtn("A", g.teamA, g.teamALogo, g.teamARank, g.teamARecord),
         pickBtn("B", g.teamB, g.teamBLogo, g.teamBRank, g.teamBRecord)

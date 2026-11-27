@@ -131,9 +131,9 @@ function renderForm() {
           <button type="button" class="btn-lock-toggle" id="lock_btn_${g.matchupKey}" onclick="toggleUserLock('${g.matchupKey}')">Lock Of\nThe Week</button>
         </div>
         <div class="pick-grid">
-          <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" onclick="chooseTeam('${g.matchupKey}', '${g.teamA}')">${g.logoA}<span class="btn-pick-name">${g.teamA}</span></button>
+          <button type="button" class="btn-pick" id="btn_${g.matchupKey}_A" data-team="${escapeHtml(g.teamA)}" onclick="chooseTeam('${g.matchupKey}', this.dataset.team)">${g.logoA}<span class="btn-pick-name">${g.teamA}</span></button>
           <span class="pick-grid-at">@</span>
-          <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" onclick="chooseTeam('${g.matchupKey}', '${g.teamB}')">${g.logoB}<span class="btn-pick-name">${g.teamB}</span></button>
+          <button type="button" class="btn-pick" id="btn_${g.matchupKey}_B" data-team="${escapeHtml(g.teamB)}" onclick="chooseTeam('${g.matchupKey}', this.dataset.team)">${g.logoB}<span class="btn-pick-name">${g.teamB}</span></button>
         </div>
         ${g.detail ? `<span class="game-detail">${g.detail}</span>` : ""}
       `;
