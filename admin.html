@@ -515,6 +515,14 @@
       loadEverything();
     })();
 
+    // The football season: July through June, named for the year it starts
+    // (the same rule as SEASON in common.js). Reports read only its picks.
+    const FOOTBALL_SEASON = (() => {
+      const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "numeric" }).formatToParts(new Date());
+      const year = +parts.find(p => p.type === "year").value;
+      return +parts.find(p => p.type === "month").value >= 7 ? year : year - 1;
+    })();
+
     let seasonData = { sec: null, nfl: null };
     let activeSport = "sec";
 
@@ -527,7 +535,7 @@
       const cacheKey = `${sportPath}_${week}`;
       if (espnRawCache[cacheKey]) return espnRawCache[cacheKey];
       try {
-        const url = `https://site.api.espn.com/apis/site/v2/sports/football/${sportPath}/scoreboard?${sportPath === "college-football" ? "groups=8&" : ""}seasontype=2&dates=2026&week=${week}&limit=100`;
+        const url = `https://site.api.espn.com/apis/site/v2/sports/football/${sportPath}/scoreboard?${sportPath === "college-football" ? "groups=8&" : ""}seasontype=2&dates=${FOOTBALL_SEASON}&week=${week}&limit=100`;
         const res = await fetch(url);
         const serverDateHeader = res.headers.get("date");
         const currentTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
@@ -1004,7 +1012,7 @@
       // a page at a time since the database sends at most 1,000 per request.
       const allRows = [];
       for (let from = 0; ; from += 1000) {
-        let query = supabaseClient.from(tableName).select("user_name, week_number, created_at, picks");
+        let query = supabaseClient.from(tableName).select("user_name, week_number, created_at, picks").eq("season", FOOTBALL_SEASON);
         if (tableName === "picks") query = query.eq("is_host", false);
         const { data, error } = await query.order("created_at", { ascending: true }).range(from, from + 999);
         if (error) throw error;
@@ -1076,7 +1084,7 @@
     async function loadLockTakes() {
       const body = document.getElementById("lockTakesBody");
       const { data, error } = await supabaseClient.from("lock_notes_view")
-        .select("sport, week_number, user_id, display_name, note, updated_at")
+        .select("sport, season, week_number, user_id, display_name, note, updated_at")
         .order("updated_at", { ascending: false }).limit(100);
       if (error) {
         body.innerHTML = `<div class="empty-note" style="color: var(--danger);">Couldn't load: ${escapeHtml(error.message)}</div>`;
@@ -1092,15 +1100,15 @@
             <span class="muted-cell">· ${SPORT_LABEL[n.sport] || n.sport} wk ${n.week_number}</span><br>${escapeHtml(n.note)}</td>
           <td style="text-align: right; white-space: nowrap;">
             <button type="button" class="btn-run-query" style="margin: 0; padding: 0.35rem 0.7rem;"
-              onclick="adminDeleteTake(this, '${n.sport}', ${n.week_number}, '${n.user_id}')">Delete</button></td>
+              onclick="adminDeleteTake(this, '${n.sport}', ${n.week_number}, '${n.user_id}', ${n.season})">Delete</button></td>
         </tr>`).join("")}</tbody></table>`;
     }
 
     // Tap once to arm, again to delete.
-    async function adminDeleteTake(btn, sport, week, userId) {
+    async function adminDeleteTake(btn, sport, week, userId, season) {
       if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = "Sure?"; return; }
       btn.disabled = true;
-      const { error } = await supabaseClient.rpc("admin_delete_lock_note", { p_sport: sport, p_week: week, p_user: userId });
+      const { error } = await supabaseClient.rpc("admin_delete_lock_note", { p_sport: sport, p_week: week, p_user: userId, p_season: season });
       if (error) { btn.disabled = false; btn.dataset.armed = ""; btn.textContent = "Failed. Retry"; return; }
       btn.closest("tr").remove();
     }

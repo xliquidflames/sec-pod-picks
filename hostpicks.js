@@ -195,6 +195,7 @@ async function fetchExistingHostData() {
     const { data, error } = await supabaseClient
       .from(PICKS_TABLE)
       .select("*")
+      .eq("season", noteSeason())
       .eq("week_number", week)
       .in("user_name", HOSTS);
     if (error) throw error;

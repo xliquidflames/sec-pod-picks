@@ -3,6 +3,28 @@
 
 const supabaseClient = window.supabase.createClient(SITE.supabase.url, SITE.supabase.key);
 
+// ---- Seasons ----
+// Which season it is, worked out from today's date, so each new season
+// starts on its own. Every year on the site comes from here.
+//   Football (SEC and NFL) runs July through June and is named for the
+//   year it starts: the 2026 season includes January 2027's bowls,
+//   Playoff and Super Bowl.
+//   Hoops is named for the year it ends, as ESPN does: 2026-27 is 2027.
+//   Its first week starts the first Monday in November.
+// The database stamps the same season on every pick it saves (seasons.sql),
+// and each page reads only this season's picks.
+const SEASON = (() => {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "numeric" }).formatToParts(new Date());
+  const year = +parts.find(p => p.type === "year").value;
+  const month = +parts.find(p => p.type === "month").value;
+  const football = month >= 7 ? year : year - 1;
+  const hoops = football + 1;
+  const hoopsFirstMonday = new Date(football, 10, 1);
+  hoopsFirstMonday.setDate(1 + (8 - hoopsFirstMonday.getDay()) % 7);
+  return { football, hoops, hoopsLabel: `${football}-${String(hoops).slice(2)}`, hoopsFirstMonday };
+})();
+const seasonFor = sport => sport === "hoops" ? SEASON.hoops : SEASON.football;
+
 // ---- Error log ----
 // Anything that breaks on a player's device is reported to site_errors
 // (error-log.sql) and shows up at the top of the admin page. Errors from
@@ -124,9 +146,9 @@ async function showAdminLinks(account) {
 // last game, next game (or the live score), and their team's games on the
 // page get a gold edge. Pages call renderMyTeam() after drawing their games.
 const MY_TEAM_FEEDS = {
-  cfb: id => `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${id}/schedule?season=2026`,
-  nfl: id => `https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${id}/schedule?season=2026`,
-  hoops: id => `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/${id}/schedule?season=2027&seasontype=2`
+  cfb: id => `https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${id}/schedule?season=${SEASON.football}`,
+  nfl: id => `https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${id}/schedule?season=${SEASON.football}`,
+  hoops: id => `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/${id}/schedule?season=${SEASON.hoops}&seasontype=2`
 };
 const myTeamCache = {};
 
@@ -743,7 +765,9 @@ function hostListText() {
 function siteText(template) {
   const values = {
     name: SITE.name,
-    headline: SITE.headline,
+    headline: SITE.headline.replace(/\{season\}/g, SEASON.football),
+    season: SEASON.football,
+    hoopsSeason: SEASON.hoopsLabel,
     logo: SITE.logo,
     website: SITE.website.url,
     websiteLabel: SITE.website.label,
@@ -1045,7 +1069,7 @@ function mergeEntryRows(rows, games) {
 async function loadMyEntry(week, games, name) {
   if (!name) return null;
   const { data, error } = await supabaseClient.from(PICKS_TABLE)
-    .select("*").eq("week_number", week).ilike("user_name", name).order("created_at", { ascending: true });
+    .select("*").eq("season", noteSeason()).eq("week_number", week).ilike("user_name", name).order("created_at", { ascending: true });
   if (error || !data || !data.length) return null;
   const row = mergeEntryRows(data, games);
   dropLatePicks(row);
@@ -1092,7 +1116,7 @@ function applySavedPicks(saved, games, choose, toggleLock) {
 async function fetchAllPickRows() {
   const rows = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await supabaseClient.from(PICKS_TABLE).select("*")
+    const { data, error } = await supabaseClient.from(PICKS_TABLE).select("*").eq("season", noteSeason())
       .order("created_at", { ascending: true }).order("id", { ascending: true }).range(from, from + 999);
     if (error) throw error;
     rows.push(...(data || []));
@@ -1852,7 +1876,7 @@ function renderYourSeason(paths, seasons) {
 function saveMyStats(rec, b, crowns) {
   if (!signedInAccount || !signedInAccount.user || !rec || rec.c + rec.i === 0) return;
   const row = {
-    sport: noteSport(), user_id: signedInAccount.user.id, wins: rec.c, losses: rec.i,
+    sport: noteSport(), season: noteSeason(), user_id: signedInAccount.user.id, wins: rec.c, losses: rec.i,
     crown_weeks: crowns.slice().sort((x, y) => x - y),
     lock_w: b ? b.lockC : 0, lock_l: b ? b.lockI : 0,
     best_pick: b && b.best ? (typeof shortenPickDisplay === "function" ? shortenPickDisplay(b.best.name) : b.best.name) : null,
@@ -1860,7 +1884,7 @@ function saveMyStats(rec, b, crowns) {
   };
   const memo = `stats:${row.sport}:${row.user_id}`, text = JSON.stringify(row);
   try { if (sessionStorage.getItem(memo) === text) return; } catch (_) {}
-  supabaseClient.from("player_stats").upsert(row, { onConflict: "sport,user_id" }).then(({ error }) => {
+  supabaseClient.from("player_stats").upsert(row, { onConflict: "sport,season,user_id" }).then(({ error }) => {
     if (error) return console.error("Couldn't save your stats:", error);
     try { sessionStorage.setItem(memo, text); } catch (_) {}
   });
@@ -2021,6 +2045,7 @@ async function submitBallot() {
         user_name: finalUsername,
         week_number: targetWeek,
         is_host: false,
+        season: noteSeason(),
         picks: userSelections,
         created_at: new Date().toISOString()
       });
@@ -2081,6 +2106,7 @@ function startLockCountdown() {
 // until their lock kicks off and delete it anytime.
 const LOCK_NOTE_MAX = 140;
 const noteSport = () => ({ picks: "cfb", nfl_picks: "nfl", hoops_picks: "hoops" })[PICKS_TABLE];
+const noteSeason = () => seasonFor(noteSport());
 let lockNotes = {};        // week -> lowercased name -> { note, user_id }
 let takeReactions = {};    // week -> author's user id -> { reactor's user id: emoji }
 let myNoteUserId = null;
@@ -2089,8 +2115,8 @@ async function loadLockNotes() {
   try {
     const [{ data: session }, { data, error }, { data: reacts, error: reactError }] = await Promise.all([
       supabaseClient.auth.getSession(),
-      supabaseClient.from("lock_notes_view").select("week_number, user_id, display_name, note").eq("sport", noteSport()),
-      supabaseClient.from("lock_note_reactions").select("week_number, author_id, user_id, emoji").eq("sport", noteSport())
+      supabaseClient.from("lock_notes_view").select("week_number, user_id, display_name, note").eq("sport", noteSport()).eq("season", noteSeason()),
+      supabaseClient.from("lock_note_reactions").select("week_number, author_id, user_id, emoji").eq("sport", noteSport()).eq("season", noteSeason())
     ]);
     if (reactError) console.error("Couldn't load reactions:", reactError);
     takeReactions = {};
@@ -2180,8 +2206,8 @@ async function saveMyLockNote(btn) {
   status.textContent = "Saving...";
   const game = (lastLockTakes.games || []).find(g => g.matchupKey === box.dataset.key);
   const { error } = await supabaseClient.from("lock_notes").upsert(
-    { sport: noteSport(), week_number: activeWeek, user_id: myNoteUserId, note, ...lockFields(box.dataset.pick, game) },
-    { onConflict: "sport,week_number,user_id" });
+    { sport: noteSport(), season: noteSeason(), week_number: activeWeek, user_id: myNoteUserId, note, ...lockFields(box.dataset.pick, game) },
+    { onConflict: "sport,season,week_number,user_id" });
   if (error) {
     btn.disabled = false;
     status.style.color = "var(--danger)";
@@ -2203,7 +2229,7 @@ async function deleteMyLockNote(btn, now) {
   btn.disabled = true;
   const box = btn.closest(".lock-take");
   const { error } = await supabaseClient.from("lock_notes").delete()
-    .eq("sport", noteSport()).eq("week_number", activeWeek).eq("user_id", myNoteUserId);
+    .eq("sport", noteSport()).eq("season", noteSeason()).eq("week_number", activeWeek).eq("user_id", myNoteUserId);
   if (error) {
     btn.disabled = false;
     btn.dataset.armed = "";
@@ -2269,7 +2295,7 @@ async function setupLockNote(account) {
   if (!submit || !account || !account.user) return;
   myLockNote.userId = account.user.id;
   const { data } = await supabaseClient.from("lock_notes").select("note")
-    .eq("sport", noteSport()).eq("week_number", targetWeek).eq("user_id", account.user.id).maybeSingle();
+    .eq("sport", noteSport()).eq("season", noteSeason()).eq("week_number", targetWeek).eq("user_id", account.user.id).maybeSingle();
   myLockNote.saved = (data && data.note) || "";
   submit.insertAdjacentHTML("beforebegin", `
     <div class="lock-note" id="lockNoteBox">
@@ -2337,8 +2363,8 @@ async function saveLockNote(quiet) {
   const key = currentLockMatchupKey;
   const lockGame = (typeof currentSchedule !== "undefined" ? currentSchedule || [] : []).find(g => g.matchupKey === key);
   const { error } = await supabaseClient.from("lock_notes").upsert(
-    { sport: noteSport(), week_number: targetWeek, user_id: myLockNote.userId, note, ...lockFields(userSelections[key], lockGame) },
-    { onConflict: "sport,week_number,user_id" });
+    { sport: noteSport(), season: noteSeason(), week_number: targetWeek, user_id: myLockNote.userId, note, ...lockFields(userSelections[key], lockGame) },
+    { onConflict: "sport,season,week_number,user_id" });
   if (error) { lockNoteStatus("var(--danger)", `Couldn't save your take: ${error.message}`); return false; }
   myLockNote.saved = note;
   lockNoteChanged();
@@ -2348,7 +2374,7 @@ async function saveLockNote(quiet) {
 
 async function deleteLockNote(quiet) {
   const { error } = await supabaseClient.from("lock_notes").delete()
-    .eq("sport", noteSport()).eq("week_number", targetWeek).eq("user_id", myLockNote.userId);
+    .eq("sport", noteSport()).eq("season", noteSeason()).eq("week_number", targetWeek).eq("user_id", myLockNote.userId);
   if (error) { lockNoteStatus("var(--danger)", `Couldn't delete your take: ${error.message}`); return false; }
   myLockNote.saved = "";
   document.getElementById("lockNoteInput").value = "";
@@ -2404,11 +2430,11 @@ async function reactToTake(authorId, key) {
   const after = before === key ? null : key;
   if (after) all[myNoteUserId] = after; else delete all[myNoteUserId];
   redrawReactions(authorId);
-  const match = q => q.eq("sport", noteSport()).eq("week_number", activeWeek).eq("author_id", authorId).eq("user_id", myNoteUserId);
+  const match = q => q.eq("sport", noteSport()).eq("season", noteSeason()).eq("week_number", activeWeek).eq("author_id", authorId).eq("user_id", myNoteUserId);
   const { error } = after
     ? await supabaseClient.from("lock_note_reactions").upsert(
-        { sport: noteSport(), week_number: activeWeek, author_id: authorId, user_id: myNoteUserId, emoji: after },
-        { onConflict: "sport,week_number,author_id,user_id" })
+        { sport: noteSport(), season: noteSeason(), week_number: activeWeek, author_id: authorId, user_id: myNoteUserId, emoji: after },
+        { onConflict: "sport,season,week_number,author_id,user_id" })
     : await match(supabaseClient.from("lock_note_reactions").delete());
   if (error) {
     console.error("Couldn't save reaction:", error);

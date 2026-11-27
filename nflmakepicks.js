@@ -188,6 +188,7 @@ async function submitBallot() {
       .insert({
         user_name: username,
         week_number: targetWeek,
+        season: noteSeason(),
         picks: userSelections,
         created_at: new Date().toISOString()
       });

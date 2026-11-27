@@ -10,7 +10,7 @@ const WEEK_NAMES = { 14: "SEC Championship", 15: "Bowls & CFP Round 1", 16: "CFP
 const WEEK_SHORT = { 14: "SECCG", 15: "Bowls", 16: "CFP QF", 17: "CFP SF", 18: "CFP Final" };
 const PICKS_TABLE = "picks";
 
-const scoreboardUrl = week => `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=2026&week=${week}&limit=100`;
+const scoreboardUrl = week => `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=${SEASON.football}&week=${week}&limit=100`;
 
 // Lock of the Week runs Weeks 2-13: not Week 1, the SEC Championship or the postseason.
 const isLockWeek = week => week >= 2 && week <= 13;
@@ -19,10 +19,10 @@ const isLockWeek = week => week >= 2 && week <= 13;
 const SEC_ESPN_IDS = new Set(["333", "8", "2", "57", "61", "96", "99", "145", "344", "142", "201", "2579", "2633", "251", "245", "238"]);
 // Playoff rounds, read from ESPN's note on each game, and their week.
 const CFP_ROUNDS = [[/first round/i, 15], [/quarterfinal/i, 16], [/semifinal/i, 17], [/national championship/i, 18]];
-// When each later round starts (2026-27), used until ESPN lists its games.
-// A bowl goes in the week of whichever round has started by its date.
-const CFP_ROUND_STARTS = { 16: "2026-12-30T00:00:00-05:00", 17: "2027-01-14T00:00:00-05:00", 18: "2027-01-25T00:00:00-05:00" };
-const POSTSEASON_URL = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?seasontype=3&dates=20261201-20270131&limit=300";
+// When each later round starts, about when it usually does, used until ESPN
+// lists its games. A bowl goes in the week of whichever round has started by its date.
+const CFP_ROUND_STARTS = { 16: `${SEASON.football}-12-30T00:00:00-05:00`, 17: `${SEASON.hoops}-01-14T00:00:00-05:00`, 18: `${SEASON.hoops}-01-25T00:00:00-05:00` };
+const POSTSEASON_URL = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?seasontype=3&dates=${SEASON.football}1201-${SEASON.hoops}0131&limit=300`;
 
 let postseasonLoad = null;
 function loadPostseason() {
@@ -244,8 +244,8 @@ async function renderRankings(body) {
   const [pollRes, fpiRes] = await Promise.allSettled([
     cached("rankings", ["https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"])(),
     cached("fpi", [
-      "https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=2026&limit=200",
-      "https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=2026"
+      `https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=${SEASON.football}&limit=200`,
+      `https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=${SEASON.football}`
     ])()
   ]);
 
@@ -337,8 +337,8 @@ const POWER_FOUR = /atlantic coast|^acc$|big ten|big 12|southeastern|^sec$/i;
 async function loadConferenceLeaders() {
   if (!infoCache.fbsStandings) {
     infoCache.fbsStandings = await fetchFirstOk([
-      "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80&season=2026",
-      "https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?group=80&season=2026"
+      `https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80&season=${SEASON.football}`,
+      `https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?group=80&season=${SEASON.football}`
     ]);
   }
   const conferences = infoCache.fbsStandings.children || [];
@@ -503,8 +503,8 @@ function openStandings() {
 async function loadSecStandings() {
   if (!infoCache.standings) {
     infoCache.standings = await fetchFirstOk([
-      "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=8&season=2026",
-      "https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?group=8&season=2026"
+      `https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=8&season=${SEASON.football}`,
+      `https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?group=8&season=${SEASON.football}`
     ]);
   }
   const entries = [];
@@ -597,7 +597,7 @@ async function renderTeamSchedule(body, teamId, onRecord, autoScroll, opts = {})
   body.innerHTML = `<div class="team-sched-note">Loading schedule...</div>`;
   try {
     if (!teamScheduleCache[teamId]) {
-      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${teamId}/schedule?season=2026`);
+      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${teamId}/schedule?season=${SEASON.football}`);
       if (!res.ok) throw new Error("bad response");
       teamScheduleCache[teamId] = await res.json();
     }
@@ -1285,7 +1285,7 @@ let teamStatsPromise = null;
 
 function loadTeamStats() {
   if (!teamStatsPromise) {
-    teamStatsPromise = supabaseClient.functions.invoke("teamstats", { body: { year: 2026 } })
+    teamStatsPromise = supabaseClient.functions.invoke("teamstats", { body: { year: SEASON.football } })
       .then(({ data, error }) => {
         if (error || !data || !data.ranks) throw error || new Error("no team stats");
         return data;
@@ -1346,7 +1346,7 @@ async function fillStatRanks(body, teamA, teamB) {
 let leadersPromise = null;
 function loadLeaders() {
   if (!leadersPromise) {
-    leadersPromise = supabaseClient.functions.invoke("leaders", { body: { year: 2026 } })
+    leadersPromise = supabaseClient.functions.invoke("leaders", { body: { year: SEASON.football } })
       .then(({ data, error }) => {
         if (error || !data || !data.teams) throw error || new Error("no leaders");
         return data;

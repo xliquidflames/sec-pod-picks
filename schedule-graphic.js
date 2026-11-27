@@ -2,7 +2,7 @@
 // canvas. Used by the Your Team box on the SEC football page.
 // drawTeamScheduleGraphic(canvas, teamId, scheduleJson) -> true if drawn.
 (() => {
-    const SEASON = 2026;
+    const YEAR = SEASON.football;  // common.js
     const TEAMS = [
       { id: 333, abbr: "ALA", name: "Alabama", color: "#9E1B32", alt: "#FFFFFF" },
       { id: 8, abbr: "ARK", name: "Arkansas", color: "#9D2235", alt: "#FFFFFF" },
@@ -138,7 +138,7 @@
       ctx.fillStyle = "#2B2B2E";
       ctx.fillRect(px, 0, pw, H);
       drawContained(ctx, teamLogo, px + 30, 20, 250);
-      const year = String(sched.games[0] ? sched.games[0].date.getFullYear() : SEASON);
+      const year = String(sched.games[0] ? sched.games[0].date.getFullYear() : YEAR);
       outlined(ctx, year, px + 640, 160, { font: "170px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 6 });
       outlined(ctx, "SCHEDULE", px + 640, 240, { font: "78px 'Archivo Black'", fill: "#FFFFFF", stroke: "#000", width: 5 });
 

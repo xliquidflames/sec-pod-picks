@@ -188,23 +188,28 @@ const TAKE_WEEK_NAMES = {
   hoops: { 19: "SEC Tournament", 20: "NCAA First & Second Rounds", 21: "NCAA Sweet 16 & Elite 8", 22: "NCAA Final Four" }
 };
 let myTakes = [];
-let takeReacts = {};   // "sport:week" -> { emoji key: count }
+let takeReacts = {};   // "sport:season:week" -> { emoji key: count }
 const TAKE_EMOJI = [["fire", "&#128293;"], ["ice", "&#129482;"], ["eyes", "&#128064;"], ["up", "&#128077;"], ["down", "&#128078;"]];
-const takeTitle = t => `${TAKE_SPORTS[t.sport] || t.sport} · ${(TAKE_WEEK_NAMES[t.sport] || {})[t.week_number] || `Week ${t.week_number}`}`;
+// A past season's year, after its sport's name ("SEC Hoops 2026-27"); the
+// current season gets none.
+const pastSeason = (sport, season) => !season || season === seasonFor(sport) ? ""
+  : ` ${sport === "hoops" ? `${season - 1}-${String(season).slice(2)}` : season}`;
+const takeKey = t => `${t.sport}:${t.season}:${t.week_number}`;
+const takeTitle = t => `${TAKE_SPORTS[t.sport] || t.sport}${pastSeason(t.sport, t.season)} · ${(TAKE_WEEK_NAMES[t.sport] || {})[t.week_number] || `Week ${t.week_number}`}`;
 
 async function loadMyTakes() {
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) return;
   const { data, error } = await supabaseClient.from("lock_notes")
-    .select("sport, week_number, note, lock_pick, lock_kickoff, updated_at")
+    .select("sport, season, week_number, note, lock_pick, lock_kickoff, updated_at")
     .eq("user_id", user.id).order("updated_at", { ascending: false });
   if (error) { console.error("Couldn't load your takes:", error); return; }
   myTakes = data || [];
   const { data: reacts } = await supabaseClient.from("lock_note_reactions")
-    .select("sport, week_number, emoji").eq("author_id", user.id);
+    .select("sport, season, week_number, emoji").eq("author_id", user.id);
   takeReacts = {};
   (reacts || []).forEach(r => {
-    const k = `${r.sport}:${r.week_number}`;
+    const k = takeKey(r);
     (takeReacts[k] = takeReacts[k] || {})[r.emoji] = ((takeReacts[k] || {})[r.emoji] || 0) + 1;
   });
   renderMyTakes();
@@ -218,11 +223,11 @@ function renderMyTakes() {
   const card = document.getElementById("myTakesCard");
   card.style.display = myTakes.length ? "" : "none";
   // "Your most 🔥 take", when any have fire.
-  const fireOf = t => ((takeReacts[`${t.sport}:${t.week_number}`] || {}).fire || 0);
+  const fireOf = t => ((takeReacts[takeKey(t)] || {}).fire || 0);
   const hottest = myTakes.slice().sort((a, b) => fireOf(b) - fireOf(a))[0];
   const top = hottest && fireOf(hottest) ? `<div class="my-take-hot">&#128293; Your hottest take: ${takeTitle(hottest)}, with ${fireOf(hottest)} fire.</div>` : "";
   document.getElementById("myTakes").innerHTML = top + myTakes.map((t, i) => {
-    const counts = takeReacts[`${t.sport}:${t.week_number}`] || {};
+    const counts = takeReacts[takeKey(t)] || {};
     const reacts = TAKE_EMOJI.filter(([k]) => counts[k]).map(([k, e]) => `<span class="take-react" aria-disabled="true">${e}<span>${counts[k]}</span></span>`).join("");
     return `
     <div class="my-take" id="myTake${i}">
@@ -265,7 +270,7 @@ async function saveMyTake(btn, i) {
   btn.disabled = true;
   const { data: { user } } = await supabaseClient.auth.getUser();
   const { error } = await supabaseClient.from("lock_notes").update({ note })
-    .eq("sport", t.sport).eq("week_number", t.week_number).eq("user_id", user.id);
+    .eq("sport", t.sport).eq("season", t.season).eq("week_number", t.week_number).eq("user_id", user.id);
   if (error) {
     btn.disabled = false;
     status.style.color = "var(--danger)";
@@ -287,7 +292,7 @@ async function deleteMyTake(btn, i, now) {
   const t = myTakes[i];
   const { data: { user } } = await supabaseClient.auth.getUser();
   const { error } = await supabaseClient.from("lock_notes").delete()
-    .eq("sport", t.sport).eq("week_number", t.week_number).eq("user_id", user.id);
+    .eq("sport", t.sport).eq("season", t.season).eq("week_number", t.week_number).eq("user_id", user.id);
   if (error) {
     btn.disabled = false;
     btn.dataset.armed = "";
@@ -300,12 +305,15 @@ async function deleteMyTake(btn, i, now) {
 
 // ---- Trophy case ----
 // Each sport's season as of the player's last visit to that leaderboard
-// (player_stats, written by saveMyStats in common.js).
+// (player_stats, written by saveMyStats in common.js). This season first,
+// then past seasons, newest first.
 async function loadTrophies() {
   const { data, error } = await supabaseClient.from("player_stats")
-    .select("sport, wins, losses, crown_weeks, lock_w, lock_l, best_pick, best_w, best_l, updated_at");
+    .select("sport, season, wins, losses, crown_weeks, lock_w, lock_l, best_pick, best_w, best_l, updated_at");
   if (error) { console.error("Couldn't load your trophy case:", error); return; }
-  const rows = (data || []).sort((a, b) => ["cfb", "nfl", "hoops"].indexOf(a.sport) - ["cfb", "nfl", "hoops"].indexOf(b.sport));
+  const order = r => ["cfb", "nfl", "hoops"].indexOf(r.sport);
+  const age = r => seasonFor(r.sport) - r.season;
+  const rows = (data || []).sort((a, b) => (age(a) - age(b)) || (order(a) - order(b)));
   if (!rows.length) return;
   const weekLabel = (sport, w) => (sport === "cfb" ? { 14: "SECCG", 15: "Bowls", 16: "CFP QF", 17: "CFP SF", 18: "Title" }
     : sport === "hoops" ? { 19: "SECT", 20: "NCAA R1-2", 21: "S16-E8", 22: "Final Four" } : {})[w] || `W${w}`;
@@ -313,7 +321,7 @@ async function loadTrophies() {
     const crowns = r.crown_weeks || [];
     return `
     <div class="trophy">
-      <div class="trophy-head"><span>${TAKE_SPORTS[r.sport]}</span><span class="trophy-record">${r.wins}-${r.losses}</span></div>
+      <div class="trophy-head"><span>${TAKE_SPORTS[r.sport]}${pastSeason(r.sport, r.season)}</span><span class="trophy-record">${r.wins}-${r.losses}</span></div>
       <div class="trophy-facts">
         ${crowns.length ? `<span>&#128081;&times;${crowns.length} (${crowns.map(w => weekLabel(r.sport, w)).join(", ")})</span>` : ""}
         ${r.lock_w + r.lock_l ? `<span>Locks ${r.lock_w}-${r.lock_l}</span>` : ""}

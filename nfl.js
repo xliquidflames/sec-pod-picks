@@ -4,7 +4,7 @@ const TOTAL_WEEKS = 18;
 const WEEK_NUMS = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1);
 const PICKS_TABLE = "nfl_picks";
 
-const scoreboardUrl = week => `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&dates=2026&week=${week}&limit=100`;
+const scoreboardUrl = week => `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&dates=${SEASON.football}&week=${week}&limit=100`;
 
 // Lock of the Week counts every week.
 const isLockWeek = () => true;

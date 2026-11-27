@@ -8,11 +8,11 @@
 // game, the way the football pages add the Playoff: the First and Second
 // Rounds (with the Opening Round), the Sweet 16 and Elite 8, then the Final
 // Four, whose week runs through the Monday title game.
-// ESPN calls the 2026-27 season "2027". Requests ask for the regular season
-// (seasontype=2) explicitly; otherwise, during ESPN's preseason, team
-// schedules come back empty.
-const HOOPS_SEASON = 2027;
-const HOOPS_FIRST_MONDAY = new Date(2026, 10, 2); // Mon Nov 2, 2026
+// ESPN calls the 2026-27 season "2027" (SEASON, in common.js). Requests ask
+// for the regular season (seasontype=2) explicitly; otherwise, during ESPN's
+// preseason, team schedules come back empty.
+const HOOPS_SEASON = SEASON.hoops;
+const HOOPS_FIRST_MONDAY = SEASON.hoopsFirstMonday;
 const TOTAL_WEEKS = 22;
 const NCAA_FIRST_WEEK = 20;
 const isNcaaWeek = w => w >= NCAA_FIRST_WEEK;

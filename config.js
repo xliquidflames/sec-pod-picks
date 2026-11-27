@@ -7,8 +7,9 @@ const SITE = {
   name: "That SEC Podcast",
 
   // Logo image (also the browser tab icon) and the line under it.
+  // {season} becomes the football season's year on its own.
   logo: "logo.png",
-  headline: "2026 Pick'em Headquarters",
+  headline: "{season} Pick'em Headquarters",
 
   // Footer links and contact line. contact can include simple HTML.
   website: { url: "https://www.thatsecpodcast.com", label: "thatsecpodcast.com" },

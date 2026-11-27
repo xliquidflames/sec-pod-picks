@@ -83,7 +83,11 @@
 
   <script>
     // ---- Teams, colors and data ----
-    const SEASON = 2026;
+    // The football season: July through June, named for the year it starts.
+    const SEASON = (() => {
+      const now = new Date();
+      return now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+    })();
     const TOTAL_WEEKS = 14;
     const TEAMS = [
       { id: 333, abbr: "ALA", name: "Alabama", color: "#9E1B32", alt: "#FFFFFF" },
