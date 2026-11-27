@@ -54,7 +54,8 @@ function loadPostseason() {
     let events = [];
     for (const [name, url] of [["range", `${POSTSEASON_URL}&groups=80`], ["range, all", POSTSEASON_URL],
       ["week", `${ESPN_CFB_SCOREBOARD}?seasontype=3&dates=${SEASON.football}&week=1&groups=80&limit=300`]]) {
-      events = await get(url);
+      // Only games from December on, in case ESPN hands back regular-season games.
+      events = (await get(url)).filter(ev => Date.parse(ev.date) >= Date.UTC(SEASON.football, 11, 1));
       if (events.length) { postseasonSource = name; break; }
     }
     // Only once the postseason has started, and only through today.
