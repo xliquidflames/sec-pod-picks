@@ -741,8 +741,12 @@ async function renderActiveWeek() {
   renderWeekCards(games, cousinRows);
   renderFanStats("seasonFanStats", allWeekRows.filter(r => !r.is_host), true);
   setText("fanShowdownTitle", `${seasonYear()} Fanbase Showdown`);
-  // Guests from before the site had no favorite teams to compare.
-  if (GUEST_SEASON) document.getElementById("fanShowdownTitle").closest(".card").style.display = "none";
+  // Guests from before the site had no favorite teams to compare, and one
+  // guest a week leaves nothing for the players' picks card to show.
+  if (GUEST_SEASON) {
+    document.getElementById("fanShowdownTitle").closest(".card").style.display = "none";
+    document.getElementById("weekCousinsTitle").closest(".card").style.display = "none";
+  }
   renderMyTeam();
   computeSeasonTotals();
 }
