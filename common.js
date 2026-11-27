@@ -1294,6 +1294,21 @@ function renderPodium(totals, anyDecidedGames, { namesOpen, noun }) {
     return;
   }
 
+  // A season from before the site (sec.js, GUEST_SEASON): one guest picked
+  // each week, so this is just who they were, in order. Their combined
+  // record is the Guests card above.
+  if (typeof GUEST_SEASON !== "undefined" && GUEST_SEASON) {
+    const label = top5Container.previousElementSibling;
+    if (label) label.textContent = `${SEASON.football} Guest Pickers`;
+    const names = [];
+    allWeekRows.filter(r => !r.is_host).sort((a, b) => a.week_number - b.week_number)
+      .forEach(r => { if (!names.includes(r.user_name)) names.push(r.user_name); });
+    top5Container.innerHTML = `<div class="top3-item podium-row guest-pickers"><div class="podium-names">${names
+      .map(n => `<span class="podium-name">${podiumLogoHtml(n)}<strong>${escapeHtml(n)}</strong></span>`).join("")}</div></div>`;
+    if (decisionLog) decisionLog.style.display = "none";
+    return;
+  }
+
   const recordGroups = {};
   totals.forEach(c => {
     const key = `${c.correct}-${c.incorrect}`;

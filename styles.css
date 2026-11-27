@@ -5402,3 +5402,8 @@ button.tourney-banner {
 .past-season #ctaBtn {
   display: none !important;
 }
+
+/* A past Playoff (sec.js, renderActualBracket): the team that lost each game. */
+.bk-team.bk-lost {
+  opacity: 0.45;
+}

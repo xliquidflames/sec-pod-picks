@@ -260,6 +260,27 @@ function infoTeamHtml(name, logo) {
   return `<span class="info-team">${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}<span>${name}</span></span>`;
 }
 
+// ESPN's polls. A past season asks for that year's final polls, trying the
+// ways ESPN takes a season, and keeps only an answer that's for that year;
+// otherwise the polls show as unavailable rather than this year's.
+const RANKINGS_URL = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings";
+async function loadRankingsFeed() {
+  if (infoCache.rankings) return infoCache.rankings;
+  if (!SEASON.past) return (infoCache.rankings = await fetchFirstOk([RANKINGS_URL]));
+  const y = SEASON.football;
+  const isYear = data => (data.rankings || []).some(p =>
+    (p.season && Number(p.season.year) === y) || new RegExp(`\\b${y}\\b`).test(`${p.headline || ""} ${p.name || ""}`));
+  for (const q of [`seasons=${y}&seasontype=3`, `dates=${y}&seasontype=3`, `season=${y}&seasontype=3`, `seasons=${y}`, `dates=${y}`, `season=${y}`]) {
+    try {
+      const res = await fetch(`${RANKINGS_URL}?${q}`);
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (isYear(data)) return (infoCache.rankings = data);
+    } catch (_) {}
+  }
+  throw new Error(`No rankings for ${y}`);
+}
+
 // AP and Coaches come from the rankings feed; ESPN's FPI has its own
 // endpoint. A source that fails shows "Unavailable" in its column.
 function openRankings() {
@@ -271,7 +292,7 @@ function openRankings() {
 async function renderRankings(body) {
   const cached = (key, urls) => async () => infoCache[key] || (infoCache[key] = await fetchFirstOk(urls));
   const [pollRes, fpiRes] = await Promise.allSettled([
-    cached("rankings", ["https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"])(),
+    loadRankingsFeed(),
     cached("fpi", [
       `https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=${SEASON.football}&limit=200`,
       `https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?season=${SEASON.football}`
@@ -354,7 +375,7 @@ async function renderRankings(body) {
 const BRACKET_PODS = [[4, 5, 12], [1, 8, 9], [3, 6, 11], [2, 7, 10]];
 
 async function loadCfpPoll() {
-  const data = infoCache.rankings || (infoCache.rankings = await fetchFirstOk(["https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"]));
+  const data = await loadRankingsFeed();
   return (data.rankings || []).find(p => p.ranks && p.ranks.length &&
     (/cfp/i.test(p.type || "") || /playoff/i.test(`${p.name || ""} ${p.shortName || ""}`))) || null;
 }
@@ -427,6 +448,7 @@ async function projectBracket() {
 
 async function renderCfpRankings(body) {
   body.innerHTML = `<div class="team-sched-note">Loading...</div>`;
+  if (SEASON.past) return renderActualBracket(body);
   let bracket;
   try {
     bracket = await projectBracket();
@@ -478,6 +500,76 @@ async function renderCfpRankings(body) {
     </div>
     ${rest ? `<div class="hub-sub-title bk-rest-title">Rest of the Top 25</div>
     <div class="bk-logos rank-tiles">${rest}</div>` : ""}`;
+}
+
+// A past season's Playoff as it was played, from ESPN's Playoff games:
+// each team's score where the seed goes, the loser dimmed.
+async function renderActualBracket(body) {
+  const { byWeek } = await loadPostseason();
+  const noteOf = ev => [...((((ev.competitions || [])[0]) || {}).notes || []), ...(ev.notes || [])].map(n => n.headline || n.text || "").join(" ");
+  const round = w => (byWeek[w] || []).filter(ev => /playoff|cfp/i.test(noteOf(ev))).map(ev => {
+    const teams = ((((ev.competitions || [])[0]) || {}).competitors || []).map(c => {
+      const t = c.team || {};
+      return { id: String(t.id || ""), name: t.location || t.shortDisplayName || t.name || "", logo: teamLogoFrom(t), score: c.score, won: !!c.winner };
+    });
+    const decided = teams.some(t => t.won);
+    teams.forEach(t => { t.lost = decided && !t.won; });
+    return { teams, winner: teams.find(t => t.won) || null };
+  });
+  const r1 = round(RW + 1), qf = round(RW + 2), sf = round(RW + 3), fin = round(RW + 4);
+  if (!r1.length && !qf.length) {
+    body.innerHTML = `<div class="team-sched-note">ESPN doesn't have this season's Playoff games.</div>`;
+    return;
+  }
+  const has = (g, team) => !!(g && team && g.teams.some(t => t.id === team.id));
+  // The quarterfinals in bracket order: as the semifinals paired them.
+  const order = [];
+  sf.forEach(s => s.teams.forEach(t => { const q = qf.find(g => has(g, t)); if (q && !order.includes(q)) order.push(q); }));
+  qf.forEach(q => { if (!order.includes(q)) order.push(q); });
+
+  const slot = t => t
+    ? `<div class="bk-team ${isSecTeam(t.name) ? "sec" : ""} ${t.lost ? "bk-lost" : ""}" title="${escapeHtml(t.name)}">
+        <span class="bk-seed">${escapeHtml(t.score ?? "")}</span>
+        ${t.logo ? `<img src="${t.logo}" alt="" onerror="this.style.visibility='hidden'">` : `<span class="bk-logo-gap"></span>`}
+        <span class="bk-name">${shortenPickDisplay(t.name)}</span>
+      </div>`
+    : `<div class="bk-team empty"><span class="bk-seed"></span><span class="bk-name"></span></div>`;
+  const game = (top, bottom) => `<div class="bk-game">${slot(top)}${slot(bottom)}</div>`;
+  const inGame = (g, team) => g && team ? g.teams.find(t => t.id === team.id) : null;
+
+  const cells = [];
+  [0, 1, 2, 3].forEach(i => {
+    const q = order[i];
+    const feeder = q ? r1.find(g => g.winner && has(q, g.winner)) : null;
+    const fromR1 = feeder ? inGame(q, feeder.winner) : null;
+    const bye = q ? q.teams.find(t => t !== fromR1) : null;
+    const row = `grid-row: ${i * 2 + 1} / span 2;`;
+    cells.push(`<div class="bk-cell bk-r1" style="${row}">${feeder ? game(feeder.teams[0], feeder.teams[1]) : game(null, null)}</div>`);
+    cells.push(`<div class="bk-cell bk-link" style="grid-column: 2; ${row}"><span class="bk-stub"></span></div>`);
+    cells.push(`<div class="bk-cell bk-qf" style="${row}">${q ? game(fromR1 || q.teams[0], fromR1 ? bye : q.teams[1]) : game(null, null)}</div>`);
+  });
+  const semis = [0, 1].map(i => {
+    const a = order[i * 2] && order[i * 2].winner, b = order[i * 2 + 1] && order[i * 2 + 1].winner;
+    return sf.find(s => has(s, a) || has(s, b)) || null;
+  });
+  semis.forEach((s, i) => {
+    const row = `grid-row: ${i * 4 + 1} / span 4;`;
+    const a = order[i * 2] && order[i * 2].winner;
+    const top = s ? (inGame(s, a) || s.teams[0]) : null;
+    cells.push(`<div class="bk-cell bk-link" style="grid-column: 4; ${row}"><span class="bk-join"></span></div>`);
+    cells.push(`<div class="bk-cell bk-sf" style="${row}">${s ? game(top, s.teams.find(t => t !== top)) : game(null, null)}</div>`);
+  });
+  const f = fin[0];
+  const fTop = f ? (inGame(f, semis[0] && semis[0].winner) || f.teams[0]) : null;
+  cells.push(`<div class="bk-cell bk-link" style="grid-column: 6; grid-row: 1 / span 8;"><span class="bk-join"></span></div>`);
+  cells.push(`<div class="bk-cell bk-final" style="grid-row: 1 / span 8;"><div class="bk-trophy">&#127942;</div>${f ? game(fTop, f.teams.find(t => t !== fTop)) : game(null, null)}</div>`);
+
+  body.innerHTML = `
+    <div class="rankings-caption">The ${SEASON.football} College Football Playoff, with each game's score</div>
+    <div class="bk-scroll bk-logos">
+      <div class="bk-heads"><span>Round 1</span><span></span><span>Quarters</span><span></span><span>Semis</span><span></span><span>Final</span></div>
+      <div class="bk-grid">${cells.join("")}</div>
+    </div>`;
 }
 
 // Rankings tabs in the Week Info Hub. Tapping the open tab closes it.
