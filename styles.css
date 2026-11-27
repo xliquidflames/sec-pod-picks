@@ -5323,19 +5323,16 @@ button.tourney-banner {
 }
 
 .delete-account {
-  margin-top: 1rem;
+  margin-top: 2.25rem;   /* well clear of Sign Out, so it isn't tapped by accident */
   text-align: center;
 }
 
-.delete-account-link {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--text-muted);
-  font: inherit;
+/* Like Sign Out, smaller. */
+.delete-account-btn {
+  width: auto;
+  padding: 0.5rem 1.1rem;
   font-size: 0.8rem;
-  text-decoration: underline;
-  cursor: pointer;
+  margin-bottom: 0;
 }
 
 #deleteBox p {

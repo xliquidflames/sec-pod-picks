@@ -423,7 +423,11 @@ const welcomeNext = params.has("welcome") && /^[\w-]+\.html(\?[\w=&%-]*)?$/.test
     btn.href = welcomeNext;
     btn.style.display = "block";
   }
-  document.getElementById("signinHelp").innerHTML = accountHelpHtml();
+  // Already signed in, so not the sign-in page's "Can't sign in?" line.
+  const who = escapeHtml(SITE.accountHelp || "us");
+  document.getElementById("signinHelp").innerHTML = SITE.contactForm
+    ? `Questions, comments, issues? <a href="#" onclick="openContactForm(); return false;">Send ${who} a message</a>.`
+    : accountHelpHtml();
   const account = await requireAccount();
   if (!account) return;
   favorites = account.favorites || {};
