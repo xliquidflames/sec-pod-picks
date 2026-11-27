@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Import 2025 Picks</title>
+  <script>
+    // This page works in the 2025 season (common.js reads ?season=).
+    if (!/[?&]season=2025\b/.test(location.search)) location.replace("import-2025.html?season=2025");
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- styles.css, config.js, common.js, sec.js: see load.js -->
+  <script src="load.js" data-load="sec.js"></script>
+  <style>
+    .imp-week { border-top: 1px solid var(--border-color); padding: 0.6rem 0; font-size: 0.85rem; }
+    .imp-week strong { color: var(--text-main); }
+    .imp-ok { color: var(--success); }
+    .imp-bad { color: var(--danger); font-weight: 700; }
+    .imp-game { margin: 0.15rem 0 0 0.8rem; }
+    #impGo { margin-top: 1rem; width: 100%; }
+  </style>
+</head>
+<body>
+  <!-- One-time import of the 2025 SEC Football spreadsheet (from before
+       the site). Matches each game to ESPN's 2025 schedule, then saves
+       every host's and weekly guest's picks as the 2025 season through
+       admin_import_picks (supabase/import-picks.sql). Importing again
+       replaces the last import. Can be deleted once 2025 looks right. -->
+  <div class="container narrow">
+    <header>
+      <a href="admin.html" class="back-link">&larr; Back to Admin</a>
+      <h1>IMPORT 2025</h1>
+      <p class="sub-header" id="impSub">Checking your sign-in...</p>
+    </header>
+    <div class="card" id="impCard" style="display: none;">
+      <div class="section-title-bar"><h2 class="section-title">Matching games to ESPN</h2></div>
+      <div id="impWeeks"></div>
+      <button type="button" class="btn-cta" id="impGo" style="display: none;" onclick="runImport()">Import</button>
+      <div id="impStatus" style="margin-top: 0.6rem; font-size: 0.9rem;"></div>
+    </div>
+  </div>
+
+  <script>
+    // The spreadsheet, read into weeks. week: the sheet's week number;
+    // seccg / cfp (1 First Round ... 4 Title): the postseason. people: Mike,
+    // Shane, Steven and that week's guest. Each game's picks are 0 for the
+    // first team, 1 for the second, null for no pick.
+    const SHEET = [{"label":"Week 1","week":1,"people":["Mike","Shane","Steven","JR"],"games":[{"a":"Alabama","b":"FSU","picks":[0,0,0,0]},{"a":"Arkansas","b":"Al A&M","picks":[0,0,0,0]},{"a":"Auburn","b":"Baylor","picks":[1,0,0,0]},{"a":"Florida","b":"Long Island","picks":[0,0,0,0]},{"a":"Georgia","b":"Marshall","picks":[0,0,0,0]},{"a":"Kentucky","b":"Toledo","picks":[0,0,0,0]},{"a":"LSU","b":"Clemson","picks":[1,0,1,1]},{"a":"Ole Miss","b":"Georgia State","picks":[0,0,0,0]},{"a":"Miss State","b":"Southern Miss","picks":[0,0,0,0]},{"a":"Missouri","b":"C Arkansas","picks":[0,0,0,0]},{"a":"Oklahoma","b":"Illinois State","picks":[0,0,0,0]},{"a":"South Carolina","b":"Virginia Tech","picks":[0,0,0,0]},{"a":"Tennessee","b":"Syracuse","picks":[0,0,0,0]},{"a":"Texas","b":"Ohio State","picks":[0,0,0,0]},{"a":"Texas A&M","b":"UTSA","picks":[0,0,0,0]},{"a":"Vanderbilt","b":"Ch Southern","picks":[0,0,0,0]}]},{"label":"Week 2","week":2,"people":["Mike","Shane","Steven","StevenUp"],"games":[{"a":"Alabama","b":"Louisiana Mon","picks":[0,0,0,0]},{"a":"Arkansas","b":"Arkansas St","picks":[0,0,0,0]},{"a":"Auburn","b":"Ball St","picks":[0,0,0,0]},{"a":"Florida","b":"South Florida","picks":[0,0,0,0]},{"a":"Georgia","b":"Austin Peay","picks":[0,0,0,0]},{"a":"Kentucky","b":"Ole Miss","picks":[1,1,1,1]},{"a":"LSU","b":"LA Tech","picks":[0,0,0,0]},{"a":"Miss State","b":"Arizona State","picks":[1,0,1,0]},{"a":"Missouri","b":"Kansas","picks":[0,0,0,0]},{"a":"Oklahoma","b":"Michigan","picks":[0,0,0,0]},{"a":"South Carolina","b":"SC State","picks":[0,0,0,0]},{"a":"Tennessee","b":"East Tennessee","picks":[0,0,0,0]},{"a":"Texas","b":"San Jose St","picks":[0,0,0,0]},{"a":"Texas A&M","b":"Utah State","picks":[0,0,0,0]},{"a":"Vanderbilt","b":"Virginia Tech","picks":[0,1,0,0]}]},{"label":"Week 3","week":3,"people":["Mike","Shane","Steven","Liquid"],"games":[{"a":"Alabama","b":"Wisconsin","picks":[0,0,0,0]},{"a":"Auburn","b":"South Alabama","picks":[0,0,0,0]},{"a":"Kentucky","b":"Eastern Michigan","picks":[0,0,0,0]},{"a":"LSU","b":"Florida","picks":[0,0,0,0]},{"a":"Miss State","b":"Alcorn State","picks":[0,0,0,0]},{"a":"Missouri","b":"LA Lafayette","picks":[0,0,0,0]},{"a":"Oklahoma","b":"Temple","picks":[0,0,0,0]},{"a":"Ole Miss","b":"Arkansas","picks":[1,1,0,0]},{"a":"South Carolina","b":"Vanderbilt","picks":[1,0,0,0]},{"a":"Tennessee","b":"Georgia","picks":[1,0,1,1]},{"a":"Texas","b":"UTEP","picks":[0,0,0,0]},{"a":"Texas A&M","b":"Notre Dame","picks":[0,0,1,0]}]},{"label":"Week 4","week":4,"people":["Mike","Shane","Steven","Ben Helms"],"games":[{"a":"Arkansas","b":"Memphis","picks":[0,0,0,0]},{"a":"Florida","b":"Miami","picks":[0,0,1,1]},{"a":"LSU","b":"SE Louisiana","picks":[0,0,0,0]},{"a":"Ole Miss","b":"Tulane","picks":[0,0,0,0]},{"a":"Miss State","b":"NIU","picks":[0,0,0,0]},{"a":"Missouri","b":"South Carolina","picks":[0,0,0,0]},{"a":"Oklahoma","b":"Auburn","picks":[0,0,0,0]},{"a":"Tennessee","b":"UAB","picks":[0,0,0,0]},{"a":"Texas","b":"Sam Houston","picks":[0,0,0,0]},{"a":"Vanderbilt","b":"Georgia State","picks":[0,0,0,0]}]},{"label":"Week 5","week":5,"people":["Mike","Shane","Steven","Benny T"],"games":[{"a":"Arkansas","b":"Notre Dame","picks":[1,1,1,1]},{"a":"Georgia","b":"Alabama","picks":[1,0,0,0]},{"a":"Ole Miss","b":"LSU","picks":[0,1,1,0]},{"a":"Miss State","b":"Tennessee","picks":[1,1,1,1]},{"a":"Missouri","b":"U Mass","picks":[0,0,0,0]},{"a":"South Carolina","b":"Kentucky","picks":[0,0,0,0]},{"a":"Texas A&M","b":"Auburn","picks":[0,0,0,1]},{"a":"Vanderbilt","b":"Utah State","picks":[0,0,0,0]}]},{"label":"Week 6","week":6,"people":["Mike","Shane","Steven","Chase"],"games":[{"a":"Alabama","b":"Vanderbilt","picks":[0,0,0,0]},{"a":"Florida","b":"Texas","picks":[1,0,1,1]},{"a":"Georgia","b":"Kentucky","picks":[0,0,0,0]},{"a":"Oklahoma","b":"Kent State","picks":[0,0,0,0]},{"a":"Texas A&M","b":"Miss State","picks":[0,0,0,0]}]},{"label":"Week 7 Oct 11","week":7,"people":["Mike","Shane","Steven","Mike A"],"games":[{"a":"Auburn","b":"Georgia","picks":[0,1,1,1]},{"a":"LSU","b":"South Carolina","picks":[0,0,0,0]},{"a":"Ole Miss","b":"Washington St","picks":[0,0,0,0]},{"a":"Missouri","b":"Alabama","picks":[0,0,1,1]},{"a":"Tennessee","b":"Arkansas","picks":[0,0,0,0]},{"a":"Texas","b":"Oklahoma","picks":[1,0,0,1]},{"a":"Texas A&M","b":"Florida","picks":[0,0,0,0]}]},{"label":"Week 8 Oct 18","week":8,"people":["Mike","Shane","Steven","Letters2God"],"games":[{"a":"Alabama","b":"Tennessee","picks":[0,1,0,1]},{"a":"Arkansas","b":"Texas A&M","picks":[1,1,1,1]},{"a":"Auburn","b":"Missouri","picks":[1,0,1,0]},{"a":"Florida","b":"Miss State","picks":[0,0,0,0]},{"a":"Georgia","b":"Ole Miss","picks":[0,0,0,0]},{"a":"Kentucky","b":"Texas","picks":[1,1,1,1]},{"a":"South Carolina","b":"Oklahoma","picks":[0,1,1,1]},{"a":"Vanderbilt","b":"LSU","picks":[0,1,1,0]}]},{"label":"Week 9 Oct 25","week":9,"people":["Mike","Shane","Steven","SEC Sean"],"games":[{"a":"Texas","b":"Miss State","picks":[1,0,0,0]},{"a":"Missouri","b":"Vanderbilt","picks":[1,1,1,1]},{"a":"Ole Miss","b":"Oklahoma","picks":[0,1,1,1]},{"a":"Auburn","b":"Arkansas","picks":[1,0,1,1]},{"a":"Alabama","b":"South Carolina","picks":[0,0,0,0]},{"a":"Texas A&M","b":"LSU","picks":[0,1,0,0]},{"a":"Tennessee","b":"Kentucky","picks":[0,0,0,0]}]},{"label":"Week 10 Nov 1","week":10,"people":["Mike","Shane","Steven","Glenn"],"games":[{"a":"Oklahoma","b":"Tennessee","picks":[0,1,1,1]},{"a":"South Carolina","b":"Ole Miss","picks":[1,1,1,1]},{"a":"Kentucky","b":"Auburn","picks":[1,1,1,1]},{"a":"Miss State","b":"Arkansas","picks":[0,0,0,0]},{"a":"Vanderbilt","b":"Texas","picks":[1,0,1,1]},{"a":"Georgia","b":"Florida","picks":[0,0,0,0]}]},{"label":"Week 11 Nov 8","week":11,"people":["Mike","Shane","Steven","Andrew"],"games":[{"a":"Texas A&M","b":"Missouri","picks":[1,1,0,0]},{"a":"Florida","b":"Kentucky","picks":[1,1,0,0]},{"a":"LSU","b":"Alabama","picks":[1,1,1,0]},{"a":"Auburn","b":"Vanderbilt","picks":[1,0,1,1]},{"a":"Georgia","b":"Miss State","picks":[1,0,0,0]},{"a":"Citadel","b":"Ole Miss","picks":[1,1,1,1]}]},{"label":"Week 12 Nov 15","week":12,"people":["Mike","Shane","Steven","Jordon"],"games":[{"a":"Texas","b":"Georgia","picks":[1,0,1,0]},{"a":"Florida","b":"Ole Miss","picks":[1,1,1,1]},{"a":"Miss State","b":"Missouri","picks":[1,1,1,1]},{"a":"South Carolina","b":"Texas A&M","picks":[1,1,1,1]},{"a":"Arkansas","b":"LSU","picks":[0,0,1,1]},{"a":"Oklahoma","b":"Alabama","picks":[1,1,1,0]},{"a":"Tenn Tech","b":"Kentucky","picks":[1,1,1,1]},{"a":"NM State","b":"Tennessee","picks":[1,1,1,1]}]},{"label":"Week 13 Nov 22","week":13,"people":["Mike","Shane","Steven","Rusty"],"games":[{"a":"Tennessee","b":"Florida","picks":[1,0,0,0]},{"a":"Arkansas","b":"Texas","picks":[1,1,1,1]},{"a":"Kentucky","b":"Vanderbilt","picks":[1,0,1,1]},{"a":"Western KY","b":"LSU","picks":[1,1,1,1]},{"a":"Coastal","b":"South Carolina","picks":[1,1,1,1]},{"a":"Samford","b":"Texas A&M","picks":[1,1,1,1]},{"a":"Missouri","b":"Oklahoma","picks":[1,1,1,1]},{"a":"Charlotte","b":"Georgia","picks":[1,1,1,1]}]},{"label":"Week 14 Nov 28 Rivalry Week","week":14,"people":["Mike","Shane","Steven","Two Slick"],"games":[{"a":"Ole Miss","b":"Miss State","picks":[0,1,0,0]},{"a":"Georgia","b":"Georgia Tech","picks":[0,0,0,0]},{"a":"Texas A&M","b":"Texas","picks":[0,0,0,0]},{"a":"Vanderbilt","b":"Tennessee","picks":[0,1,1,0]},{"a":"Florida State","b":"Florida","picks":[0,1,0,1]},{"a":"Missouri","b":"Arkansas","picks":[0,0,0,0]},{"a":"Kentucky","b":"Louisville","picks":[1,0,1,1]},{"a":"Alabama","b":"Auburn","picks":[0,0,0,0]},{"a":"LSU","b":"Oklahoma","picks":[1,1,1,0]},{"a":"Clemson","b":"South Carolina","picks":[1,1,1,1]}]},{"label":"Week 13 Nov Dec 6 SEC Championship","seccg":true,"people":["Mike","Shane","Steven","JP"],"games":[{"a":"Georgia","b":"Alabama","picks":[1,1,0,0]}]},{"label":"College Football Playoffs - First Round","cfp":1,"people":["Mike","Shane","Steven","Liquid"],"games":[{"a":"Oklahoma","b":"Alabama","picks":[0,0,0,0]},{"a":"Miami","b":"Texas A&M","picks":[1,1,1,1]},{"a":"Tulane","b":"Ole Miss","picks":[1,1,1,1]},{"a":"JMU","b":"Oregon","picks":[1,1,1,1]}]},{"label":"College Football Playoffs - Quarterfinals","cfp":2,"people":["Mike","Shane","Steven","Liquid"],"games":[{"a":"Miami","b":"Ohio State","picks":[null,null,null,1]},{"a":"Oregon","b":"Texas Tech","picks":[null,null,null,0]},{"a":"Alabama","b":"Indiana","picks":[1,0,null,0]},{"a":"Ole Miss","b":"Georgia","picks":[null,1,null,1]}]}];
+
+    // Spreadsheet short names, and what ESPN may call them.
+    const SHEET_ALIASES = {
+      "FSU": ["Florida State"], "Al A&M": ["Alabama A&M"], "Long Island": ["Long Island University", "LIU"],
+      "C Arkansas": ["Central Arkansas"], "Ch Southern": ["Charleston Southern"],
+      "Louisiana Mon": ["UL Monroe", "Louisiana-Monroe", "Louisiana Monroe", "ULM"], "LA Tech": ["Louisiana Tech"],
+      "East Tennessee": ["East Tennessee State", "East Tennessee St", "ETSU"], "SC State": ["South Carolina State", "South Carolina St"],
+      "LA Lafayette": ["Louisiana", "UL Lafayette", "Louisiana-Lafayette"], "SE Louisiana": ["Southeastern Louisiana", "SE Louisiana"],
+      "NIU": ["Northern Illinois"], "U Mass": ["UMass", "Massachusetts"], "Washington St": ["Washington State"],
+      "Citadel": ["The Citadel"], "Tenn Tech": ["Tennessee Tech"], "NM State": ["New Mexico State", "New Mexico St"],
+      "Western KY": ["Western Kentucky", "WKU"], "Coastal": ["Coastal Carolina"], "JMU": ["James Madison", "JMU"],
+      "Ball St": ["Ball State"], "San Jose St": ["San José State", "San Jose State", "San José St"], "Arkansas St": ["Arkansas State"],
+      "Arizona State": ["Arizona St"], "Sam Houston": ["Sam Houston State", "Sam Houston"], "Utah State": ["Utah St"],
+      "Kent State": ["Kent St"], "Illinois State": ["Illinois St"], "Alcorn State": ["Alcorn St"], "Georgia State": ["Georgia St"]
+    };
+    const variantsOf = name => [name, ...(SHEET_ALIASES[name] || [])].map(normalizeTeam);
+    const espnNames = c => {
+      const t = c.team || {};
+      return new Set([t.shortDisplayName, t.displayName, t.location, t.name, t.abbreviation, t.nickname].filter(Boolean).map(normalizeTeam));
+    };
+    const siteName = c => cleanTeamName(c.team.shortDisplayName || c.team.name);   // as the picks pages save it
+
+    // The ESPN game for a spreadsheet game: whichever lists one of its teams
+    // (the SEC team, in the regular season), preferring both.
+    function matchGame(g, events) {
+      let best = null;
+      events.forEach(ev => {
+        const comps = ((ev.competitions || [])[0] || {}).competitors || [];
+        if (comps.length !== 2) return;
+        const names = comps.map(espnNames);
+        const side = n => variantsOf(n).some(v => names[0].has(v)) ? 0 : variantsOf(n).some(v => names[1].has(v)) ? 1 : -1;
+        const sa = side(g.a), sb = side(g.b);
+        const hits = (sa >= 0) + (sb >= 0);
+        if (!hits || (sa >= 0 && sa === sb)) return;
+        if (!best || hits > best.hits) {
+          const ca = sa >= 0 ? sa : 1 - sb;
+          best = { ev, hits, teams: [comps[ca], comps[1 - ca]] };
+        }
+      });
+      return best;
+    }
+
+    let importRows = [];
+
+    async function buildImport() {
+      const box = document.getElementById("impWeeks");
+      box.innerHTML = "Loading ESPN's 2025 schedule...";
+      const regular = {};
+      await Promise.all(Array.from({ length: REGULAR_WEEKS + 1 }, (_, i) => i + 1).map(async w => {
+        const { data } = await fetchEspnRaw(w);
+        regular[w] = (data && data.events) || [];
+      }));
+      const { byWeek } = await loadPostseason();
+
+      importRows = [];
+      let problems = 0;
+      const html = SHEET.map(w => {
+        // Which site week: the ESPN regular-season week where its games match
+        // best, or the Playoff round's week.
+        let week, events;
+        if (w.cfp) { week = REGULAR_WEEKS + w.cfp; events = byWeek[week] || []; }
+        else {
+          const scored = Object.keys(regular).map(Number).map(n => ({ n, hits: w.games.reduce((t, g) => t + ((matchGame(g, regular[n]) || {}).hits || 0), 0) }));
+          scored.sort((x, y) => y.hits - x.hits || Math.abs(x.n - (w.week || REGULAR_WEEKS)) - Math.abs(y.n - (w.week || REGULAR_WEEKS)));
+          week = scored[0].n; events = regular[week];
+        }
+        const lines = [];
+        const picks = w.people.map(() => ({}));
+        let first = null, matched = 0;
+        w.games.forEach(g => {
+          const m = matchGame(g, events);
+          if (!m) { problems++; lines.push(`<div class="imp-game imp-bad">No ESPN game for ${escapeHtml(g.a)} vs ${escapeHtml(g.b)}</div>`); return; }
+          matched++;
+          const d = new Date(m.ev.date);
+          if (!first || d < first) first = d;
+          g.picks.forEach((p, i) => { if (p !== null) picks[i][String(m.ev.id)] = siteName(m.teams[p]); });
+          if (m.hits < 2) lines.push(`<div class="imp-game">${escapeHtml(g.a)} vs ${escapeHtml(g.b)} = ${escapeHtml(siteName(m.teams[0]))} vs ${escapeHtml(siteName(m.teams[1]))}</div>`);
+        });
+        const expected = w.seccg ? REGULAR_WEEKS : w.week;
+        if (expected && week !== expected) { problems++; lines.unshift(`<div class="imp-game imp-bad">Expected ${weekName(expected)}</div>`); }
+        const at = new Date((first || new Date("2025-08-28T12:00:00Z")).getTime() - 24 * 3600000).toISOString();
+        w.people.forEach((name, i) => {
+          if (Object.keys(picks[i]).length) importRows.push({ user_name: name, week_number: week, is_host: i < 3, picks: picks[i], created_at: at });
+        });
+        const ok = matched === w.games.length;
+        return `<div class="imp-week"><strong>${escapeHtml(w.label)}</strong> &rarr; ${weekName(week)}:
+          <span class="${ok ? "imp-ok" : "imp-bad"}">${matched} of ${w.games.length} games</span>. Guest: ${escapeHtml(w.people[3])}${lines.join("")}</div>`;
+      }).join("");
+      box.innerHTML = html + `<div class="imp-week">${importRows.length} entries ready (hosts and guests). ${problems ? `<span class="imp-bad">${problems} problem${problems === 1 ? "" : "s"} above.</span>` : `<span class="imp-ok">Everything matched.</span>`}</div>`;
+      document.getElementById("impGo").style.display = "flex";
+      document.getElementById("impGo").innerHTML = `<span>Import ${importRows.length} entries as 2025</span>`;
+    }
+
+    async function runImport() {
+      const btn = document.getElementById("impGo"), status = document.getElementById("impStatus");
+      btn.disabled = true;
+      status.textContent = "Saving...";
+      const { data, error } = await supabaseClient.rpc("admin_import_picks", { p_season: 2025, p_rows: importRows });
+      if (error) { btn.disabled = false; status.innerHTML = `<span class="imp-bad">Couldn't save: ${escapeHtml(error.message)}</span>`; return; }
+      status.innerHTML = `<span class="imp-ok">Saved ${data} entries.</span> <a href="index.html?season=2025" style="color: var(--accent-gold); font-weight: 700;">See 2025</a>`;
+    }
+
+    (async () => {
+      const sub = document.getElementById("impSub");
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) { sub.textContent = "Sign in with an admin account first."; return; }
+      const { data: isAdmin } = await supabaseClient.rpc("is_site_admin");
+      if (!isAdmin) { sub.textContent = "This account isn't a site admin."; return; }
+      sub.textContent = "The 2025 spreadsheet: Mike, Shane, Steven and each week's guest.";
+      document.getElementById("impCard").style.display = "block";
+      buildImport().catch(err => { document.getElementById("impWeeks").innerHTML = `<span class="imp-bad">${escapeHtml(err.message || String(err))}</span>`; });
+    })();
+  </script>
+</body>
+</html>

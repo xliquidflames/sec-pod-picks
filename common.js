@@ -16,7 +16,16 @@ const supabaseClient = window.supabase.createClient(SITE.supabase.url, SITE.supa
 // A leaderboard can show a past season instead: ?season=2026 in its address
 // (hoops: ?season=2027 for 2026-27). The year in front of "Season Standings"
 // picks one. A past season is view-only.
-const FIRST_SEASON = { football: 2026, hoops: 2027 };   // the site's first
+const FIRST_SEASON = { cfb: 2025, nfl: 2026, hoops: 2027 };   // the earliest each sport has
+// SEC Football seasons whose ESPN regular season wasn't 14 weeks (the last
+// being the SEC Championship). 2025 had 15. Add a season here if ESPN's
+// calendar changes again.
+const CFB_REGULAR_WEEKS = { 2025: 15 };
+const cfbRegularWeeks = season => CFB_REGULAR_WEEKS[season] || 14;
+// SEC Football seasons from before the site, when one listener a week (a
+// "guest") made the Cousins' picks. Their page calls the players Guests and
+// heads the column with that week's guest.
+const GUEST_SEASONS = [2025];
 const SEASON = (() => {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "numeric" }).formatToParts(new Date());
   const year = +parts.find(p => p.type === "year").value;
@@ -26,7 +35,7 @@ const SEASON = (() => {
   // A past season asked for in the address, as this page's sport names it.
   const asked = parseInt(new URLSearchParams(location.search).get("season"), 10);
   const askedFootball = hoopsPage ? asked - 1 : asked;
-  const football = askedFootball >= FIRST_SEASON.football && askedFootball < current ? askedFootball : current;
+  const football = askedFootball >= FIRST_SEASON.cfb && askedFootball < current ? askedFootball : current;
   const hoops = football + 1;
   const hoopsFirstMonday = new Date(football, 10, 1);
   hoopsFirstMonday.setDate(1 + (8 - hoopsFirstMonday.getDay()) % 7);
@@ -827,7 +836,7 @@ function setupSeasonPick() {
   if (!select || typeof PICKS_TABLE === "undefined") return;
   const sport = noteSport();
   const label = n => sport === "hoops" ? hoopsLabel(n) : String(n);
-  const first = sport === "hoops" ? FIRST_SEASON.hoops : FIRST_SEASON.football;
+  const first = FIRST_SEASON[sport];
   const now = currentSeasonFor(sport), showing = seasonFor(sport);
   const seasons = [];
   for (let n = now; n >= first; n--) seasons.push(n);
@@ -1193,6 +1202,8 @@ async function loadAllSeasonData() {
     renderAccountBar();
 
     computeSeasonTotals();
+    // A past season opens on its last week that has picks.
+    if (SEASON.past && allWeekRows.length) activeWeek = Math.max(...allWeekRows.map(r => r.week_number));
     await switchWeek(activeWeek);
   } catch (err) {
     console.error("Season load error:", err);

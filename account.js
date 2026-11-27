@@ -315,7 +315,7 @@ async function loadTrophies() {
   const age = r => currentSeasonFor(r.sport) - r.season;
   const rows = (data || []).sort((a, b) => (age(a) - age(b)) || (order(a) - order(b)));
   if (!rows.length) return;
-  const weekLabel = (sport, w) => (sport === "cfb" ? { 14: "SECCG", 15: "Bowls", 16: "CFP QF", 17: "CFP SF", 18: "Title" }
+  const weekLabel = (sport, w, season) => (sport === "cfb" ? (R => ({ [R]: "SECCG", [R + 1]: "Bowls", [R + 2]: "CFP QF", [R + 3]: "CFP SF", [R + 4]: "Title" }))(cfbRegularWeeks(season))
     : sport === "hoops" ? { 19: "SECT", 20: "NCAA R1-2", 21: "S16-E8", 22: "Final Four" } : {})[w] || `W${w}`;
   document.getElementById("trophyCase").innerHTML = rows.map(r => {
     const crowns = r.crown_weeks || [];
@@ -323,7 +323,7 @@ async function loadTrophies() {
     <div class="trophy">
       <div class="trophy-head"><span>${TAKE_SPORTS[r.sport]}${pastSeason(r.sport, r.season)}</span><span class="trophy-record">${r.wins}-${r.losses}</span></div>
       <div class="trophy-facts">
-        ${crowns.length ? `<span>&#128081;&times;${crowns.length} (${crowns.map(w => weekLabel(r.sport, w)).join(", ")})</span>` : ""}
+        ${crowns.length ? `<span>&#128081;&times;${crowns.length} (${crowns.map(w => weekLabel(r.sport, w, r.season)).join(", ")})</span>` : ""}
         ${r.lock_w + r.lock_l ? `<span>Locks ${r.lock_w}-${r.lock_l}</span>` : ""}
         ${r.best_pick ? `<span>Best pick: ${escapeHtml(r.best_pick)} ${r.best_w}-${r.best_l}</span>` : ""}
       </div>

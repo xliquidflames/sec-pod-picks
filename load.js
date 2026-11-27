@@ -8,7 +8,7 @@
 // order. (This file has no version tag of its own; GitHub Pages lets
 // browsers keep it about 10 minutes, so changes reach everyone within that.)
 
-const SITE_VERSION = "125";
+const SITE_VERSION = "126";
 
 // A player who picked NFL or SEC Hoops as their home page (Account page)
 // lands there when they arrive at the SEC Football page from outside the

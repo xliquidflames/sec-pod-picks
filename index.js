@@ -320,6 +320,10 @@ function computeSeasonTotals() {
     });
   });
   setText("seasonPlayers", `${cousinsSeasonW}-${cousinsSeasonL}`);
+  // Once any record has three digits ("103-28"), all four get a size that fits on one line.
+  const records = [...document.querySelectorAll(".host-season-record")];
+  const long = records.some(el => el.textContent.length > 5);
+  records.forEach(el => el.classList.toggle("long", long));
 
   renderPodium(Object.values(cousinTotals), anyDecidedGames, { namesOpen: true, noun: SITE.players.many });
 }
@@ -383,7 +387,9 @@ function renderHostGrid(games, hostRows, cousinRows, isLockActiveThisWeek) {
     document.getElementById(id).innerHTML = `${label} <span class="host-header-score">${rec.correct}-${rec.incorrect}</span>`;
   };
   SITE.hosts.forEach((name, i) => header(`thHost${i}`, name, hosts[i].record));
-  header("thPlayers", SITE.players.many, consensus);
+  // Seasons before the site: the column is that week's guest.
+  const guests = GUEST_SEASON ? [...new Set(cousinRows.map(r => r.user_name))] : [];
+  header("thPlayers", guests.length === 1 ? escapeHtml(guests[0]) : SITE.players.many, consensus);
 
   const hostBody = document.getElementById("hostGridBody");
   hostBody.innerHTML = "";
@@ -433,7 +439,7 @@ function renderHostGrid(games, hostRows, cousinRows, isLockActiveThisWeek) {
       ${hosts.map(hostCell).join("")}
       <td class="pick-cell ${classCousins}">
         ${majorityPick ? shortenPickDisplay(majorityPick.team) : '<span class="matchup-subdetail" style="margin-top:0;">No picks yet</span>'}
-        ${majorityPick ? `<span class="host-predicted-score">${majorityPick.percentage}%</span>` : ''}
+        ${majorityPick && !GUEST_SEASON ? `<span class="host-predicted-score">${majorityPick.percentage}%</span>` : ''}
       </td>
     `;
     hostBody.appendChild(tr);

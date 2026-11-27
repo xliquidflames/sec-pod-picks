@@ -1,27 +1,34 @@
 // SEC pages (index, makepicks, hostpicks): team names, ESPN feeds, and the
 // Top 25 / SEC Standings / team schedule popups. Loads after common.js.
 
-// Weeks 1-14 are ESPN's regular season (14 is the SEC Championship). After
-// that, each round of bowls and the College Football Playoff is its own week.
-const REGULAR_WEEKS = 14;
-const TOTAL_WEEKS = 18;
+// Weeks 1-14 are ESPN's regular season (14 is the SEC Championship; 2025
+// had 15 weeks, see CFB_REGULAR_WEEKS in common.js). After that, each round
+// of bowls and the College Football Playoff is its own week.
+const REGULAR_WEEKS = cfbRegularWeeks(SEASON.football);
+const RW = REGULAR_WEEKS;
+const TOTAL_WEEKS = RW + 4;
 const WEEK_NUMS = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1);
-const WEEK_NAMES = { 14: "SEC Championship", 15: "Bowls & CFP Round 1", 16: "CFP Quarterfinals", 17: "CFP Semifinals", 18: "CFP National Championship" };
-const WEEK_SHORT = { 14: "SECCG", 15: "Bowls", 16: "CFP QF", 17: "CFP SF", 18: "CFP Final" };
+const WEEK_NAMES = { [RW]: "SEC Championship", [RW + 1]: "Bowls & CFP Round 1", [RW + 2]: "CFP Quarterfinals", [RW + 3]: "CFP Semifinals", [RW + 4]: "CFP National Championship" };
+const WEEK_SHORT = { [RW]: "SECCG", [RW + 1]: "Bowls", [RW + 2]: "CFP QF", [RW + 3]: "CFP SF", [RW + 4]: "CFP Final" };
 const PICKS_TABLE = "picks";
+
+// A season from before the site: the players are that year's weekly guests.
+const GUEST_SEASON = GUEST_SEASONS.includes(SEASON.football);
+if (GUEST_SEASON) SITE.players = { one: "Guest", many: "Guests" };
 
 const scoreboardUrl = week => `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=8&seasontype=2&dates=${SEASON.football}&week=${week}&limit=100`;
 
-// Lock of the Week runs Weeks 2-13: not Week 1, the SEC Championship or the postseason.
-const isLockWeek = week => week >= 2 && week <= 13;
+// Lock of the Week runs Week 2 up to the SEC Championship: not Week 1, the
+// SEC Championship or the postseason.
+const isLockWeek = week => week >= 2 && week < RW;
 
 // ---- Postseason: bowls with an SEC team, and every Playoff game ----
 const SEC_ESPN_IDS = new Set(["333", "8", "2", "57", "61", "96", "99", "145", "344", "142", "201", "2579", "2633", "251", "245", "238"]);
 // Playoff rounds, read from ESPN's note on each game, and their week.
-const CFP_ROUNDS = [[/first round/i, 15], [/quarterfinal/i, 16], [/semifinal/i, 17], [/national championship/i, 18]];
+const CFP_ROUNDS = [[/first round/i, RW + 1], [/quarterfinal/i, RW + 2], [/semifinal/i, RW + 3], [/national championship/i, RW + 4]];
 // When each later round starts, about when it usually does, used until ESPN
 // lists its games. A bowl goes in the week of whichever round has started by its date.
-const CFP_ROUND_STARTS = { 16: `${SEASON.football}-12-30T00:00:00-05:00`, 17: `${SEASON.hoops}-01-14T00:00:00-05:00`, 18: `${SEASON.hoops}-01-25T00:00:00-05:00` };
+const CFP_ROUND_STARTS = { [RW + 2]: `${SEASON.football}-12-30T00:00:00-05:00`, [RW + 3]: `${SEASON.hoops}-01-14T00:00:00-05:00`, [RW + 4]: `${SEASON.hoops}-01-25T00:00:00-05:00` };
 const POSTSEASON_URL = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?seasontype=3&dates=${SEASON.football}1201-${SEASON.hoops}0131&limit=300`;
 
 let postseasonLoad = null;
@@ -54,18 +61,18 @@ function loadPostseason() {
     const listed = {};
     events.forEach(ev => {
       const w = cfpWeek(ev);
-      if (w > 15 && (!listed[w] || dateOf(ev) < listed[w])) listed[w] = dateOf(ev);
+      if (w > RW + 1 && (!listed[w] || dateOf(ev) < listed[w])) listed[w] = dateOf(ev);
     });
     Object.assign(starts, listed);
 
-    const byWeek = { 15: [], 16: [], 17: [], 18: [] };
+    const byWeek = { [RW + 1]: [], [RW + 2]: [], [RW + 3]: [], [RW + 4]: [] };
     events.forEach(ev => {
       let w = cfpWeek(ev);
       if (!w) {
         const teams = ((((ev.competitions || [])[0]) || {}).competitors || []).map(c => String(c.team && c.team.id));
         if (!teams.some(id => SEC_ESPN_IDS.has(id))) return;
-        w = 15;
-        [16, 17, 18].forEach(r => { if (dateOf(ev) >= starts[r]) w = r; });
+        w = RW + 1;
+        [RW + 2, RW + 3, RW + 4].forEach(r => { if (dateOf(ev) >= starts[r]) w = r; });
       }
       byWeek[w].push(ev);
     });
