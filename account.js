@@ -192,7 +192,7 @@ let takeReacts = {};   // "sport:season:week" -> { emoji key: count }
 const TAKE_EMOJI = [["fire", "&#128293;"], ["ice", "&#129482;"], ["eyes", "&#128064;"], ["up", "&#128077;"], ["down", "&#128078;"]];
 // A past season's year, after its sport's name ("SEC Hoops 2026-27"); the
 // current season gets none.
-const pastSeason = (sport, season) => !season || season === seasonFor(sport) ? ""
+const pastSeason = (sport, season) => !season || season === currentSeasonFor(sport) ? ""
   : ` ${sport === "hoops" ? `${season - 1}-${String(season).slice(2)}` : season}`;
 const takeKey = t => `${t.sport}:${t.season}:${t.week_number}`;
 const takeTitle = t => `${TAKE_SPORTS[t.sport] || t.sport}${pastSeason(t.sport, t.season)} · ${(TAKE_WEEK_NAMES[t.sport] || {})[t.week_number] || `Week ${t.week_number}`}`;
@@ -312,7 +312,7 @@ async function loadTrophies() {
     .select("sport, season, wins, losses, crown_weeks, lock_w, lock_l, best_pick, best_w, best_l, updated_at");
   if (error) { console.error("Couldn't load your trophy case:", error); return; }
   const order = r => ["cfb", "nfl", "hoops"].indexOf(r.sport);
-  const age = r => seasonFor(r.sport) - r.season;
+  const age = r => currentSeasonFor(r.sport) - r.season;
   const rows = (data || []).sort((a, b) => (age(a) - age(b)) || (order(a) - order(b)));
   if (!rows.length) return;
   const weekLabel = (sport, w) => (sport === "cfb" ? { 14: "SECCG", 15: "Bowls", 16: "CFP QF", 17: "CFP SF", 18: "Title" }

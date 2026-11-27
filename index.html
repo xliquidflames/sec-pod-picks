@@ -23,8 +23,10 @@
 
     <div class="card season-standings-card">
       <div class="section-title-bar">
-        <h2 class="section-title">Season Standings</h2>
+        <h2 class="section-title"><!-- Tap the year to see another season (common.js, setupSeasonPick). -->
+          <span class="season-pick"><span id="seasonPickYear"></span><span class="season-pick-arrow">&#9662;</span><select id="seasonPick" aria-label="Season"></select></span> Season Standings</h2>
       </div>
+      <div class="past-season-note" id="pastSeasonNote"></div>
 
       <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.4rem;">
         Hosts

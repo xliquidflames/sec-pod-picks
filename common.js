@@ -13,17 +13,35 @@ const supabaseClient = window.supabase.createClient(SITE.supabase.url, SITE.supa
 //   Its first week starts the first Monday in November.
 // The database stamps the same season on every pick it saves (seasons.sql),
 // and each page reads only this season's picks.
+// A leaderboard can show a past season instead: ?season=2026 in its address
+// (hoops: ?season=2027 for 2026-27). The year in front of "Season Standings"
+// picks one. A past season is view-only.
+const FIRST_SEASON = { football: 2026, hoops: 2027 };   // the site's first
 const SEASON = (() => {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "numeric" }).formatToParts(new Date());
   const year = +parts.find(p => p.type === "year").value;
   const month = +parts.find(p => p.type === "month").value;
-  const football = month >= 7 ? year : year - 1;
+  const current = month >= 7 ? year : year - 1;   // football
+  const hoopsPage = /^hoops/i.test(location.pathname.split("/").pop() || "");
+  // A past season asked for in the address, as this page's sport names it.
+  const asked = parseInt(new URLSearchParams(location.search).get("season"), 10);
+  const askedFootball = hoopsPage ? asked - 1 : asked;
+  const football = askedFootball >= FIRST_SEASON.football && askedFootball < current ? askedFootball : current;
   const hoops = football + 1;
   const hoopsFirstMonday = new Date(football, 10, 1);
   hoopsFirstMonday.setDate(1 + (8 - hoopsFirstMonday.getDay()) % 7);
-  return { football, hoops, hoopsLabel: `${football}-${String(hoops).slice(2)}`, hoopsFirstMonday };
+  return {
+    football, hoops, hoopsLabel: hoopsLabel(hoops), hoopsFirstMonday,
+    past: football !== current,
+    current: { football: current, hoops: current + 1 }
+  };
 })();
+function hoopsLabel(hoops) { return `${hoops - 1}-${String(hoops).slice(2)}`; }
+// The season a page shows (the current one unless the address asks for a
+// past one), and today's season, by sport.
 const seasonFor = sport => sport === "hoops" ? SEASON.hoops : SEASON.football;
+const currentSeasonFor = sport => sport === "hoops" ? SEASON.current.hoops : SEASON.current.football;
+if (SEASON.past) document.documentElement.classList.add("past-season");
 
 // ---- Error log ----
 // Anything that breaks on a player's device is reported to site_errors
@@ -800,6 +818,34 @@ function applySiteSettings(root = document) {
   });
 }
 document.addEventListener("DOMContentLoaded", () => applySiteSettings());
+
+// The year in front of "Season Standings": tap it to pick another season,
+// which reloads the page showing that one (?season= in the address; see
+// SEASON). Lists every season from the site's first through this one.
+function setupSeasonPick() {
+  const select = document.getElementById("seasonPick");
+  if (!select || typeof PICKS_TABLE === "undefined") return;
+  const sport = noteSport();
+  const label = n => sport === "hoops" ? hoopsLabel(n) : String(n);
+  const first = sport === "hoops" ? FIRST_SEASON.hoops : FIRST_SEASON.football;
+  const now = currentSeasonFor(sport), showing = seasonFor(sport);
+  const seasons = [];
+  for (let n = now; n >= first; n--) seasons.push(n);
+  select.innerHTML = seasons.map(n => `<option value="${n}"${n === showing ? " selected" : ""}>${label(n)}</option>`).join("");
+  document.getElementById("seasonPickYear").textContent = label(showing);
+  select.onchange = () => {
+    const n = parseInt(select.value, 10);
+    const page = location.pathname.split("/").pop() || "index.html";
+    location.href = n === now ? page : `${page}?season=${n}`;
+  };
+  const note = document.getElementById("pastSeasonNote");
+  if (note && SEASON.past) {
+    const page = location.pathname.split("/").pop() || "index.html";
+    note.innerHTML = `Past season, view only. <a href="${page}">Back to ${label(now)}</a>`;
+    note.style.display = "block";
+  }
+}
+document.addEventListener("DOMContentLoaded", setupSeasonPick);
 
 // Keys in a saved picks object that aren't picks.
 const NON_PICK_KEYS = ["lock_game_id", "lock_matchup_key", "scores"];
@@ -2009,6 +2055,7 @@ async function submitBallot() {
     resetSubmitButton();
   };
 
+  if (SEASON.past) return setStatus("var(--danger)", "That season is over.");
   if (!username) return setStatus("var(--danger)", "Please enter your handle or name.");
 
   // Games already started can't be picked, so they aren't required.
@@ -2158,7 +2205,7 @@ function lockFields(pick, game) {
 function lockTakeHtml(name, game, pick) {
   const n = lockNoteOf(name);
   if (!n) return "";
-  const mine = myNoteUserId && n.user_id === myNoteUserId;
+  const mine = myNoteUserId && n.user_id === myNoteUserId && !SEASON.past;
   const started = !game || game.isFinal || pastPickCutoff(game.kickoff);
   return `<div class="lock-take" data-name="${escapeHtml(name)}" data-key="${game ? game.matchupKey : ""}" data-pick="${escapeHtml(pick || "")}">
     <div class="lock-takes-who"><strong>${escapeHtml(name)}</strong> <span class="lock-badge">LOCKED</span> ${escapeHtml(lockMatchText(pick, game))}</div>
@@ -2290,6 +2337,7 @@ function renderLockTakes(games, rows) {
 let myLockNote = { userId: null, saved: "" };
 
 async function setupLockNote(account) {
+  if (SEASON.past) return;
   if (typeof isLockWeek === "function" && !isLockWeek(targetWeek)) return;
   const submit = document.getElementById("submitBtn");
   if (!submit || !account || !account.user) return;
@@ -2415,7 +2463,7 @@ function reactionsHtml(authorId) {
   const buttons = TAKE_REACTIONS.map(([key, emoji, label]) => {
     const count = Object.values(all).filter(e => e === key).length;
     return `<button type="button" class="take-react${mine === key ? " mine" : ""}" title="${label}" aria-label="${label}"
-      ${myNoteUserId ? `onclick="event.stopPropagation(); reactToTake('${authorId}', '${key}')"` : "disabled"}>${emoji}${count ? `<span>${count}</span>` : ""}</button>`;
+      ${myNoteUserId && !SEASON.past ? `onclick="event.stopPropagation(); reactToTake('${authorId}', '${key}')"` : "disabled"}>${emoji}${count ? `<span>${count}</span>` : ""}</button>`;
   }).join("");
   return `<div class="take-reacts" data-author="${authorId}">${buttons}</div>`;
 }

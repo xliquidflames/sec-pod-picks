@@ -5362,3 +5362,39 @@ button.tourney-banner {
   flex: 1;
 }
 
+
+/* ---- Season picker: the year in front of "Season Standings" ---- */
+/* The select is invisible over the year, so a tap opens the phone's own list. */
+.season-pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  cursor: pointer;
+}
+.season-pick-arrow {
+  font-size: 0.75em;
+  line-height: 1;
+}
+.season-pick select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 1rem;   /* 16px or more: iPhone doesn't zoom in */
+}
+.past-season-note {
+  display: none;
+  margin: -0.4rem 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.past-season-note a {
+  color: var(--accent-gold);
+  font-weight: 700;
+}
+/* A past season is view-only: no Submit/Change Picks button. */
+.past-season #ctaBtn {
+  display: none !important;
+}
