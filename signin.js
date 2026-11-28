@@ -2,8 +2,9 @@
 // page by siteScript() in load.js, after the shared files.
 
 const params = new URLSearchParams(location.search);
-// Only pages on this site, so a link can't send people elsewhere.
-const next = /^[\w-]+\.html(\?[\w=&%-]*)?$/.test(params.get("next") || "") ? params.get("next") : "index.html";
+// Only pages on this site, or on another site at this same address (That
+// SEC Podcast's main site, /secpodsite/...), so a link can't send people elsewhere.
+const next = /^(\/[\w-]+\/)?[\w-]+\.html(\?[\w=&%-]*)?$/.test(params.get("next") || "") ? params.get("next") : "index.html";
 // Where sign-in emails and providers send people back to.
 const returnUrl = `${location.origin}${location.pathname}?next=${encodeURIComponent(next)}`;
 let knownNames = [];

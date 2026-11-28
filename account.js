@@ -442,7 +442,7 @@ async function downloadMyData(btn) {
 
 // Right after claiming a name: an optional stop on the way to the picks.
 const params = new URLSearchParams(location.search);
-const welcomeNext = params.has("welcome") && /^[\w-]+\.html(\?[\w=&%-]*)?$/.test(params.get("next") || "") ? params.get("next") : null;
+const welcomeNext = params.has("welcome") && /^(\/[\w-]+\/)?[\w-]+\.html(\?[\w=&%-]*)?$/.test(params.get("next") || "") ? params.get("next") : null;
 
 (async () => {
   if (welcomeNext) {
