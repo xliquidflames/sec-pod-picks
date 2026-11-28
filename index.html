@@ -129,18 +129,14 @@
             <button type="button" class="btn-ctrl" onclick="toggleAllInlineDetails(false)">Collapse All</button>
           </div>
         </div>
-        <div class="grid-wrapper" id="hostGridWrapper" style="margin-top: 0.4rem;">
-          <table class="host-grid-table">
-            <thead>
-              <tr>
-                <th class="matchup-header">Matchup</th>
-                <!-- Host and consensus columns are added from config.js. -->
-              </tr>
-            </thead>
-            <tbody id="hostGridBody">
-              <tr><td colspan="5" style="padding: 1.5rem 0; color: var(--text-muted);">Loading picks...</td></tr>
-            </tbody>
-          </table>
+        <!-- One card per game: the score up top, each host's pick under it,
+             then how the Cousins split (index.js, renderHostGrid). -->
+        <div id="hostGridWrapper" style="margin-top: 0.4rem;">
+          <!-- This week's record for each host and the Cousins, from config.js. -->
+          <div class="week-records" id="weekRecords"></div>
+          <div class="game-cards" id="hostGridBody">
+            <p class="game-cards-note">Loading picks...</p>
+          </div>
         </div>
         <div id="byeBox" class="bye-box"></div>
       </div>

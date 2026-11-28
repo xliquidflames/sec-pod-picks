@@ -5511,3 +5511,259 @@ button.tourney-banner {
 #manageData .signin-note a {
   color: var(--accent-gold);
 }
+
+/* ---- SEC Football's games: one card per game (index.js, renderHostGrid) ----
+   The score up top, each host's pick in a row of tiles, then how the
+   Cousins split, as a bar. */
+.week-records {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.week-record {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-card-alt);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.week-record .host-header-score {
+  color: var(--accent-gold);
+  font-weight: 800;
+}
+
+.game-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.game-cards-note {
+  margin: 0;
+  padding: 1.5rem 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.game-day {
+  padding: 0.35rem 0.15rem 0;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+}
+
+.game-card {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* Their team's game: a stripe down the left in the team's two colors. */
+.game-card.fav-game {
+  box-shadow: inset 4px 0 0 var(--fav-1, var(--accent-gold)), inset 8px 0 0 var(--fav-2, var(--accent-gold));
+}
+
+/* A game being played right now: a gold box. */
+.game-card.live-game-row {
+  border: 2px solid var(--accent-gold);
+  background: linear-gradient(rgba(251, 191, 36, 0.08), rgba(251, 191, 36, 0.08)), var(--bg-card-alt);
+}
+
+.game-card.details-open {
+  border: 2px solid var(--accent-gold);
+}
+
+.gc-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem 0.7rem;
+}
+
+.game-card.fav-game .gc-head {
+  padding-left: 1.3rem;
+}
+
+.gc-teams {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.gc-team-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.gc-team-row .matchup-team-logo {
+  width: 30px;
+  height: 30px;
+}
+
+.gc-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.gc-rank {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+}
+
+.gc-points {
+  margin-left: auto;
+  min-width: 1.8rem;
+  text-align: right;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.gc-points.won {
+  color: var(--accent-gold);
+  font-weight: 900;
+}
+
+/* The team that lost, once it's final. */
+.gc-team-row.lost .gc-name,
+.gc-team-row.lost .gc-points {
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.gc-status {
+  flex: none;
+  max-width: 7.5rem;
+  text-align: right;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.gc-picks {
+  display: grid;
+  gap: 1px;
+  background: var(--border-color);
+  border-top: 1px solid var(--border-color);
+}
+
+.gc-pick {
+  background: var(--bg-card);
+  padding: 0.6rem 0.4rem;
+  text-align: center;
+}
+
+.gc-pick .triple-perfect-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.gc-host {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.gc-lock {
+  padding: 0 0.25rem;
+  font-size: 0.55rem;
+  vertical-align: 0.05rem;
+}
+
+.gc-team {
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.gc-score {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+.gc-cousins {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem 0.7rem;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+}
+
+.gc-cousins-label {
+  flex: none;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.gc-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border-color);
+  overflow: hidden;
+}
+
+.gc-bar-fill {
+  display: block;
+  height: 100%;
+  background: currentColor;
+}
+
+.gc-bar-fill.pick-pending {
+  color: var(--accent-gold);
+}
+
+.gc-cousins-text {
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.gc-cousins-text.pick-pending {
+  color: var(--accent-gold);
+}
+
+.gc-cousins-none {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.gc-foot {
+  padding: 0.15rem 1rem 0.55rem;
+  background: var(--bg-card);
+  text-align: center;
+}
+
+.game-card .inline-details-row {
+  padding: 0.5rem 0.6rem 0.75rem;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  text-align: left;
+}

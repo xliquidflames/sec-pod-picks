@@ -34,10 +34,9 @@ document.getElementById("mainWeekSelect").innerHTML =
   document.getElementById("hostSeasonStrip").innerHTML =
     SITE.hosts.map((h, i) => card(h, `seasonHost${i}`, i)).join("") + card(SITE.players.many, "seasonPlayers", -1);
 
-  const headRow = document.querySelector(".host-grid-table thead tr");
-  headRow.insertAdjacentHTML("beforeend",
-    SITE.hosts.map((h, i) => `<th id="thHost${i}">${h}</th>`).join("") + `<th id="thPlayers">${SITE.players.many}</th>`);
-  document.querySelector("#hostGridBody td").colSpan = SITE.hosts.length + 2;
+  document.getElementById("weekRecords").innerHTML =
+    SITE.hosts.map((h, i) => `<span class="week-record" id="thHost${i}">${h}</span>`).join("") +
+    `<span class="week-record" id="thPlayers">${SITE.players.many}</span>`;
 })();
 
 // Team schedules highlight the week being shown and place games by date.
@@ -45,38 +44,38 @@ scheduleOptions.currentWeek = () => activeWeek;
 scheduleOptions.weekWindows = getWeekWindows;
 scheduleOptions.estimateByes = false;
 
-// "Details" opens the game details in a row right under the game.
+// "Details" opens the game details at the bottom of the game's card.
 function detailsLink(g) {
   if (!g.eventId) return "";
   return `<button type="button" class="details-link" onclick="toggleInlineDetails(this, '${g.eventId}')">Details &#9662;</button>`;
 }
 
 function toggleInlineDetails(btn, eventId) {
-  const tr = btn.closest("tr");
-  const open = tr.nextElementSibling;
-  if (open && open.classList.contains("inline-details-row")) {
+  const card = btn.closest(".game-card");
+  const open = card.querySelector(".inline-details-row");
+  if (open) {
     open.remove();
-    tr.classList.remove("details-open");
+    card.classList.remove("details-open");
     btn.innerHTML = "Details &#9662;";
     return;
   }
-  const row = document.createElement("tr");
+  const row = document.createElement("div");
   row.className = "inline-details-row";
-  row.innerHTML = `<td colspan="${SITE.hosts.length + 2}"><div class="inline-details"></div>
-    <button type="button" class="details-link inline-details-close">Hide Details &#9652;</button></td>`;
+  row.innerHTML = `<div class="inline-details"></div>
+    <button type="button" class="details-link inline-details-close">Hide Details &#9652;</button>`;
   row.querySelector(".inline-details-close").onclick = () => {
     toggleInlineDetails(btn, eventId);
-    tr.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    card.scrollIntoView({ block: "nearest", behavior: "smooth" });
   };
-  tr.after(row);
-  tr.classList.add("details-open");
+  card.appendChild(row);
+  card.classList.add("details-open");
   btn.innerHTML = "Hide &#9652;";
   renderGameDetails(row.querySelector(".inline-details"), eventId);
 }
 
 function toggleAllInlineDetails(open) {
   document.querySelectorAll("#hostGridBody .details-link:not(.inline-details-close)").forEach(btn => {
-    if (btn.closest("tr").classList.contains("details-open") !== open) btn.click();
+    if (btn.closest(".game-card").classList.contains("details-open") !== open) btn.click();
   });
   if (!open) {
     const grid = document.getElementById("hostGridWrapper");
@@ -144,10 +143,11 @@ async function fetchEspnSchedule(week) {
       const logoCell = (c, name, logo, isSec) =>
         `<span class="matchup-logo-wrap">${teamLogoHtml(name, logo, isSec)}${rankSpan(c.curatedRank && c.curatedRank.current)}</span>`;
       const matchupLabel = `<span class="matchup-logo-row">${logoCell(away, awayName, awayLogo, awayIsSec)}<span class="matchup-at-symbol">@</span>${logoCell(home, homeName, homeLogo, homeIsSec)}</span>`;
+      const rankOf = c => { const r = c.curatedRank && c.curatedRank.current; return r >= 1 && r <= 25 ? r : null; };
 
       // One short line under the logos: kickoff time before the game,
       // otherwise each team's score under its logo with the status between.
-      let detail = "TBD";
+      let detail = "TBD", statusText = "TBD";
       if (isFinal || isLive) {
         const st = comp.status || {};
         const status = isFinal
@@ -155,6 +155,7 @@ async function fetchEspnSchedule(week) {
           : (/half/i.test((st.type && st.type.detail) || "") ? "Half" : ((st.period || 0) > 4 ? "OT" : `Q${st.period || 1}`));
         const scoreSpan = c => `<span class="matchup-score ${c.winner === true ? "won" : ""}">${c.score !== undefined ? c.score : ""}</span>`;
         detail = `<span class="matchup-score-row">${scoreSpan(away)}<span class="matchup-status">${status}</span>${scoreSpan(home)}</span>`;
+        statusText = status;
       } else if (comp.date) {
         // The date is on the day divider row, so just the time and TV:
         // "12PM on ABC", "3:30PM on SECN".
@@ -163,6 +164,7 @@ async function fetchEspnSchedule(week) {
           .replace(":00", "").replace(/\s+/g, "")} ${tzAbbr(kick)}`.trim();
         const tv = shortNetwork(comp);
         detail = tv ? `${time} on ${tv}` : time;
+        statusText = detail;
       }
 
       let kickoff = new Date(8640000000000000);
@@ -193,7 +195,12 @@ async function fetchEspnSchedule(week) {
         awayIsSec,
         homeIsSec,
         awayScore,
-        homeScore
+        homeScore,
+        awayRank: rankOf(away),
+        homeRank: rankOf(home),
+        awayWon: isFinal && away.winner === true,
+        homeWon: isFinal && home.winner === true,
+        statusText
       };
     });
 
@@ -392,25 +399,17 @@ function renderHostGrid(games, hostRows, cousinRows, isLockActiveThisWeek) {
   header("thPlayers", guests.length === 1 ? escapeHtml(guests[0]) : SITE.players.many, consensus);
 
   const hostBody = document.getElementById("hostGridBody");
-  hostBody.innerHTML = "";
+  hostBody.innerHTML = games.length ? "" : `<p class="game-cards-note">No games this week.</p>`;
   const liveMap = liveGames[activeWeek] || {};
 
   games.forEach((g, idx) => {
     const divider = dayDividerLabel(games, idx);
-    if (divider) {
-      const dividerTr = document.createElement("tr");
-      dividerTr.innerHTML = `
-        <td colspan="${SITE.hosts.length + 2}" style="text-align: center; padding: 0.4rem; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-gold);">
-          ${divider}
-        </td>
-      `;
-      hostBody.appendChild(dividerTr);
-    }
+    if (divider) hostBody.insertAdjacentHTML("beforeend", `<div class="game-day">${divider}</div>`);
 
     // Predicted scores are saved in teamA/teamB order but shown in the
     // matchup's own away-home order, like the live score.
     const teamAIsAway = normalizeTeam(g.teamA) === normalizeTeam(g.awayName);
-    const hostCell = ({ picks, scores }) => {
+    const hostPick = ({ picks, scores }, i) => {
       const pick = getMatchedUserPick(picks, g) || "-";
       const s = scores[g.matchupKey] || scores[g.id] || scores[String(g.id)];
       const scoreText = (!s || s.teamA === undefined || s.teamB === undefined || s.teamA === "") ? ""
@@ -419,30 +418,52 @@ function renderHostGrid(games, hostRows, cousinRows, isLockActiveThisWeek) {
       const pickClass = getPickClass(pick, g, activeWeek);
       const isTriple = isTriplePerfect(s, pickClass, isLock, g);
       return `
-      <td class="pick-cell ${pickClass} ${isLock ? 'host-lock-cell' : ''} ${isTriple ? 'triple-perfect-cell' : ''}">
-        ${buildPickCellInner(shortenPickDisplay(pick), scoreText, isLock, isTriple)}
-      </td>`;
+      <div class="gc-pick ${isTriple ? "triple-perfect-cell" : ""}">
+        <span class="triple-perfect-content">
+          <span class="gc-host">${SITE.hosts[i]}${isLock ? ' <span class="lock-badge gc-lock">LOCK</span>' : ""}</span>
+          <span class="gc-team ${pickClass}">${shortenPickDisplay(pick)}</span>
+          ${scoreText ? `<span class="gc-score">${scoreText}</span>` : ""}
+          ${isTriple ? '<span class="triple-perfect-badge">&#10024; Perfect &#10024;</span>' : ""}
+        </span>
+      </div>`;
     };
 
-    const majorityPick = computeMajorityPick(cousinRows, g);
-    const classCousins = majorityPick ? getPickClass(majorityPick.team, g, activeWeek) : "";
+    // One team's line: logo (with its rank), name, and the score once it starts.
+    const teamLine = (name, logo, isSec, rank, score, won) => `
+      <div class="gc-team-row ${g.isFinal && !won ? "lost" : ""}">
+        <span class="matchup-logo-wrap">${teamLogoHtml(name, logo, isSec)}</span>
+        <span class="gc-name">${shortenPickDisplay(name)}${rank ? ` <span class="gc-rank">#${rank}</span>` : ""}</span>
+        ${score !== null && score !== undefined ? `<span class="gc-points ${won ? "won" : ""}">${score}</span>` : ""}
+      </div>`;
 
-    const tr = document.createElement("tr");
-    tr.dataset.teams = [g.teamA, g.teamB].map(normalizeTeam).join("|");
-    if (liveMap[g.matchupKey] || liveMap[g.id]) tr.classList.add("live-game-row");
-    tr.innerHTML = `
-      <td class="matchup-cell">
-        ${g.matchupLabel}
-        ${g.detail ? `<span class="matchup-subdetail">${g.detail}</span>` : ''}
-        ${detailsLink(g)}
-      </td>
-      ${hosts.map(hostCell).join("")}
-      <td class="pick-cell ${classCousins}">
-        ${majorityPick ? shortenPickDisplay(majorityPick.team) : '<span class="matchup-subdetail" style="margin-top:0;">No picks yet</span>'}
-        ${majorityPick && !GUEST_SEASON ? `<span class="host-predicted-score">${majorityPick.percentage}%</span>` : ''}
-      </td>
+    // The Cousins: the share on the team most of them picked, as a bar.
+    const majorityPick = computeMajorityPick(cousinRows, g);
+    const classCousins = majorityPick ? getPickClass(majorityPick.team, g, activeWeek) : "pick-pending";
+    const cousinsLabel = guests.length === 1 ? escapeHtml(guests[0]) : SITE.players.many;
+    const cousins = !majorityPick
+      ? `<span class="gc-cousins-none">No picks yet</span>`
+      : GUEST_SEASON
+        ? `<span class="gc-cousins-text ${classCousins}">${shortenPickDisplay(majorityPick.team)}</span>`
+        : `<span class="gc-bar"><span class="gc-bar-fill ${classCousins}" style="width: ${majorityPick.percentage}%"></span></span>
+           <span class="gc-cousins-text ${classCousins}">${majorityPick.percentage}% ${shortenPickDisplay(majorityPick.team)}</span>`;
+
+    const card = document.createElement("article");
+    card.className = "game-card";
+    card.dataset.teams = [g.teamA, g.teamB].map(normalizeTeam).join("|");
+    if (liveMap[g.matchupKey] || liveMap[g.id]) card.classList.add("live-game-row");
+    card.innerHTML = `
+      <div class="gc-head">
+        <div class="gc-teams">
+          ${teamLine(g.awayName, g.awayLogo, g.awayIsSec, g.awayRank, g.awayScore, g.awayWon)}
+          ${teamLine(g.homeName, g.homeLogo, g.homeIsSec, g.homeRank, g.homeScore, g.homeWon)}
+        </div>
+        <span class="gc-status">${g.statusText || ""}</span>
+      </div>
+      <div class="gc-picks" style="grid-template-columns: repeat(${SITE.hosts.length}, minmax(0, 1fr));">${hosts.map(hostPick).join("")}</div>
+      <div class="gc-cousins"><span class="gc-cousins-label">${cousinsLabel}</span>${cousins}</div>
+      ${g.eventId ? `<div class="gc-foot">${detailsLink(g)}</div>` : ""}
     `;
-    hostBody.appendChild(tr);
+    hostBody.appendChild(card);
   });
 
   // SEC teams with no game this week, so their schedules are still reachable.
