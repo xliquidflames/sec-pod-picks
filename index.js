@@ -450,13 +450,30 @@ function renderHostGrid(games, hostRows, cousinRows, isLockActiveThisWeek) {
       </div>`;
     };
 
-    // One team's line: logo (with its rank), name, and the score once it starts.
-    const teamLine = (name, logo, isSec, rank, score, won) => `
-      <div class="gc-team-row ${g.isFinal && !won ? "lost" : ""}">
+    // Each team side by side: logo, then name and rank under it. The
+    // loser is dimmed once it's final.
+    const side = (name, logo, isSec, rank, won) => `
+      <div class="gc-side ${g.isFinal && !won ? "lost" : ""}">
         <span class="matchup-logo-wrap">${teamLogoHtml(name, logo, isSec)}</span>
         <span class="gc-name">${shortenPickDisplay(name)}${rank ? ` <span class="gc-rank">#${rank}</span>` : ""}</span>
-        ${score !== null && score !== undefined ? `<span class="gc-points ${won ? "won" : ""}">${score}</span>` : ""}
       </div>`;
+    // Between them: "@" before kickoff, then the score with the quarter or Final.
+    const started = g.awayScore !== null && g.awayScore !== undefined;
+    const middle = started
+      ? `<div class="gc-scoreline">
+          <span class="gc-points ${g.awayWon ? "won" : ""} ${g.isFinal && !g.awayWon ? "lost" : ""}">${g.awayScore}</span>
+          <span class="gc-status">${g.statusText || ""}</span>
+          <span class="gc-points ${g.homeWon ? "won" : ""} ${g.isFinal && !g.homeWon ? "lost" : ""}">${g.homeScore}</span>
+        </div>`
+      : `<span class="gc-at">@</span>`;
+    // Centered under the teams: kickoff and channel, where (and the
+    // forecast), then the line. A game that's started keeps only where.
+    const where = [g.whereText, started ? "" : g.weatherText].filter(Boolean).join(" · ");
+    const info = [
+      started ? "" : `<span class="gc-status">${g.statusText || ""}</span>`,
+      where ? `<span class="gc-where">${where}</span>` : "",
+      !started && g.lineText ? `<span class="gc-line">${g.lineText}</span>` : ""
+    ].join("");
 
     // The Cousins: the share on the team most of them picked, as a bar.
     const majorityPick = computeMajorityPick(cousinRows, g);
@@ -475,15 +492,12 @@ function renderHostGrid(games, hostRows, cousinRows, isLockActiveThisWeek) {
     if (liveMap[g.matchupKey] || liveMap[g.id]) card.classList.add("live-game-row");
     card.innerHTML = `
       <div class="gc-head">
-        <div class="gc-teams">
-          ${teamLine(g.awayName, g.awayLogo, g.awayIsSec, g.awayRank, g.awayScore, g.awayWon)}
-          ${teamLine(g.homeName, g.homeLogo, g.homeIsSec, g.homeRank, g.homeScore, g.homeWon)}
+        <div class="gc-matchup">
+          ${side(g.awayName, g.awayLogo, g.awayIsSec, g.awayRank, g.awayWon)}
+          ${middle}
+          ${side(g.homeName, g.homeLogo, g.homeIsSec, g.homeRank, g.homeWon)}
         </div>
-        <div class="gc-info">
-          <span class="gc-status">${g.statusText || ""}</span>
-          ${g.lineText && !g.isFinal ? `<span class="gc-line">${g.lineText}</span>` : ""}
-        </div>
-        ${g.whereText || (g.weatherText && !g.isFinal) ? `<div class="gc-where">${[g.whereText, g.isFinal ? "" : g.weatherText].filter(Boolean).join(" · ")}</div>` : ""}
+        ${info ? `<div class="gc-info">${info}</div>` : ""}
       </div>
       <div class="gc-picks" style="grid-template-columns: repeat(${SITE.hosts.length}, minmax(0, 1fr));">${hosts.map(hostPick).join("")}</div>
       <div class="gc-cousins"><span class="gc-cousins-label">${cousinsLabel}</span>${cousins}</div>
