@@ -174,6 +174,25 @@ async function fetchEspnSchedule(week) {
       }
 
       const rawOdds = comp.odds && comp.odds[0]?.details ? comp.odds[0].details : "";
+
+      // Where and the line, for the top right of the game's card (the
+      // same facts Details shows, from the scoreboard).
+      const venue = comp.venue || {};
+      const city = venue.address ? [venue.address.city, venue.address.state].filter(Boolean).join(", ") : "";
+      const whereText = [venue.fullName, city].filter(Boolean).join(" · ");
+      let weatherText = "";
+      if (venue.indoor === true) weatherText = `<span class="weather-chip">${DOME_ICON} Indoors</span>`;
+      else {
+        const w = ev.weather || comp.weather;
+        const desc = w && (w.displayValue || w.conditionDescription || conditionText(w.conditionId));
+        const temp = w && (w.temperature ?? w.highTemperature);
+        if (w && (temp !== undefined || desc)) {
+          const icon = weatherIcon(desc, new Date(comp.date || ev.date));
+          weatherText = `<span class="weather-chip">${icon ? `<span class="weather-icon">${icon}</span>` : ""}${temp !== undefined ? `${temp}°` : ""}${desc ? ` ${desc}` : ""}</span>`;
+        }
+      }
+      const odds = comp.odds && comp.odds[0];
+      const lineText = odds ? [odds.details, odds.overUnder ? `O/U ${odds.overUnder}` : ""].filter(Boolean).join(" · ") : "";
       return {
         matchupKey: (ev.id !== undefined && ev.id !== null) ? String(ev.id) : buildMatchupKey(teamA, teamB),
         teamA,
@@ -200,7 +219,10 @@ async function fetchEspnSchedule(week) {
         homeRank: rankOf(home),
         awayWon: isFinal && away.winner === true,
         homeWon: isFinal && home.winner === true,
-        statusText
+        statusText,
+        whereText,
+        weatherText,
+        lineText
       };
     });
 
@@ -457,7 +479,11 @@ function renderHostGrid(games, hostRows, cousinRows, isLockActiveThisWeek) {
           ${teamLine(g.awayName, g.awayLogo, g.awayIsSec, g.awayRank, g.awayScore, g.awayWon)}
           ${teamLine(g.homeName, g.homeLogo, g.homeIsSec, g.homeRank, g.homeScore, g.homeWon)}
         </div>
-        <span class="gc-status">${g.statusText || ""}</span>
+        <div class="gc-info">
+          <span class="gc-status">${g.statusText || ""}</span>
+          ${g.lineText && !g.isFinal ? `<span class="gc-line">${g.lineText}</span>` : ""}
+        </div>
+        ${g.whereText || (g.weatherText && !g.isFinal) ? `<div class="gc-where">${[g.whereText, g.isFinal ? "" : g.weatherText].filter(Boolean).join(" · ")}</div>` : ""}
       </div>
       <div class="gc-picks" style="grid-template-columns: repeat(${SITE.hosts.length}, minmax(0, 1fr));">${hosts.map(hostPick).join("")}</div>
       <div class="gc-cousins"><span class="gc-cousins-label">${cousinsLabel}</span>${cousins}</div>

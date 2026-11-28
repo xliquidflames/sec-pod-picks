@@ -5586,6 +5586,7 @@ button.tourney-banner {
 
 .gc-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.85rem 1rem 0.7rem;
@@ -5596,8 +5597,8 @@ button.tourney-banner {
 }
 
 .gc-teams {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 0;
+  min-width: 6.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -5616,9 +5617,7 @@ button.tourney-banner {
 
 .gc-name {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
   font-size: 0.95rem;
   font-weight: 800;
   color: var(--text-main);
@@ -5651,9 +5650,53 @@ button.tourney-banner {
   color: #94a3b8;
 }
 
+/* Top right: status or kickoff, then where, the forecast and the line. */
+.gc-info {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  text-align: right;
+}
+
+/* Under the teams, across the card: the stadium, city and forecast. */
+.gc-where {
+  flex-basis: 100%;
+}
+
+.gc-where,
+.gc-weather,
+.gc-line {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.gc-line {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.gc-line {
+  white-space: nowrap;
+}
+
+.gc-where .weather-icon,
+.gc-where .dome-icon {
+  display: inline-block;
+  width: 1em;
+  vertical-align: -0.1em;
+}
+
+/* Details on a card skips Where, When and Line: they're at the top of the card. */
+.game-card .details-info {
+  display: none;
+}
+
 .gc-status {
-  flex: none;
-  max-width: 7.5rem;
   text-align: right;
   font-size: 0.7rem;
   font-weight: 800;
